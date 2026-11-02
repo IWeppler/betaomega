@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { ArrowsClockwise, Eye, MagnifyingGlass, PencilSimple, Plus, Tag, Trash, X } from "@phosphor-icons/react";
 import { ProductCombobox, type ProductOption } from "./product-combobox";
-import { AutoSaveForm } from "./auto-save-form";
+import { SaveForm } from "./save-form";
 import { ImageField } from "./catalog-image";
 import { brokenCombos, combosUsing, comboSavings, effectivePrice, findProduct, formatMoney, formatPrice, getCategories, isInStore, normalize, storeToday, type Catalog, type Combo, type Plant, type Preparation } from "@/lib/catalog";
 import { applyPriceEdits, bulkError, bulkPrice, parsePriceText, priceRows, priceText, resolveEdit, summarizeEdits, whatsappDigits, type BulkAction, type PriceEdits } from "@/lib/store-tools";
@@ -22,7 +22,7 @@ const isConflict = (message: string) => message.startsWith("Otra persona modific
 
 type Props = {
   catalog: Catalog; busy: boolean; error: string;
-  /** Only the active tab mounts its autosave form, so it can share the administrator's flush handle. */
+  /** Only the active tab mounts its edit form, so it can share the administrator's leave handle. */
   active: boolean;
   flushRef: MutableRefObject<() => Promise<boolean>>;
   onSave: (next: Catalog) => Promise<boolean>;
@@ -84,7 +84,7 @@ function DataSection({ catalog, busy, error, flushRef, onSave }: Pick<Props, "ca
   };
   return <div className="store-section">
     <p className="section-note">Estos datos se muestran al pie de la tienda y en cada ficha. El WhatsApp recibe los pedidos y las consultas.</p>
-    <AutoSaveForm error={local || error} registerRef={flushRef} paused={busy} onSave={submit} changes="">
+    <SaveForm error={local || error} registerRef={flushRef} paused={busy} onSave={submit} changes="">
       <label className="field">
         <span>WhatsApp de la tienda<span className="required-tag">Importante</span></span>
         <input name="whatsapp" type="tel" inputMode="tel" defaultValue={store.whatsapp ?? ""} maxLength={25} placeholder="Ej: 5493491123456" onChange={e => setDigits(whatsappDigits(e.target.value))} aria-describedby="store-whatsapp-hint" />
@@ -99,7 +99,7 @@ function DataSection({ catalog, busy, error, flushRef, onSave }: Pick<Props, "ca
         <label className="field"><span>Link del mapa</span><input name="mapsUrl" type="url" inputMode="url" defaultValue={store.mapsUrl ?? ""} maxLength={2000} placeholder="https://maps.app.goo.gl/..." /><small>Opcional. Tiene que empezar con https://</small></label>
       </div>
       <label className="field"><span>Horarios</span><textarea name="hours" rows={4} defaultValue={store.hours ?? ""} maxLength={1000} placeholder={"Lunes a viernes de 9 a 13 y de 17 a 21\nSábados de 9 a 13"} /><small>Opcional. Cada renglón se muestra por separado.</small></label>
-    </AutoSaveForm>
+    </SaveForm>
   </div>;
 }
 

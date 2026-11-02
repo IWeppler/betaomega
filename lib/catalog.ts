@@ -123,7 +123,8 @@ export type AvoidId = (typeof avoidOptions)[number]["id"];
 export const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 /** URL-safe version of a name: "Té de Menta" becomes "te-de-menta". */
 export const slugify = (value: string) => normalize(value).replace(/ /g, "-") || "producto";
-const reservedSlugs = new Set(["combos"]);
+// Routes of the store itself (/combos/..., /equipo, /og, /pwa-icon), so a product cannot take them.
+const reservedSlugs = new Set(["combos", "equipo", "og", "pwa-icon"]);
 /** Combo names are unique once normalized (see validateCatalog), so their slugs never collide. */
 export const comboSlug = (combo: { name: string }) => slugify(combo.name);
 /**
@@ -131,7 +132,6 @@ export const comboSlug = (combo: { name: string }) => slugify(combo.name);
  * ("menta-hierba", "menta-tonico"), and an id fragment if that still collides.
  */
 export function assignSlugs(items: { id: string; name: string; tonic: boolean }[]): Map<string, string> {
-  // "combos" is a route of its own (/catalogo/combos/...), so a product cannot take it.
   const own = (name: string) => reservedSlugs.has(slugify(name)) ? `${slugify(name)}-producto` : slugify(name);
   const base = new Map<string, number>();
   for (const item of items) base.set(own(item.name), (base.get(own(item.name)) ?? 0) + 1);

@@ -57,7 +57,7 @@ Implementado y **sin commitear** al escribir este documento (revisar `git status
 - Todo el catálogo es **un solo documento JSON** en Supabase (`app_data`, clave `catalog`). Tipos y validación en `lib/catalog.ts` (`Plant`, `Preparation`, `Catalog`, `validateCatalog`). Agregar campos **opcionales** no rompe catálogos ya guardados y no requiere migración SQL.
 - Guardado con control de versión: `lib/store.ts` (`saveCatalog`, `ConflictError`) y `app/api/catalog/route.ts` (PUT solo para administrador y mismo origen).
 - Lectura pública: `GET /api/catalog?scope=public` devuelve solo lo publicado y es lo que lee la **vista del vendedor**. Lo oculto en la tienda **sí** viaja ahí, con su marca `hidden` (ver el registro de la fase 1). Las páginas de la tienda no usan este API: leen en el servidor con `lib/shop.ts`.
-- Administrador: `app/page.tsx` (cliente, ~1300 líneas), pestañas `search | tonics | herbs`. Formularios con autoguardado: `app/auto-save-form.tsx`. Campo de precio: `PriceFields` en `app/page.tsx`.
+- Administrador: `app/page.tsx` (cliente, ~1300 líneas), pestañas `search | tonics | herbs`. Formularios de edición: `app/save-form.tsx` (guardan con el botón Guardar; al salir con cambios preguntan). Campo de precio: `PriceFields` en `app/page.tsx`.
 - Categorías: `getCategories`, `itemCategories` en `lib/catalog.ts`. Cada producto se muestra bajo la primera categoría que lo incluye.
 - Estilos: `app/globals.css`, una sola hoja. Radios: pastillas para controles, `--radius-card` para tarjetas. Un solo acento verde. Sin modo oscuro.
 - Código: estilo denso de una línea por sentencia, comentarios solo cuando explican el porqué, textos de interfaz en español rioplatense, sin guiones largos en textos visibles.
@@ -149,7 +149,7 @@ Orden: 1, luego 2, 3 y 4 (pueden ir en paralelo), luego 5, luego 6, luego 7 y 8.
 - **Objetivo:** que la dueña cargue WhatsApp, Instagram, Facebook, dirección, mapa y horarios, y que se vean en la tienda.
 - **Alcance:**
   1. Nueva pestaña **Tienda** en `app/page.tsx` (o mover su contenido a un componente propio para no crecer más ese archivo) con la sección **Datos**.
-  2. Formulario con autoguardado y botón Guardar, siguiendo `AutoSaveForm`. Solo el número de WhatsApp es el dato "importante" y se marca; el resto es opcional.
+  2. Formulario con botón Guardar, siguiendo `SaveForm`. Solo el número de WhatsApp es el dato "importante" y se marca; el resto es opcional.
   3. Mostrar los datos en `/catalogo` (pie con redes, dirección con link al mapa, horarios) y un enlace de contacto en la ficha. Reemplazar el uso de `NEXT_PUBLIC_WHATSAPP_NUMBER` por el dato guardado y quitar la variable de `.env.example` y del README.
   4. Los datos de la tienda viajan en `GET /api/catalog?scope=public`.
 - **Criterios de aceptación:** sin número cargado, los botones "Consultar" no aparecen y nada se rompe; con número, abren el chat correcto.

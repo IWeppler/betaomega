@@ -1,5 +1,5 @@
 /* Offline support: the app shell and the public catalog are cached so the screen keeps working without wifi. */
-const VERSION = "v22";
+const VERSION = "v23";
 const SHELL = `nekurel-shell-${VERSION}`;
 const DATA = `nekurel-data-${VERSION}`;
 

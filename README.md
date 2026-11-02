@@ -10,7 +10,7 @@ Requiere Node.js 22.14 o posterior. Con las dependencias instaladas:
 npm run dev -- --hostname 0.0.0.0
 ```
 
-Abrir http://localhost:3000. Para una tablet en la misma red, usar la IP de esta computadora y el puerto 3000. El servidor debe permanecer encendido y el firewall debe permitir el acceso.
+Abrir http://localhost:3000 (la tienda) o http://localhost:3000/equipo (vendedor y administración). Para una tablet en la misma red, usar la IP de esta computadora y el puerto 3000. El servidor debe permanecer encendido y el firewall debe permitir el acceso.
 
 ## Acceso y flujo
 
@@ -69,14 +69,14 @@ El catálogo, el uso y las fotos se guardan en Supabase, tanto en local como en 
 
 Si todavía no hay catálogo guardado, la app muestra el catálogo inicial y lo guarda en Supabase al primer cambio. Todos los dispositivos consultan el mismo catálogo. La interfaz lo actualiza cada 30 segundos y al recuperar foco. Hay control de versión: si dos administradores editan a la vez, el segundo debe actualizar antes de guardar.
 
-El catálogo del equipo (con notas internas y preparaciones) solo se entrega con el código de vendedor o la sesión de administrador. La tienda pública (`/catalogo`) no muestra notas internas ni preparaciones. Cambiar `ANKORA_SELLER_CODE` cierra todas las sesiones de vendedor (por ejemplo, si alguien deja el equipo); las de administrador siguen abiertas. Eliminar una planta utilizada por una mezcla está bloqueado hasta quitarla de sus preparados.
+El catálogo del equipo (con notas internas y preparaciones) solo se entrega con el código de vendedor o la sesión de administrador. La tienda pública (`/`) no muestra notas internas ni preparaciones. Cambiar `ANKORA_SELLER_CODE` cierra todas las sesiones de vendedor (por ejemplo, si alguien deja el equipo); las de administrador siguen abiertas. Eliminar una planta utilizada por una mezcla está bloqueado hasta quitarla de sus preparados.
 
 ## Verificar
 
 ```powershell
 npm run lint
 npm run build
-node --experimental-strip-types --test tests/catalog.test.mjs tests/features.test.mjs tests/store.test.mjs
+node --experimental-strip-types --test tests/catalog.test.mjs tests/features.test.mjs tests/store.test.mjs tests/sites.test.mjs tests/recipes.test.mjs tests/images.test.mjs
 ```
 
 Las pruebas cubren sinónimos, normalización, coincidencias falsas, visibilidad de borradores y validación de combinaciones.
@@ -99,19 +99,36 @@ La consulta `GET /api/catalog?scope=public` devuelve únicamente el catálogo p�
 
 ## Tienda online
 
-`/catalogo` es una tienda pública simple: sin cuentas de clientes, sin pagos online y sin stock. Los pedidos **no se guardan**: salen solo por WhatsApp. La dueña la administra desde **Administrar > Tienda**, que tiene cuatro secciones.
+La portada del sitio (`/`) es una tienda pública simple: sin cuentas de clientes, sin pagos online y sin stock. Los pedidos **no se guardan**: salen solo por WhatsApp. La dueña la administra desde **Administrar > Tienda**, que tiene cuatro secciones.
 
 - **Datos:** WhatsApp de la tienda (con código de país, solo números; es el que recibe pedidos y consultas), Instagram, Facebook, dirección, link del mapa y horarios. Se muestran al pie de la tienda y en cada ficha. Sin WhatsApp cargado, la tienda no ofrece Consultar ni Pedir por WhatsApp. Ya no se usa la variable `NEXT_PUBLIC_WHATSAPP_NUMBER`.
 - **Precios:** tabla con todos los tónicos y hierbas, con buscador y filtro por categoría. Al marcar productos aparece una barra al pie con **Precios masivos**: subir o bajar un porcentaje, redondear a un múltiplo o fijar un precio. Los cambios quedan pendientes y se guardan juntos con **Guardar cambios**. Si otra persona modificó el catálogo, el guardado avisa, conserva lo editado y permite actualizar.
 - **Visibilidad:** cada ficha y cada categoría tiene el interruptor **Visible en la tienda**. Lo oculto no aparece en la tienda, su link da 404 y no se puede pedir, pero el equipo lo sigue viendo en el buscador. Esta sección lista lo oculto y permite mostrarlo de nuevo.
-- **Promociones y combos:** el **precio de oferta** y **Válida hasta** se cargan en la ficha de cada producto; la oferta vencida deja de mostrarse sola. Un combo junta varios productos a un precio fijo, con foto y descripción, y tiene su propia ficha en `/catalogo/combos/<nombre>`. Dentro de un combo no se aplican ofertas. Un combo con un producto oculto no se muestra y el administrador lo avisa.
+- **Promociones y combos:** el **precio de oferta** y **Válida hasta** se cargan en la ficha de cada producto; la oferta vencida deja de mostrarse sola. Un combo junta varios productos a un precio fijo, con foto y descripción, y tiene su propia ficha en `/combos/<nombre>`. Dentro de un combo no se aplican ofertas. Un combo con un producto oculto no se muestra y el administrador lo avisa.
 
 La clienta agrega productos con el botón **+**, ve el carrito con el botón flotante, elige **Seguir comprando** o **Finalizar compra**, completa nombre, retiro o envío (con dirección) y nota, y **Pedir por WhatsApp** abre el chat de la tienda con el pedido armado. Los precios siempre se calculan en el servidor con el catálogo actual; el navegador guarda solo productos y cantidades. Si un producto se oculta, el carrito lo quita y avisa.
 
-El icono de la app (pantalla de inicio) es el logo, generado en `app/pwa-icon/route.tsx`.
+El icono de la app (pantalla de inicio) es el logo, generado en `app/herboristeria/[site]/pwa-icon/route.tsx`.
 
 ## Vista previa al compartir (Open Graph)
 
-La portada social se genera en `app/opengraph-image.tsx` a 1200 × 630 px con la identidad botánica de Ñekurel. El título, la descripción y las etiquetas de Open Graph y Twitter están en `app/layout.tsx`.
+La portada social se genera en `app/herboristeria/[site]/og/route.tsx` (se sirve en `/og`) a 1200 × 630 px con la identidad botánica de Ñekurel. El título, la descripción y las etiquetas de Open Graph y Twitter están en `app/herboristeria/[site]/layout.tsx`.
 
-La URL pública predeterminada es `https://nekurel.vercel.app`. Si cambia el dominio, definir `NEXT_PUBLIC_SITE_URL` con la URL completa y volver a compilar. La imagen se genera durante el build. Para que aparezca al compartir la web pública, desplegar estos cambios.
+La URL pública de cada sitio está en `lib/sites.ts` (`url`). Si cambia el dominio, cambiarla ahí, agregar el dominio a `domains` y desplegar.
+
+## Varios sitios en una sola app
+
+La app sirve varios sitios según el dominio (plan y estado en `docs/plataforma-multisitio.md`). Los sitios están en `lib/sites.ts`; `proxy.ts` lee el host y reescribe a `app/<tipo>/<sitio>/...`.
+
+- **Ñekurel:** `/` es la tienda, `/<producto>` y `/combos/<combo>` sus fichas, y `/equipo` el buscador del vendedor y la administración. Los links viejos `/catalogo/...` redirigen solos.
+- **Dominio desconocido** (localhost, la IP de la tablet, previews): se muestra `DEFAULT_SITE` (por defecto `nekurel`). En desarrollo, `http://nekurel.localhost:3000` elige el sitio por subdominio.
+- **Tablet con la app instalada:** la app abre en `/equipo`. Si una tablet ya instalada abre la tienda, quitar la app y volver a instalarla desde `/equipo`.
+- **Agregar un dominio:** sumarlo a `domains` en `lib/sites.ts`, agregarlo al proyecto en Vercel y configurar el DNS.
+
+## Panel central (Betayomega)
+
+La administración de todos los sitios se hace desde el panel, en su propio dominio: `https://betayomega.vercel.app` (en local, `http://panel.localhost:3000`). Se entra con la misma contraseña de administrador. A la izquierda se elige el sitio y su sección: **Resumen** (números y lo que conviene revisar), **Tónicos**, **Hierbas**, **Categorías** y **Tienda**.
+
+- Para usar el dominio gratuito, agregar `betayomega.vercel.app` en Vercel > Settings > Domains de este mismo proyecto. Si se usa otro dominio, definir `PANEL_HOSTS` con la lista de dominios del panel, separados por comas.
+- La sesión del panel es propia de su dominio: entrar al panel no abre sesión en `nekurel.com/equipo`, ni al revés.
+- Por ahora `/equipo` conserva también su administración, para que se pueda volver a ella mientras se prueba el panel.

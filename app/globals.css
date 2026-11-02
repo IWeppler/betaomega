@@ -3081,13 +3081,28 @@ main {
   margin: 0;
 }
 .product-foot {
-  flex-direction: column;
-  align-items: stretch;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.product-foot > .product-price-line,
+.product-foot > .product-price.is-consult {
+  flex: 1;
+  min-width: 0;
+  align-self: center;
+}
+.product-foot > .combo-savings {
+  order: 1;
+  flex-basis: 100%;
 }
 .product-actions {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 8px;
+}
+.product-actions .add-button {
+  flex: none;
+  width: 44px;
 }
 .add-button {
   flex: 1;
@@ -3774,4 +3789,22 @@ main {
     right: 12px;
     bottom: 12px;
   }
+}
+.leave-dialog {
+  width: min(440px, calc(100vw - 32px));
+}
+.leave-dialog h3 {
+  font-family: var(--font-head);
+  font-size: 20px;
+}
+.leave-dialog p {
+  color: var(--muted);
+}
+.leave-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.leave-actions .button {
+  flex: 1 1 auto;
 }

@@ -3,18 +3,18 @@
 import { useRef, useState } from "react";
 import { Plus } from "@phosphor-icons/react";
 import { ImageField } from "./catalog-image";
-import { AutoSaveForm } from "./auto-save-form";
+import { SaveForm } from "./save-form";
 import { Screen } from "./screen";
 import { categoryOptions, type Category, type CategoryImages } from "@/lib/catalog";
 
-export function CategoryImageEditor({ initial, initialCategories, onSave, onClose, error }: { initial: CategoryImages; initialCategories: Category[]; onSave: (categories: Category[], images: CategoryImages) => Promise<boolean>; onClose: () => void; error: string }) {
+export function CategoryImageEditor({ initial, initialCategories, onSave, onClose, error, inline = false }: { initial: CategoryImages; initialCategories: Category[]; onSave: (categories: Category[], images: CategoryImages) => Promise<boolean>; onClose: () => void; error: string; inline?: boolean }) {
   const [images, setImages] = useState(initial);
   const [categories, setCategories] = useState(initialCategories);
   const [uploading, setUploading] = useState(false);
   const flushRef = useRef<() => Promise<boolean>>(async () => true);
-  return <div className="category-editor"><Screen title="Categorías" onClose={async () => { if (!uploading && await flushRef.current()) onClose(); }}>
+  return <div className="category-editor"><Screen inline={inline} title="Categorías" onClose={async () => { if (!uploading && await flushRef.current()) onClose(); }}>
     <p className="section-note">Editá los nombres y las imágenes, o agregá una categoría. Los cambios se guardan automáticamente.</p>
-    <AutoSaveForm registerRef={flushRef} paused={uploading} changes={JSON.stringify([categories, images])} onSave={form => form.checkValidity() ? onSave(categories.map(c => ({ ...c, label: c.label.trim() })), images) : Promise.resolve(false)}>
+    <SaveForm registerRef={flushRef} paused={uploading} changes={JSON.stringify([categories, images])} onSave={form => form.checkValidity() ? onSave(categories.map(c => ({ ...c, label: c.label.trim() })), images) : Promise.resolve(false)}>
       <fieldset className="autosave-fields" disabled={uploading}><div className="category-edit-grid">{categories.map(category => {
         const original = categoryOptions.find(c => c.id === category.id);
         return <section className="category-edit-card" key={category.id} data-category={category.id} aria-label={`Categoría ${category.label}`}>
@@ -26,6 +26,6 @@ export function CategoryImageEditor({ initial, initialCategories, onSave, onClos
       })}</div>
       <button type="button" className="button primary" disabled={categories.length >= 50} onClick={() => { let n = 1; while (categories.some(c => c.label === `Nueva categoría ${n}`)) n++; setCategories(current => [...current, { id: crypto.randomUUID(), label: `Nueva categoría ${n}` }]); }}><Plus size={22} aria-hidden="true" />Agregar categoría</button></fieldset>
       {error && <div className="alert error" role="alert">{error}</div>}
-    </AutoSaveForm>
+    </SaveForm>
   </Screen></div>;
 }
