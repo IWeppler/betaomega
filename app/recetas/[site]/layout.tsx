@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
-import { Fraunces, Nunito_Sans } from "next/font/google";
+import { Atkinson_Hyperlegible, Poppins } from "next/font/google";
 import { brand, getSettings, ogImage, recipeSite } from "./brand";
 import "./recetas.css";
 
-// Fraunces (a warm serif) for titles and Nunito Sans for reading: a cookbook, apart from Ñekurel and the panel.
-const display = Fraunces({ subsets: ["latin"], display: "swap", style: ["normal", "italic"], variable: "--font-recipe-display" });
-const text = Nunito_Sans({ subsets: ["latin"], display: "swap", variable: "--font-recipe-text" });
+// Same pairing as Ñekurel's store: Poppins for titles, Atkinson Hyperlegible for reading.
+const display = Poppins({ subsets: ["latin"], weight: ["600", "700"], display: "swap", variable: "--font-recipe-display" });
+const text = Atkinson_Hyperlegible({ subsets: ["latin"], weight: ["400", "700"], display: "swap", variable: "--font-recipe-text" });
 
 type Props = { params: Promise<{ site: string }> };
 

@@ -8,9 +8,10 @@ import { validPreview } from "@/lib/preview";
 import { countRecipeView, findRecipeBySlug } from "@/lib/recipe-store";
 import { formatMinutes, isScheduled, looksLikeBot, recipeJsonLd, recipeShareInfo, relatedRecipes, toRecipeCard, totalMinutes } from "@/lib/recipes";
 import { getRecipes, getSettings, ogImage, recipeSite } from "../brand";
-import { RecipeCardView, RecipePhoto } from "../recipe-card";
+import { RecipeCardView } from "../recipe-card";
 import { PrintButton, ShareButton, SiteFooter, SiteHeader } from "../site-chrome";
 import { IngredientList } from "./ingredient-list";
+import { RecipeGallery } from "./recipe-gallery";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ site: string; slug: string }>; searchParams: Promise<{ vista?: string | string[] }> };
@@ -80,7 +81,7 @@ export default async function RecipePage({ params, searchParams }: Props) {
       <nav className="r-back no-print" aria-label="Volver"><Link href="/"><ArrowLeft size={18} aria-hidden="true" />Todas las recetas</Link></nav>
       <article>
         <header className="r-hero">
-          <RecipePhoto title={recipe.title} image={recipe.image} priority sizes="(max-width: 860px) 100vw, 560px" />
+          <RecipeGallery title={recipe.title} images={[recipe.image, ...recipe.images].filter((src): src is string => Boolean(src))} sizes="(max-width: 860px) 100vw, 560px" />
           <div className="r-hero-text">
             {recipe.categories.length > 0 && <ul className="r-tags" aria-label="Categorías">
               {recipe.categories.map(c => <li key={c}><Link href={`/?categoria=${encodeURIComponent(c)}`}>{c}</Link></li>)}
@@ -96,9 +97,6 @@ export default async function RecipePage({ params, searchParams }: Props) {
             </div>
           </div>
         </header>
-        {recipe.images.length > 0 && <ul className="r-gallery" aria-label="Más fotos">
-          {recipe.images.map((src, n) => <li key={src}><RecipePhoto title={`${recipe.title}, foto ${n + 2}`} image={src} sizes="(max-width: 640px) 50vw, 280px" /></li>)}
-        </ul>}
         <div className="r-method">
           <section className="r-ingredients" aria-labelledby="ingredients-title">
             <h2 id="ingredients-title">Ingredientes</h2>

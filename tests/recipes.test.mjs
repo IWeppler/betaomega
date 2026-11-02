@@ -287,3 +287,11 @@ test('más vistas: sin buscadores y ordenadas', () => {
   assert.equal(looksLikeBot(null), true);
   assert.equal(looksLikeBot('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'), false);
 });
+
+test('la tarjeta usa la segunda foto disponible para el hover', () => {
+  const base = { slug: 'a', title: 'A', summary: '', categories: [], servings: '', ingredients: [] };
+  assert.equal(toRecipeCard({ ...base, image: '/1', images: ['/2', '/3'] }).hoverImage, '/2');
+  assert.equal(toRecipeCard({ ...base, image: '/1', images: [] }).hoverImage, undefined);
+  assert.equal(toRecipeCard({ ...base, image: undefined, images: ['/2', '/3'] }).image, '/2');
+  assert.equal(toRecipeCard({ ...base, image: undefined, images: ['/2', '/3'] }).hoverImage, '/3');
+});

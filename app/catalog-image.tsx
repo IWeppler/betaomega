@@ -112,7 +112,7 @@ export function ImageField({
           </button>
         )}
       </div>
-      <small>JPG, PNG o WebP, hasta 5 MB. Se convierte sola a WebP de hasta 1 MB.</small>
+      <small>JPG, PNG o WebP, hasta 5 MB.</small>
       {error && (
         <div className="alert error" role="alert">
           {error}

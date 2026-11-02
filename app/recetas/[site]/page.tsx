@@ -40,14 +40,10 @@ export default async function RecipesHome({ params, searchParams }: Props) {
     <>
       <SiteHeader
         name={site.name}
+        subtitle={`${tagline} · ${recipes.length === 1 ? "1 receta" : `${recipes.length} recetas`}`}
         action={<ShareButton path="/" text={site.name} />}
       />
       <main className="r-page">
-        <header className="r-intro">
-          <h1>
-            {tagline}, <em>paso a paso</em>
-          </h1>
-        </header>
         {cards.length ? (
           <RecipeBrowser
             recipes={cards}

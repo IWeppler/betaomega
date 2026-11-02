@@ -25,7 +25,7 @@ export function RecipeBrowser({ recipes, categories, initialCategory }: { recipe
         <input type="search" placeholder="Buscar por plato o ingrediente" value={query} onChange={e => setQuery(e.target.value)} autoComplete="off" spellCheck={false} />
         {query && <button type="button" aria-label="Borrar búsqueda" onClick={() => setQuery("")}><X size={18} aria-hidden="true" /></button>}
       </label>
-      {categories.length > 1 && <div className="r-chips" role="group" aria-label="Categorías">
+      {categories.length > 0 && <div className="r-chips" role="group" aria-label="Categorías">
         <button type="button" aria-pressed={!category} onClick={() => choose("")}>Todas <span>{recipes.length}</span></button>
         {categories.map(c => <button type="button" key={c.label} aria-pressed={category === c.label} onClick={() => choose(category === c.label ? "" : c.label)}>{c.label} <span>{c.count}</span></button>)}
       </div>}

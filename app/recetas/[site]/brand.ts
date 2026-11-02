@@ -8,9 +8,11 @@ import { findSite } from "@/lib/sites";
 export const brand = {
   // Tagline and description are the defaults: the panel can override them (getSettings).
   ...recipeSiteDefaults,
-  background: "#fbf7f1",
-  accent: "#add0fb",
-  ink: "#111111",
+  background: "#f2f7fb",
+  accent: "#0b72a8",
+  ink: "#10212e",
+  // Poster of the site, cropped to a square by the header.
+  logo: "/comidasdelcielo-logo.webp",
 };
 
 // Public path (/og): a file convention would point at the internal /recetas/... tree.

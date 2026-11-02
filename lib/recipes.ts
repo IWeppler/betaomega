@@ -134,10 +134,12 @@ export function recipeGaps(recipe: Recipe) {
 }
 
 /** What a recipe card on the public site needs. `search` is the normalized text the search box matches. */
-export type RecipeCard = { slug: string; title: string; summary: string; image?: string; categories: string[]; servings: string; minutes?: number; search: string };
+export type RecipeCard = { slug: string; title: string; summary: string; image?: string; /** The second photo, shown while the card is hovered. */ hoverImage?: string; categories: string[]; servings: string; minutes?: number; search: string };
 const plain = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+/** The recipe's photos in order: the main one, then the extra ones. */
+const photos = (recipe: Pick<Recipe, "image" | "images">) => [recipe.image, ...(recipe.images ?? [])].filter((src): src is string => Boolean(src));
 export const toRecipeCard = (recipe: Recipe): RecipeCard => ({
-  slug: recipe.slug, title: recipe.title, summary: recipe.summary, image: recipe.image, categories: recipe.categories, servings: recipe.servings, minutes: totalMinutes(recipe),
+  slug: recipe.slug, title: recipe.title, summary: recipe.summary, image: photos(recipe)[0], hoverImage: photos(recipe)[1], categories: recipe.categories, servings: recipe.servings, minutes: totalMinutes(recipe),
   search: plain([recipe.title, recipe.summary, ...recipe.categories, ...recipe.ingredients.map(i => i.name)].join(" ")),
 });
 /** True when every word of the query appears in the card's text, ignoring accents and case. */

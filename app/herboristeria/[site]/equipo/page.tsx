@@ -14,8 +14,6 @@ import {
   Leaf,
   MagnifyingGlass,
   Plus,
-  Storefront,
-  LockKey,
   Trash,
   UploadSimple,
   WifiSlash,
@@ -56,6 +54,7 @@ export default function Home() {
     catalogRef.current = catalog;
   }, [catalog]);
   const [usage, setUsage] = useState<Record<string, number>>({});
+  const firstVisit = useRef(true);
   const [adminAccess, setAdmin] = useState(false);
   const [role, setRole] = useState<"seller" | "admin" | null>(null);
   const [desktop, setDesktop] = useState(false);
@@ -75,7 +74,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [login, setLogin] = useState<false | "admin" | "seller">(false);
-  const [sellerAccess, setSeller] = useState(false);
+  const [, setSeller] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [editor, setEditor] = useState<Preparation | null>(null);
   const [herbEditor, setHerbEditor] = useState<Plant | null>(null);
@@ -101,6 +100,14 @@ export default function Home() {
       setSeller(session.seller);
       if (!role) {
         setAdmin(session.admin);
+        // A device that already has the seller code goes straight in, once; leaving the catalogue shows the code box again.
+        if (firstVisit.current && session.seller) {
+          setCatalog(null);
+          setRole("seller");
+          setTab("search");
+          setPreview(false);
+        }
+        firstVisit.current = false;
         return;
       }
       if (role === "seller" && !session.seller) {
@@ -336,12 +343,12 @@ export default function Home() {
     setHerbEditor(item);
     return true;
   };
-  const submitLogin = async (event: FormEvent<HTMLFormElement>) => {
+  const submitLogin = async (event: FormEvent<HTMLFormElement>, asSeller = login === "seller") => {
     event.preventDefault();
     setBusy(true);
     setLoginError("");
     const secret = new FormData(event.currentTarget).get("secret");
-    const seller = login === "seller";
+    const seller = asSeller;
     try {
       await api("/api/session", {
         method: "POST",
@@ -737,55 +744,30 @@ export default function Home() {
             />
           </div>
           <div className="entry-content">
-            <h1>¿Cómo querés entrar?</h1>
-            <div className="role-options">
-              <button
-                className="role-card"
-                onClick={() => {
-                  if (!sellerAccess) {
-                    setLoginError("");
-                    setLogin("seller");
-                    return;
-                  }
-                  setCatalog(null);
-                  setRole("seller");
-                  setTab("search");
-                  setPreview(false);
-                }}
-              >
-                <span className="role-icon">
-                  <Storefront size={28} aria-hidden="true" />
-                </span>
-                <strong>Vendedor</strong>
-                <span>
-                  Buscar hierbas y tónicos.
-                  <br />
-                  Consultar y compartir preparados.
-                </span>
-                <span className="role-action">
-                  Entrar al catálogo <ArrowRight size={20} aria-hidden="true" />
-                </span>
+            <h1>Entrá al catálogo</h1>
+            <form className="entry-form" onSubmit={(event) => void submitLogin(event, true)}>
+              <label className="field">
+                <span>Código de vendedor</span>
+                <input
+                  name="secret"
+                  type="password"
+                  required
+                  autoComplete="off"
+                  autoFocus
+                  maxLength={512}
+                />
+                <small>Se pide una sola vez en este dispositivo.</small>
+              </label>
+              {loginError && (
+                <div className="alert error" role="alert">
+                  {loginError}
+                </div>
+              )}
+              <button className="button primary full" disabled={busy}>
+                {busy ? "Ingresando…" : "Ingresar"}
+                {!busy && <ArrowRight size={20} aria-hidden="true" />}
               </button>
-              <button
-                className="role-card"
-                // Administration moved to the central panel (its own host and session). /equipo/panel is a route handler that redirects there, so a full navigation is what is wanted.
-                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-                onClick={() => { window.location.href = "/equipo/panel"; }}
-              >
-                <span className="role-icon">
-                  <LockKey size={28} aria-hidden="true" />
-                </span>
-                <strong>Administrador</strong>
-                <span>
-                  Cargar el conocimiento.
-                  <br />
-                  Gestionar hierbas y recetas.
-                </span>
-                <span className="role-action">
-                  Administrar <ArrowRight size={20} aria-hidden="true" />
-                </span>
-              </button>
-            </div>
+            </form>
             {error && (
               <div className="alert error" role="alert">
                 {error}
