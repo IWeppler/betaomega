@@ -168,8 +168,10 @@ export function formatMinutes(total?: number) {
 export const totalMinutes = (recipe: Pick<Recipe, "prepMinutes" | "cookMinutes">) => (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0) || undefined;
 
 /** What a published recipe is missing to look good on the site. Drafts are reported apart. */
+/** Without ingredients or steps the recipe cannot be cooked: worse than a missing photo or label. */
+export const lacksContent = (recipe: Pick<Recipe, "ingredients" | "steps">) => !recipe.ingredients.some(i => i.name.trim()) || !recipe.steps.some(s => s.trim());
 export function recipeGaps(recipe: Recipe) {
-  return [!recipe.image && "foto", !recipe.summary && "descripción", !recipe.categories.length && "tipo", !recipe.moments.length && "momento", !recipe.difficulty && "complejidad", !totalMinutes(recipe) && "tiempo"].filter(Boolean) as string[];
+  return [!recipe.ingredients.some(i => i.name.trim()) && "ingredientes", !recipe.steps.some(s => s.trim()) && "pasos", !recipe.image && "foto", !recipe.summary && "descripción", !recipe.categories.length && "tipo", !recipe.moments.length && "momento", !recipe.difficulty && "complejidad", !totalMinutes(recipe) && "tiempo"].filter(Boolean) as string[];
 }
 
 /** What a recipe card on the public site needs. `search` is the normalized text the search box matches. */
@@ -292,6 +294,26 @@ export function categoryUsage(recipes: Pick<Recipe, "categories" | "published">[
     usage.set(label, entry);
   }
   return [...usage].map(([label, counts]) => ({ label, ...counts })).sort((a, b) => b.published + b.drafts - (a.published + a.drafts) || a.label.localeCompare(b.label, "es"));
+}
+/** Types used by a single recipe among `published` (their filter on the site shows just one). */
+export const thinCategories = (published: Pick<Recipe, "categories" | "published">[]) =>
+  categoryUsage(published).filter(c => c.published === 1).map(c => c.label).sort((a, b) => a.localeCompare(b, "es"));
+/** Moments whose filter on the site comes out empty: no recipe has them, nor "cualquier momento" (which shows under all). */
+export function emptyMoments(published: Pick<Recipe, "moments">[]) {
+  const used = new Set(published.flatMap(r => r.moments));
+  return used.has(anyMoment) ? [] : recipeMoments.filter(m => m.id !== anyMoment && !used.has(m.id)).map(m => m.label);
+}
+/** The recipe that came out last (by publishedAt, not counting ones still scheduled). */
+export const latestPublished = <T extends Pick<Recipe, "published" | "publishedAt">>(recipes: T[], now = Date.now()) =>
+  recipes.filter(r => r.published && r.publishedAt && !isScheduled(r, now)).sort((a, b) => Date.parse(b.publishedAt as string) - Date.parse(a.publishedAt as string))[0];
+/** "hoy", "ayer", "hace 12 días", "hace 3 meses", counting calendar days in local time. */
+export function sinceLabel(iso: string, now = new Date()) {
+  const day = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  const days = Math.max(0, Math.round((day(now) - day(new Date(iso))) / 86_400_000));
+  if (days === 0) return "hoy";
+  if (days === 1) return "ayer";
+  if (days < 60) return `hace ${days} días`;
+  return `hace ${Math.floor(days / 30)} meses`;
 }
 /** What a save takes: the recipe without what the server owns. */
 export const toRecipeInput = (recipe: Recipe): RecipeInput => ({

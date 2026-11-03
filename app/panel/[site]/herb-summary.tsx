@@ -8,6 +8,7 @@ import { brokenCombos, effectivePrice, isComboInStore, isInStore, storeToday } f
 import { useCatalog } from "./catalog-context";
 import { QuickActions, type QuickAction } from "./list-tools";
 import { PageHeader } from "./shell";
+import { InstallPanelButton } from "./install-panel";
 
 export function HerbSummary() {
   const { catalog } = useCatalog();
@@ -44,7 +45,7 @@ export function HerbSummary() {
     ...(storeUrl ? [{ label: "Ver la tienda", text: "Como la ven los clientes", href: storeUrl, icon: Storefront, external: true }] : []),
   ];
   return <>
-    <PageHeader title="Resumen" description="El estado del catálogo y de la tienda, y lo que conviene revisar." />
+    <PageHeader title="Resumen" description="El estado del catálogo y de la tienda, y lo que conviene revisar." actions={<InstallPanelButton />} />
     <section className="panel-card panel-stats" aria-label="Números del catálogo">
       {stats.map(s => <div key={s.label} className="panel-stat"><span>{s.label}</span><strong>{s.value}</strong><small>{s.note}</small></div>)}
     </section>
