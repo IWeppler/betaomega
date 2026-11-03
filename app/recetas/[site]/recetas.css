@@ -155,6 +155,7 @@ body:has(.recetas) {
   .r-head-install {
     width: 44px;
     padding: 0;
+    color: #fff;
   }
   .r-head-install span {
     display: none;

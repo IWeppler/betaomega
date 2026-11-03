@@ -64,6 +64,5 @@ export function CategoryInput({ value, onChange, suggestions }: { value: string[
         </li>)}
       </ul>}
     </div>
-    <small>Tocá el campo para ver los tipos que ya existen. Se guardan en mayúsculas.</small>
   </div>;
 }

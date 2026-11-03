@@ -19,7 +19,7 @@ export function HeaderActions({ instagram, donation }: { instagram: string; dona
       <Heart size={20} weight="bold" aria-hidden="true" />
     </button>}
     {canInstall && <button type="button" className="r-button r-primary r-head-install" onClick={() => void install()} aria-label="Instalar la app">
-      <DownloadSimple size={18} weight="bold" aria-hidden="true" /><span>Instalar app</span>
+      <DownloadSimple size={20} weight="bold" aria-hidden="true" /><span>Instalar app</span>
     </button>}
     {help && <InstallHelp className="r-head-note" onClose={closeHelp} />}
     {copied && <DonationNote className="r-head-note" alias={donation} onClose={closeCopied} />}

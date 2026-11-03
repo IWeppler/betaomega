@@ -454,10 +454,6 @@ export function RecipeEditor({
               </button>
             ))}
           </div>
-          <small>
-            Podés marcar varios. “Cualquier momento” va solo y la receta aparece
-            en todos los momentos.
-          </small>
         </fieldset>
         <CategoryInput
           value={categories}
@@ -474,7 +470,7 @@ export function RecipeEditor({
             maxLength={40}
             placeholder="Argentina, Italia…"
             createLabel="Crear nación"
-            hint="Opcional. Tocá el campo para ver las que ya existen."
+            hint="Opcional."
           />
           <fieldset className="field recipe-choice">
             <legend>Complejidad</legend>
@@ -492,7 +488,6 @@ export function RecipeEditor({
                 </button>
               ))}
             </div>
-            <small>Tocá la elegida de nuevo para quitarla.</small>
           </fieldset>
         </div>
         <div className="form-grid recipe-times">
@@ -677,12 +672,7 @@ export function RecipeEditor({
               }}
             />
           </span>
-          <small>
-            {slugFollows
-              ? "Sigue al nombre mientras la receta sea un borrador."
-              : "Si la cambiás después de publicar, los enlaces compartidos dejan de funcionar."}{" "}
-            Solo letras sin tilde, números y guiones.
-          </small>
+          <small>Solo letras sin tilde, números y guiones.</small>
         </label>
         <SharePreview
           recipe={{ title, slug: shownSlug, summary, image }}
