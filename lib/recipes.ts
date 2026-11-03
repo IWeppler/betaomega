@@ -1,5 +1,32 @@
 // Recipes of the recipe sites (kind "recetas"). Pure code: the panel, the API and the tests share it.
 export type Ingredient = { amount: string; name: string };
+
+/** When a recipe is eaten. Fixed list; "cualquier-momento" (panes saborizados…) goes alone and also shows under every other moment. */
+export const recipeMoments = [
+  { id: "desayuno-merienda", label: "Desayuno / Merienda" },
+  { id: "almuerzo-cena", label: "Almuerzo / Cena" },
+  { id: "postre", label: "Postre" },
+  { id: "cualquier-momento", label: "Cualquier momento" },
+] as const;
+export type RecipeMoment = (typeof recipeMoments)[number]["id"];
+export const anyMoment: RecipeMoment = "cualquier-momento";
+export const momentLabel = (id: string) => recipeMoments.find(m => m.id === id)?.label ?? id;
+const isMoment = (value: unknown): value is RecipeMoment => recipeMoments.some(m => m.id === value);
+
+export const recipeDifficulties = [
+  { id: "facil", label: "Fácil" },
+  { id: "media", label: "Media" },
+  { id: "dificil", label: "Difícil" },
+] as const;
+export type RecipeDifficulty = (typeof recipeDifficulties)[number]["id"];
+export const difficultyLabel = (id?: string) => recipeDifficulties.find(d => d.id === id)?.label ?? "";
+const isDifficulty = (value: unknown): value is RecipeDifficulty => recipeDifficulties.some(d => d.id === value);
+
+/** Moments in the list's order, without repeats; "cualquier momento" replaces the others. */
+export function normalizeMoments(values: readonly string[]): RecipeMoment[] {
+  const chosen = recipeMoments.map(m => m.id).filter(id => values.includes(id));
+  return chosen.includes(anyMoment) ? [anyMoment] : chosen;
+}
 export type Recipe = {
   id: string;
   siteId: string;
@@ -10,7 +37,13 @@ export type Recipe = {
   image?: string;
   /** More photos after the main one (at most maxExtraImages), shown as a gallery on the recipe page. */
   images: string[];
+  /** The recipe's type: Salsas, Panes, Carnes… Free labels, managed in Panel › Categorías. */
   categories: string[];
+  /** When it is eaten (recipeMoments). */
+  moments: RecipeMoment[];
+  /** Nación / cocina: "Argentina", "Italia". Free text; "" when not set. */
+  cuisine: string;
+  difficulty?: RecipeDifficulty;
   /** Free text: "4 porciones", "12 empanadas". */
   servings: string;
   prepMinutes?: number;
@@ -24,7 +57,7 @@ export type Recipe = {
   updatedAt?: string;
   /** First time it was published (set by the database). The public site lists recipes by it. */
   publishedAt?: string;
-  /** Times the public recipe page was opened (bots and previews excluded). Only the panel reads it; the database counts. */
+  /** Times the public recipe page was opened (bots, previews and the admin excluded). Only the panel reads it: the count from before the metrics (this column) plus the recorded views (site_metrics). */
   views?: number;
   /** Panel only: the signature that opens this recipe's preview on the public site (?vista=). Never stored. */
   previewToken?: string;
@@ -35,6 +68,7 @@ export type RecipeInput = Omit<Recipe, "siteId" | "updatedAt" | "publishedAt" | 
   scheduledAt?: string;
 };
 export const maxExtraImages = 6;
+export const maxSummary = 3000;
 
 export const slugify = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80).replace(/-+$/, "");
 export const isSlug = (slug: string) => /^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) && slug.length <= 80;
@@ -45,7 +79,7 @@ export const isRecipeId = (id: string) => uuid.test(id);
 /** Addresses taken by the recipe site's own routes (app/recetas/[site]). */
 export const reservedRecipeSlugs = ["og", "icon"];
 
-export const blankRecipe = (): RecipeInput => ({ id: crypto.randomUUID(), slug: "", title: "", summary: "", images: [], categories: [], servings: "", ingredients: [], steps: [], notes: "", published: false, revision: 0 });
+export const blankRecipe = (): RecipeInput => ({ id: crypto.randomUUID(), slug: "", title: "", summary: "", images: [], categories: [], moments: [], cuisine: "", servings: "", ingredients: [], steps: [], notes: "", published: false, revision: 0 });
 
 function fail(message: string): never { throw new Error(message); }
 const text = (value: unknown, label: string, max: number, required = false) => {
@@ -106,13 +140,18 @@ export function cleanRecipe(value: unknown): RecipeInput {
   // Blank slots are dropped, and so are repeats and the main photo.
   const images = [...new Set(given.filter(v => v !== "").map(v => (typeof v === "string" && recipeImagePath.test(v) ? v : fail("Imagen inválida. Subí las imágenes desde el editor."))))].filter(v => v !== image);
   if (images.length > maxExtraImages) fail(`Usá hasta ${maxExtraImages} fotos adicionales.`);
+  if (data.moments !== undefined && !Array.isArray(data.moments)) fail("Momentos inválidos.");
+  const givenMoments: unknown[] = (data.moments as unknown[] | undefined) ?? [];
+  const moments = normalizeMoments(givenMoments.map(m => (isMoment(m) ? m : fail("Momento inválido."))));
+  const difficulty = data.difficulty === undefined || data.difficulty === null || data.difficulty === "" ? undefined : isDifficulty(data.difficulty) ? data.difficulty : fail("Complejidad inválida.");
+  const cuisine = text(data.cuisine, "La nación", 40).replace(/\s+/g, " ");
   const published = data.published === true;
   const scheduledAt = published ? cleanScheduledAt(data.scheduledAt) : undefined;
   if (published && !ingredients.length) fail("Para publicar la receta, agregá al menos un ingrediente.");
   if (published && !steps.length) fail("Para publicar la receta, agregá al menos un paso.");
   return {
-    id, revision, slug, title, image, images, categories, ingredients, steps, published, scheduledAt,
-    summary: text(data.summary, "La descripción", 600),
+    id, revision, slug, title, image, images, categories, moments, cuisine, difficulty, ingredients, steps, published, scheduledAt,
+    summary: text(data.summary, "La descripción", maxSummary),
     servings: text(data.servings, "Las porciones", 60),
     prepMinutes: minutes(data.prepMinutes, "Preparación"),
     cookMinutes: minutes(data.cookMinutes, "Cocción"),
@@ -130,17 +169,21 @@ export const totalMinutes = (recipe: Pick<Recipe, "prepMinutes" | "cookMinutes">
 
 /** What a published recipe is missing to look good on the site. Drafts are reported apart. */
 export function recipeGaps(recipe: Recipe) {
-  return [!recipe.image && "foto", !recipe.summary && "descripción", !recipe.categories.length && "categoría", !totalMinutes(recipe) && "tiempo"].filter(Boolean) as string[];
+  return [!recipe.image && "foto", !recipe.summary && "descripción", !recipe.categories.length && "tipo", !recipe.moments.length && "momento", !recipe.difficulty && "complejidad", !totalMinutes(recipe) && "tiempo"].filter(Boolean) as string[];
 }
 
 /** What a recipe card on the public site needs. `search` is the normalized text the search box matches. */
-export type RecipeCard = { slug: string; title: string; summary: string; image?: string; /** The second photo, shown while the card is hovered. */ hoverImage?: string; categories: string[]; servings: string; minutes?: number; search: string };
+export type RecipeCard = {
+  slug: string; title: string; summary: string; image?: string; /** The second photo, shown while the card is hovered. */ hoverImage?: string;
+  categories: string[]; moments: RecipeMoment[]; cuisine: string; difficulty?: RecipeDifficulty; servings: string; minutes?: number; search: string;
+};
 const plain = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 /** The recipe's photos in order: the main one, then the extra ones. */
 const photos = (recipe: Pick<Recipe, "image" | "images">) => [recipe.image, ...(recipe.images ?? [])].filter((src): src is string => Boolean(src));
 export const toRecipeCard = (recipe: Recipe): RecipeCard => ({
-  slug: recipe.slug, title: recipe.title, summary: recipe.summary, image: photos(recipe)[0], hoverImage: photos(recipe)[1], categories: recipe.categories, servings: recipe.servings, minutes: totalMinutes(recipe),
-  search: plain([recipe.title, recipe.summary, ...recipe.categories, ...recipe.ingredients.map(i => i.name)].join(" ")),
+  slug: recipe.slug, title: recipe.title, summary: descriptionLead(recipe.summary).lead, image: photos(recipe)[0], hoverImage: photos(recipe)[1], categories: recipe.categories,
+  moments: recipe.moments, cuisine: recipe.cuisine, difficulty: recipe.difficulty, servings: recipe.servings, minutes: totalMinutes(recipe),
+  search: plain([recipe.title, recipe.summary, recipe.cuisine, ...recipe.categories, ...recipe.moments.map(momentLabel), ...recipe.ingredients.map(i => i.name)].join(" ")),
 });
 /** True when every word of the query appears in the card's text, ignoring accents and case. */
 export const matchesRecipe = (card: Pick<RecipeCard, "search">, query: string) => plain(query).split(/\s+/).filter(Boolean).every(word => card.search.includes(word));
@@ -207,15 +250,17 @@ export function parseStepLines(input: string): string[] {
 export function duplicateRecipe(recipe: RecipeInput): RecipeInput {
   return {
     ...recipe,
-    ingredients: recipe.ingredients.map(i => ({ ...i })), steps: [...recipe.steps], categories: [...recipe.categories], images: [...(recipe.images ?? [])], scheduledAt: undefined,
+    ingredients: recipe.ingredients.map(i => ({ ...i })), steps: [...recipe.steps], categories: [...recipe.categories], moments: [...recipe.moments], images: [...(recipe.images ?? [])], scheduledAt: undefined,
     id: crypto.randomUUID(), revision: 0, published: false, slug: "", title: `${recipe.title.slice(0, 153)} (copia)`,
   };
 }
 
 /** Case, accents and extra spaces do not make a different category: "Postres", "postres " and "Póstres" share this key. */
 export const categoryKey = (label: string) => plain(label).replace(/\s+/g, " ").trim();
-/** The label to use for what was typed: an existing one that differs only by case or accents, else the typed text tidied up. */
-export function canonicalCategory(typed: string, existing: string[]) {
+/** The label to use for what was typed: types are stored in capitals, so it is an existing one that differs only by case or accents, else the typed text tidied up, all in uppercase. */
+export const canonicalCategory = (typed: string, existing: string[]) => canonicalLabel(typed, existing).toLocaleUpperCase("es");
+/** Like canonicalCategory but keeps the case: for free labels that are not capitalized, such as the nation. */
+export function canonicalLabel(typed: string, existing: string[]) {
   const clean = typed.replace(/\s+/g, " ").trim();
   return existing.find(label => categoryKey(label) === categoryKey(clean)) ?? clean;
 }
@@ -250,8 +295,8 @@ export function categoryUsage(recipes: Pick<Recipe, "categories" | "published">[
 }
 /** What a save takes: the recipe without what the server owns. */
 export const toRecipeInput = (recipe: Recipe): RecipeInput => ({
-  id: recipe.id, slug: recipe.slug, title: recipe.title, summary: recipe.summary, image: recipe.image, images: recipe.images, categories: recipe.categories, servings: recipe.servings,
-  prepMinutes: recipe.prepMinutes, cookMinutes: recipe.cookMinutes, ingredients: recipe.ingredients, steps: recipe.steps, notes: recipe.notes, published: recipe.published, revision: recipe.revision,
+  id: recipe.id, slug: recipe.slug, title: recipe.title, summary: recipe.summary, image: recipe.image, images: recipe.images, categories: recipe.categories,
+  moments: recipe.moments, cuisine: recipe.cuisine, difficulty: recipe.difficulty, servings: recipe.servings, prepMinutes: recipe.prepMinutes, cookMinutes: recipe.cookMinutes, ingredients: recipe.ingredients, steps: recipe.steps, notes: recipe.notes, published: recipe.published, revision: recipe.revision,
 });
 
 /** Categories in use, the most used first. */
@@ -282,7 +327,8 @@ export function recipeJsonLd(recipe: Recipe, siteUrl: string, siteName: string) 
     author: { "@type": "Organization", name: siteName },
     datePublished: recipe.publishedAt,
     dateModified: recipe.updatedAt,
-    recipeCategory: recipe.categories[0],
+    recipeCategory: recipe.moments[0] && recipe.moments[0] !== anyMoment ? momentLabel(recipe.moments[0]) : recipe.categories[0],
+    recipeCuisine: recipe.cuisine || undefined,
     keywords: recipe.categories.join(", ") || undefined,
     recipeYield: recipe.servings || undefined,
     prepTime: isoDuration(recipe.prepMinutes),
@@ -302,7 +348,8 @@ export function recipeShareInfo(recipe: Pick<RecipeInput, "title" | "slug" | "su
     /** The page title as the browser tab and Google show it (the site layout's template). */
     pageTitle: `${title} | ${siteName}`,
     path: `/${recipe.slug}`,
-    description: (summary || `Receta de ${title}: ingredientes y preparación paso a paso.`).slice(0, 200),
+    // A long description with titles is told by its first paragraph, not by "Descripción de la planta La…".
+    description: (descriptionLead(summary).lead || summary || `Receta de ${title}: ingredientes y preparación paso a paso.`).slice(0, 200),
     /** The recipe's photo; undefined means the site's general image (/og). */
     image: recipe.image || undefined,
     warnings: [
@@ -312,3 +359,111 @@ export function recipeShareInfo(recipe: Pick<RecipeInput, "title" | "slug" | "su
     ].filter(Boolean) as string[],
   };
 }
+
+/** What the catalog can be narrowed by. Empty strings mean "any". */
+export type RecipeFilters = { moment: string; type: string; cuisine: string; difficulty: string; time: string };
+export const noFilters: RecipeFilters = { moment: "", type: "", cuisine: "", difficulty: "", time: "" };
+/** Total-time ranges the catalog can be narrowed by. Recipes without a time match none of them. */
+export const recipeTimes = [
+  { id: "30", label: "Hasta 30 min" },
+  { id: "60", label: "De 30 min a 1 h" },
+  { id: "mas", label: "Más de 1 h" },
+] as const;
+const inTimeRange = (minutes: number | undefined, range: string) => {
+  if (!minutes) return false;
+  if (range === "30") return minutes <= 30;
+  if (range === "60") return minutes > 30 && minutes <= 60;
+  return minutes > 60;
+};
+export const recipeOrders = [
+  { id: "recientes", label: "Más recientes" },
+  { id: "alfabetico", label: "Alfabético" },
+  { id: "tiempo", label: "Tiempo de preparación" },
+] as const;
+export type RecipeOrder = (typeof recipeOrders)[number]["id"];
+export const isRecipeOrder = (value: unknown): value is RecipeOrder => recipeOrders.some(o => o.id === value);
+
+type Filterable = Pick<RecipeCard, "categories" | "moments" | "cuisine" | "difficulty"> & { minutes?: number };
+/** A "cualquier momento" recipe also matches every specific moment. */
+const matchesAxis = (recipe: Filterable, axis: keyof RecipeFilters, value: string) => {
+  if (!value) return true;
+  if (axis === "moment") return recipe.moments.includes(value as RecipeMoment) || recipe.moments.includes(anyMoment);
+  if (axis === "type") return recipe.categories.includes(value);
+  if (axis === "cuisine") return recipe.cuisine === value;
+  if (axis === "time") return inTimeRange(recipe.minutes, value);
+  return recipe.difficulty === value;
+};
+/** True when the recipe matches every chosen filter (AND between axes). `skip` ignores one axis, for that axis's own counts. */
+export const matchesFilters = (recipe: Filterable, filters: RecipeFilters, skip?: keyof RecipeFilters) =>
+  (Object.keys(filters) as (keyof RecipeFilters)[]).every(axis => axis === skip || matchesAxis(recipe, axis, filters[axis]));
+
+/** How many recipes each option of an axis would show, given the other chosen filters. */
+export function facetCounts<T extends Filterable>(recipes: T[], filters: RecipeFilters, axis: keyof RecipeFilters, options: string[]) {
+  const pool = recipes.filter(r => matchesFilters(r, filters, axis));
+  return new Map(options.map(option => [option, pool.filter(r => matchesAxis(r, axis, option)).length]));
+}
+
+/** "recientes" keeps the given order (the site lists the most recently published first). Recipes without a time go last. */
+export function sortRecipes<T extends Pick<RecipeCard, "title" | "minutes">>(recipes: T[], order: RecipeOrder) {
+  if (order === "alfabetico") return [...recipes].sort((a, b) => a.title.localeCompare(b.title, "es", { sensitivity: "base" }));
+  if (order === "tiempo") return [...recipes].sort((a, b) => (a.minutes ?? Infinity) - (b.minutes ?? Infinity));
+  return recipes;
+}
+
+/** Nations in use, alphabetically. */
+export const recipeCuisines = (recipes: Pick<Recipe, "cuisine">[]) =>
+  [...new Set(recipes.map(r => r.cuisine).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+/** Address parameter of each filter, so a filtered list can be shared: /?momento=postre&tipo=Tortas&orden=tiempo */
+export const filterParams: Record<keyof RecipeFilters, string> = { moment: "momento", type: "tipo", cuisine: "nacion", difficulty: "dificultad", time: "duracion" };
+/** Catalog address with one filter chosen, for links from a recipe page. */
+export const filterHref = (axis: keyof RecipeFilters, value: string) => `/?${filterParams[axis]}=${encodeURIComponent(value)}`;
+
+/** A piece of a recipe's description, as the public page lays it out. */
+export type DescriptionBlock =
+  | { kind: "heading"; text: string }
+  | { kind: "paragraph"; text: string }
+  | { kind: "list"; items: { label?: string; text: string }[] };
+
+const bullet = /^\s*(?:[•·*\-–—]|\d+[.)])\s+/;
+/** A line on its own, short and without closing punctuation, reads as a title ("🍇 Perfil de sabor"). */
+const looksLikeHeading = (line: string) => line.length <= 60 && !/[.,;:!?…]$/.test(line) && !bullet.test(line);
+
+/**
+ * The description as written in the panel (plain text) split into titles, paragraphs and bulleted lists.
+ * "Nota inicial: salada y picante" items keep the part before the colon as a label.
+ */
+export function descriptionBlocks(text: string): DescriptionBlock[] {
+  const blocks: DescriptionBlock[] = [];
+  const lines = text.replace(/\r\n?/g, "\n").split("\n").map(line => line.trim());
+  let paragraph: string[] = [];
+  const flush = () => { if (paragraph.length) blocks.push({ kind: "paragraph", text: paragraph.join(" ") }); paragraph = []; };
+  lines.forEach((line, n) => {
+    if (!line) { flush(); return; }
+    if (bullet.test(line)) {
+      flush();
+      const item = line.replace(bullet, "");
+      const colon = item.indexOf(":");
+      const entry = colon > 0 && colon <= 40 ? { label: item.slice(0, colon).trim(), text: item.slice(colon + 1).trim() } : { text: item };
+      const last = blocks.at(-1);
+      if (last?.kind === "list") last.items.push(entry); else blocks.push({ kind: "list", items: [entry] });
+      return;
+    }
+    // A title stands alone: blank (or nothing) before it and a blank line or the text's end after it.
+    const alone = !paragraph.length && !lines[n + 1];
+    if (alone && looksLikeHeading(line) && n < lines.length - 1) { blocks.push({ kind: "heading", text: line }); return; }
+    paragraph.push(line);
+  });
+  flush();
+  return blocks;
+}
+
+/** Longest lead shown whole under a recipe's title; longer ones are clipped and the full text goes further down. */
+export const leadLength = 280;
+/** The first paragraph of the description: the short text under a recipe's title and on its card. */
+export const descriptionLead = (text: string) => {
+  const blocks = descriptionBlocks(text);
+  const first = blocks.find(b => b.kind === "paragraph");
+  const lead = first?.kind === "paragraph" ? first.text : "";
+  // "more": the lead alone does not tell everything (more blocks, or too long to show whole under the title).
+  return { lead, more: blocks.length > 1 || (blocks.length > 0 && blocks[0].kind !== "paragraph") || lead.length > leadLength };
+};

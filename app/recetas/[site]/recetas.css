@@ -1,24 +1,34 @@
 /* Recipe sites. Standalone: globals.css (Ñekurel) is not loaded here. Everything lives under .recetas.
-   Same structure as Ñekurel's store (header with logo, sticky search and chips) in sky blue: one accent, pill controls. Light only. */
+   Palette: background #fffefe, surface #fafafa; orange #ed6300 (accent), yellow #fbca6d (ingredients, highlights),
+   lilac #d5a3eb (preparation, tags). Pill controls, 24px on photos and cards. Light only. */
 body:has(.recetas) {
   margin: 0;
-  background: #f2f7fb;
+  background: #fffefe;
 }
 .recetas {
-  --r-bg: #f2f7fb;
-  --r-surface: #ffffff;
-  --r-sunken: #dcedf8;
-  --r-ink: #10212e;
-  --r-muted: #4a5d6c;
-  --r-line: #d8e4ee;
-  --r-accent: #0b72a8;
-  --r-accent-dark: #085a86;
-  --r-accent-soft: #e1f1fa;
-  --r-focus: #1d5fd1;
+  /* Near-white page; controls and quiet blocks sit on a barely darker surface. */
+  --r-bg: #fffefe;
+  --r-surface: #fafafa;
+  --r-sunken: #f3f1ef;
+  --r-ink: #231a14;
+  --r-muted: #6a5b50;
+  --r-line: #ebe8e5;
+  --r-accent: #ed6300;
+  /* Orange darkened enough to read as text on white (AA). */
+  --r-accent-dark: #b34a00;
+  --r-accent-soft: #fff0d6;
+  --r-yellow: #fbca6d;
+  --r-yellow-soft: #fde7b3;
+  --r-lilac: #d5a3eb;
+  --r-lilac-soft: #ecd3f6;
+  --r-focus: #7b3fa6;
   --r-radius: 18px;
+  /* Photos, recipe cards and the folding sections share one large radius. */
+  --r-radius-lg: 24px;
   --r-display: var(--font-recipe-display), Georgia, serif;
   --r-text: var(--font-recipe-text), system-ui, sans-serif;
-  --r-shadow: 0 1px 2px rgb(16 33 46 / 0.04), 0 8px 24px -8px rgb(16 33 46 / 0.1);
+  --r-shadow:
+    0 1px 2px rgb(35 26 20 / 0.05), 0 8px 24px -8px rgb(35 26 20 / 0.12);
   --r-ease: cubic-bezier(0.16, 1, 0.3, 1);
   min-height: 100dvh;
   display: flex;
@@ -45,9 +55,9 @@ body:has(.recetas) {
 }
 .recetas :is(h1, h2, h3) {
   font-family: var(--r-display);
-  font-weight: 600;
-  line-height: 1.12;
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
   text-wrap: balance;
 }
 .recetas a {
@@ -61,8 +71,8 @@ body:has(.recetas) {
   cursor: pointer;
 }
 .recetas :focus-visible {
-  outline: 3px solid var(--r-focus);
-  outline-offset: 2px;
+  outline: 2px solid var(--r-focus);
+  outline-offset: 3px;
 }
 .recetas .sr-only {
   position: absolute;
@@ -76,30 +86,90 @@ body:has(.recetas) {
   border: 0;
 }
 
-/* Header (logo, name, share) and footer */
+/* Header and footer share the page's width: a bit over 1280px, room for the filter sidebar and three card columns. */
 .r-head,
 .r-page,
 .r-foot {
   width: 100%;
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
   padding-inline: 16px;
 }
+@media (min-width: 1024px) {
+  .r-head,
+  .r-page,
+  .r-foot {
+    padding-inline: 32px;
+  }
+}
+/* Brand on the left (one link: poster and name), the site's own actions on the right. */
 .r-head {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding-block: 20px 4px;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 20px 12px;
+}
+.r-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  text-decoration: none;
+}
+.r-brand:hover .r-wordmark {
+  color: var(--r-accent-dark);
+}
+.r-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+/* Donating in the header: an orange round button with the heart's white outline. Darker orange on hover. */
+.r-icon-button.r-icon-donate {
+  border-color: var(--r-accent);
+  background: var(--r-accent);
+  color: #fff;
+}
+.r-icon-button.r-icon-donate:hover {
+  border-color: var(--r-accent-dark);
+  background: var(--r-accent-dark);
+  color: #fff;
+}
+.r-head-install {
+  min-height: 44px;
+}
+/* The install and alias notes open under the actions, over the page. */
+.r-head-note {
+  position: absolute;
+  top: calc(100% - 4px);
+  right: 16px;
+  z-index: 20;
+  width: min(340px, calc(100vw - 32px));
+  margin: 0;
+  box-shadow: 0 12px 32px -8px rgb(35 26 20 / 0.25);
+}
+@media (max-width: 640px) {
+  .r-head-install {
+    width: 44px;
+    padding: 0;
+  }
+  .r-head-install span {
+    display: none;
+  }
 }
 .r-logo {
   flex: none;
   display: block;
   /* The logo is a 3:4 poster: shown whole, not cropped to a square. */
-  width: 54px;
-  height: 72px;
+  width: 100px;
+  height: 120px;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--r-sunken);
+  box-shadow: 0 4px 12px -6px rgb(35 26 20 / 0.35);
 }
 .r-logo img {
   display: block;
@@ -108,35 +178,26 @@ body:has(.recetas) {
   object-fit: cover;
   object-position: 50% 0;
 }
-.r-title {
-  flex: 1;
-  min-width: 0;
-}
-.r-title h1,
 .r-wordmark {
   font-family: var(--r-display);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 28px;
-  line-height: 1.15;
-  letter-spacing: 0;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
   color: var(--r-ink);
-  text-decoration: none;
-}
-.r-wordmark a {
-  text-decoration: none;
-}
-.r-subtitle {
-  margin-top: 2px;
-  color: var(--r-muted);
-  font-size: 16px;
+  transition: color 150ms;
 }
 @media (max-width: 480px) {
-  .r-title h1,
   .r-wordmark {
-    font-size: 24px;
+    font-size: 22px;
   }
-  .r-head .r-button {
-    padding: 0 14px;
+}
+
+/* Entrance: text, then each photo a beat later. Explains what the page is before it asks anything. */
+@keyframes r-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
 }
 .r-page {
@@ -144,18 +205,98 @@ body:has(.recetas) {
   padding-block: 12px 56px;
 }
 .r-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px 24px;
-  padding-block: 28px 40px;
+  margin-top: 24px;
+  padding-block: 40px 28px;
   border-top: 1px solid var(--r-line);
   color: var(--r-muted);
   font-size: 15px;
 }
+.r-foot p {
+  margin: 0;
+}
 .r-foot .r-wordmark {
-  font-size: 18px;
+  font-size: 20px;
+  color: var(--r-ink);
+}
+.r-foot-main {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+}
+@media (min-width: 768px) {
+  .r-foot-main {
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 48px;
+  }
+  .r-foot-actions {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+}
+@media (min-width: 1000px) {
+  .r-foot-main {
+    grid-template-columns: 1.3fr 0.9fr 0.9fr auto;
+  }
+  .r-foot-actions {
+    grid-column: auto;
+  }
+}
+/* The cover fills the height of the tallest column (Recetas); the logo is out of the flow so it never makes the row taller. */
+.r-foot-brand {
+  position: relative;
+  min-height: 220px;
+}
+.r-foot-logo {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: block;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--r-sunken);
+  box-shadow: 0 10px 28px -10px rgb(35 26 20 / 0.35);
+}
+.r-foot-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+}
+.r-foot-col h2 {
+  margin: 0 0 10px;
+  font-family: var(--r-display);
+  font-size: 16px;
+  color: var(--r-ink);
+}
+.r-foot-col ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.r-foot-col a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+}
+.r-foot-col a:hover,
+.r-foot-col a:focus-visible {
+  color: var(--r-accent-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.r-foot-legal {
+  margin-top: 28px !important;
+  padding-top: 20px;
+  border-top: 1px solid var(--r-line);
+  font-size: 14px;
 }
 
 /* Buttons */
@@ -172,7 +313,9 @@ body:has(.recetas) {
   font-weight: 700;
   font-size: 15px;
   text-decoration: none;
-  transition: border-color 150ms, background 150ms;
+  transition:
+    border-color 150ms,
+    background 150ms;
 }
 .r-button:hover {
   border-color: var(--r-accent);
@@ -207,7 +350,12 @@ body:has(.recetas) {
   transition: border-color 150ms;
 }
 .r-search:focus-within {
-  border-color: var(--r-accent);
+  border-color: var(--r-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--r-focus) 25%, transparent);
+}
+/* The ring is drawn on the pill, not on the input inside it. */
+.r-search input:focus-visible {
+  outline: none;
 }
 .r-search input {
   flex: 1;
@@ -253,9 +401,11 @@ body:has(.recetas) {
   border: 1.5px solid var(--r-line);
   border-radius: 999px;
   background: var(--r-surface);
-  font-weight: 700;
+  font-weight: 500;
   font-size: 15px;
-  transition: border-color 150ms, background 150ms;
+  transition:
+    border-color 150ms,
+    background 150ms;
 }
 .r-chips button:hover {
   border-color: var(--r-accent);
@@ -266,13 +416,501 @@ body:has(.recetas) {
   font-variant-numeric: tabular-nums;
 }
 .r-chips button[aria-pressed="true"] {
-  border-color: var(--r-accent);
-  background: var(--r-accent);
+  border-color: var(--r-ink);
+  background: var(--r-ink);
   color: #fff;
 }
 .r-chips button[aria-pressed="true"] span {
   color: inherit;
   opacity: 0.75;
+}
+/* Type, nation, difficulty and order: compact selects in one row that wraps. */
+.r-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* Select (components/ui/select.tsx, shadcn's Select on Radix) */
+.r-sel-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex: 1 1 150px;
+  max-width: 240px;
+  min-height: 44px;
+  padding: 0 14px 0 18px;
+  border: 1.5px solid var(--r-line);
+  border-radius: 999px;
+  background: var(--r-surface);
+  color: var(--r-ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+}
+.r-sel-trigger > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.r-sel-trigger svg {
+  flex: none;
+  color: var(--r-muted);
+  transition: transform 200ms var(--r-ease);
+}
+.r-sel-trigger[data-state="open"] svg {
+  transform: rotate(180deg);
+}
+.r-sel-trigger:hover,
+.r-sel-trigger[data-state="open"] {
+  border-color: var(--r-accent);
+}
+.r-sel-trigger:focus-visible {
+  outline: none;
+  border-color: var(--r-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--r-focus) 25%, transparent);
+}
+.r-sel-content {
+  z-index: 60;
+  min-width: var(--radix-select-trigger-width);
+  max-height: min(320px, var(--radix-select-content-available-height));
+  overflow: hidden;
+  border: 1px solid var(--r-line);
+  border-radius: 18px;
+  background: var(--r-surface);
+  color: var(--r-ink);
+  box-shadow:
+    0 12px 32px -8px rgb(35 26 20 / 0.22),
+    0 2px 6px rgb(35 26 20 / 0.06);
+  font-family: var(--r-text);
+  animation: r-sel-in 140ms var(--r-ease);
+}
+.r-sel-viewport {
+  padding: 6px;
+}
+.r-sel-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 12px 0 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+.r-sel-item:focus-visible {
+  outline: none;
+}
+.r-sel-item[data-highlighted] {
+  background: var(--r-accent-soft);
+  color: var(--r-accent-dark);
+}
+.r-sel-item[data-state="checked"] {
+  font-weight: 700;
+}
+.r-sel-check {
+  display: inline-flex;
+  color: var(--r-accent);
+}
+@keyframes r-sel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+/* Search box and, on phones, the filter button beside it. */
+.r-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.r-filter-button {
+  position: relative;
+  display: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1.5px solid var(--r-line);
+  border-radius: 999px;
+  background: var(--r-surface);
+  color: var(--r-ink);
+  transition:
+    border-color 150ms,
+    background 150ms;
+}
+.r-filter-button:hover {
+  border-color: var(--r-accent);
+}
+.r-filter-button:active {
+  transform: scale(0.96);
+}
+.r-filter-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 2px solid var(--r-bg);
+  border-radius: 999px;
+  background: var(--r-accent);
+  color: var(--r-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+/* Below desktop: no sidebar; the button beside the search opens every filter on its own page (filter-sheet.tsx). */
+@media (max-width: 1023px) {
+  .r-search-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .r-filter-button {
+    display: grid;
+  }
+  .r-aside {
+    display: none;
+  }
+}
+
+/* Desktop catalog: search and chips across the full width (still stuck on top), then the filter sidebar beside the
+   recipes. The sidebar scrolls with the page, never inside itself. Three card columns from 1200px. */
+@media (min-width: 1024px) {
+  .r-catalog {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    column-gap: 40px;
+    align-items: start;
+  }
+  .r-catalog > .r-bar {
+    grid-column: 1 / -1;
+    margin-inline: -32px;
+    padding-inline: 32px;
+  }
+}
+@media (min-width: 1200px) {
+  .r-results .r-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.r-aside-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 8px;
+}
+.r-aside-head h2 {
+  font-size: 22px;
+  font-weight: 600;
+}
+.r-aside-clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--r-accent-dark);
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* One folding group per filter, separated by a hairline. The chosen value shows in the title while folded. */
+.r-facet {
+  border-top: 1px solid var(--r-line);
+}
+.r-facet summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  list-style: none;
+  cursor: pointer;
+}
+.r-facet summary::-webkit-details-marker {
+  display: none;
+}
+.r-facet summary:focus-visible {
+  outline: 2px solid var(--r-focus);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.r-facet-title {
+  flex: 1;
+  font-family: var(--r-display);
+  font-size: 17px;
+  font-weight: 600;
+}
+.r-facet-chosen {
+  max-width: 110px;
+  overflow: hidden;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--r-accent-soft);
+  color: var(--r-accent-dark);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.r-facet-caret {
+  flex: none;
+  color: var(--r-muted);
+  transition: transform 200ms var(--r-ease);
+}
+.r-facet[open] .r-facet-caret {
+  transform: rotate(180deg);
+}
+.r-facet-body {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0 0 14px;
+  border: 0;
+  min-width: 0;
+}
+/* Radio rows: the circle, the option and how many recipes it would show. */
+.r-radio {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 150ms;
+}
+.r-radio:hover {
+  background: var(--r-surface);
+}
+.r-radio input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--r-accent-dark);
+  cursor: pointer;
+}
+.r-radio small {
+  color: var(--r-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.r-radio:has(input:checked) {
+  background: var(--r-accent-soft);
+  font-weight: 700;
+}
+.r-radio:has(input:checked) small {
+  color: var(--r-ink);
+}
+
+/* Filter sheet: a full-screen page over the catalog. Header with the X, options that scroll, "Buscar" stuck to the bottom. */
+.r-sheet {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--r-bg);
+  color: var(--r-ink);
+  font-family: var(--r-text);
+}
+.r-sheet[open] {
+  display: flex;
+  flex-direction: column;
+  animation: r-sheet-in 320ms var(--r-ease);
+}
+.r-sheet::backdrop {
+  background: rgb(35 26 20 / 0.4);
+}
+@keyframes r-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+}
+/* The catalog behind does not scroll while the sheet is open. */
+html:has(.r-sheet[open]) {
+  overflow: hidden;
+}
+.r-sheet-head {
+  flex: none;
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--r-line);
+}
+.r-sheet-head h2 {
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+.r-sheet-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+}
+.r-sheet-close:hover {
+  background: var(--r-surface);
+}
+.r-sheet-clear {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--r-accent-dark);
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.r-sheet-clear:disabled {
+  color: var(--r-muted);
+  text-decoration: none;
+  opacity: 0.6;
+  cursor: default;
+}
+.r-sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 16px 24px;
+}
+.r-sheet-group {
+  margin: 0;
+  padding: 22px 0 24px;
+  border: 0;
+  min-width: 0;
+}
+.r-sheet-group + .r-sheet-group {
+  border-top: 1px solid var(--r-line);
+}
+.r-sheet-group legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 0;
+  font-family: var(--r-display);
+  font-size: 19px;
+  font-weight: 600;
+}
+.r-options {
+  clear: both;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* Each option is a radio drawn as a pill; the chosen one is filled, like the moment chips. */
+.r-option {
+  position: relative;
+  display: inline-flex;
+}
+.r-option input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.r-option span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1.5px solid var(--r-line);
+  border-radius: 999px;
+  background: var(--r-surface);
+  font-size: 15px;
+  font-weight: 600;
+  transition:
+    border-color 150ms,
+    background 150ms;
+}
+.r-option small {
+  color: var(--r-muted);
+  font-size: 14px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.r-option input:checked + span {
+  border-color: var(--r-ink);
+  background: var(--r-ink);
+  color: #fff;
+}
+.r-option input:checked + span small {
+  color: inherit;
+  opacity: 0.75;
+}
+.r-option input:focus-visible + span {
+  outline: 2px solid var(--r-focus);
+  outline-offset: 2px;
+}
+.r-sheet-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--r-line);
+  background: var(--r-bg);
+  box-shadow: 0 -8px 24px -16px rgb(35 26 20 / 0.25);
+}
+.r-sheet-foot p {
+  color: var(--r-muted);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.r-sheet-submit {
+  min-width: 160px;
+  min-height: 52px;
+  font-size: 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .r-sheet[open] {
+    animation: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .r-sel-content {
+    animation: none;
+  }
+  .r-sel-trigger svg {
+    transition: none;
+  }
+}
+.r-link {
+  margin-left: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--r-accent-dark);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
 .r-count {
   min-height: 24px;
@@ -305,14 +943,36 @@ body:has(.recetas) {
 /* Cards */
 .r-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
-  gap: 28px 24px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 24px;
+}
+/* A card is the photo itself: tall, with the title over a blurred, darkened bottom edge.
+   Cards off screen skip layout and paint (their blur included); `auto` remembers the real height once shown. */
+.r-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 440px;
 }
 .r-card a {
-  display: grid;
-  gap: 14px;
-  height: 100%;
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--r-radius-lg);
+  background: var(--r-sunken);
+  color: #fff;
   text-decoration: none;
+  isolation: isolate;
+  transition:
+    transform 300ms var(--r-ease),
+    box-shadow 300ms var(--r-ease);
+}
+/* content-visibility clips paint to the card, so the focus ring is drawn inside it. */
+.r-card a:focus-visible {
+  outline: 3px solid var(--r-focus);
+  outline-offset: -3px;
+}
+.r-card a:active {
+  transform: scale(0.985);
 }
 .r-photo {
   position: relative;
@@ -324,17 +984,30 @@ body:has(.recetas) {
   background: var(--r-sunken);
   color: var(--r-accent);
 }
+.r-card .r-photo {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
 .r-photo img {
   object-fit: cover;
-  transition: transform 500ms var(--r-ease);
 }
-.r-card a:hover .r-photo img {
-  transform: scale(1.04);
+/* The zoom repaints the blur above it on every frame, so it only runs where there is a real hover (not on touch). */
+@media (hover: hover) and (pointer: fine) {
+  .r-card .r-photo img {
+    transition: transform 500ms var(--r-ease);
+  }
+  .r-card a:hover .r-photo img {
+    transform: scale(1.04);
+  }
 }
 /* The second photo fades in over the first while the card is hovered or focused. */
 .r-photo .r-photo-hover {
   opacity: 0;
-  transition: opacity 350ms var(--r-ease), transform 500ms var(--r-ease);
+  transition:
+    opacity 350ms var(--r-ease),
+    transform 500ms var(--r-ease);
 }
 .r-card a:hover .r-photo-hover,
 .r-card a:focus-visible .r-photo-hover {
@@ -346,9 +1019,53 @@ body:has(.recetas) {
   }
 }
 .r-card-body {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 1;
   display: grid;
-  gap: 6px;
-  align-content: start;
+  gap: 8px;
+  align-content: end;
+  padding: 56px 20px 20px;
+}
+/* One blur per card, the only one: it fades from the middle of the text up to nothing, with a dark tint so the
+   white text reads even where the blur is gone. The tint carries the contrast, so the radius can stay small. */
+.r-card-body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    to top,
+    rgb(35 26 20 / 0.85),
+    rgb(35 26 20 / 0.5) 50%,
+    rgb(35 26 20 / 0)
+  );
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to top, #000 50%, transparent);
+  mask-image: linear-gradient(to top, #000 50%, transparent);
+}
+/* Phones: a lighter blur on a smaller area (less padding above the text). */
+@media (max-width: 640px) {
+  .r-card-body {
+    padding-top: 40px;
+  }
+  .r-card-body::before {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .r-card-body::before {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: linear-gradient(
+      to top,
+      rgb(35 26 20 / 0.92),
+      rgb(35 26 20 / 0.6) 60%,
+      rgb(35 26 20 / 0)
+    );
+  }
 }
 .r-eyebrow {
   color: var(--r-accent);
@@ -357,12 +1074,17 @@ body:has(.recetas) {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.r-card h3 {
-  font-size: 23px;
-  transition: color 150ms;
+.r-card .r-eyebrow {
+  color: var(--r-yellow);
 }
-.r-card a:hover h3 {
-  color: var(--r-accent);
+.r-card h3 {
+  font-size: 24px;
+  line-height: 1.15;
+  color: #fff;
+}
+.r-card .r-card-summary {
+  color: rgb(255 255 255 / 0.84);
+  font-size: 15px;
 }
 .r-card-summary {
   display: -webkit-box;
@@ -384,6 +1106,19 @@ body:has(.recetas) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+.r-card .r-meta {
+  gap: 8px;
+  color: #fff;
+}
+/* The pills already sit on the blurred tint: a translucent fill and a hairline, no second blur. */
+.r-card .r-meta > span {
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.16);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.22);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 /* Recipe */
@@ -419,28 +1154,58 @@ body:has(.recetas) {
 .r-back a:hover {
   color: var(--r-accent);
 }
+/* Photo left, title and facts right. The text column is kept short (clipped lead), so it never pushes the photo down. */
 .r-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  gap: 48px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 56px;
   align-items: center;
-  margin: 12px 0 56px;
+  margin: 12px 0 64px;
 }
 .r-hero .r-photo {
   aspect-ratio: 5 / 4;
-  border-radius: 24px;
+  border-radius: var(--r-radius-lg);
 }
 .r-hero-text {
   display: grid;
-  gap: 18px;
+  gap: 20px;
+  min-width: 0;
 }
 .r-hero h1 {
-  font-size: clamp(36px, 5vw, 56px);
+  font-size: clamp(36px, 4.6vw, 56px);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
 }
 .r-lead {
   color: var(--r-muted);
-  font-size: 19px;
+  font-size: 18px;
+  line-height: 1.6;
   max-width: 52ch;
+}
+/* Long descriptions: four lines here, the rest in "Sobre esta receta". */
+.r-lead.is-clipped {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.r-more {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin-top: -12px;
+  color: var(--r-accent-dark);
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.r-more:hover {
+  color: var(--r-ink);
 }
 .r-tags {
   display: flex;
@@ -450,66 +1215,124 @@ body:has(.recetas) {
 .r-tags a {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 34px;
+  padding: 0 14px;
   border-radius: 999px;
-  background: var(--r-accent-soft);
-  color: var(--r-accent-dark);
+  background: var(--r-lilac-soft);
+  color: var(--r-ink);
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
 }
 .r-tags a:hover {
-  background: var(--r-accent-soft);
+  background: var(--r-lilac);
 }
+/* Facts as small tiles that wrap: long values ("Maraja Faiz") get a whole tile instead of squeezing a column. */
 .r-facts {
   display: flex;
   flex-wrap: wrap;
-  border-block: 1px solid var(--r-line);
+  gap: 8px;
 }
+/* Tiles grow to fill their row, so an odd one out never leaves a hole. */
 .r-facts div {
-  flex: 1 1 110px;
-  padding: 14px 16px 14px 0;
-}
-.r-facts div + div {
-  padding-left: 16px;
-  border-left: 1px solid var(--r-line);
+  flex: 1 1 124px;
+  min-width: 0;
+  padding: 12px 16px 14px;
+  border: 1px solid var(--r-line);
+  border-radius: 16px;
+  background: var(--r-surface);
 }
 .r-facts dt {
   color: var(--r-muted);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 14px;
 }
 .r-facts dd {
   font-family: var(--r-display);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
-.r-actions {
+/* Recipe name with share and print beside it, as round icon buttons aligned to the first line of the name. */
+.r-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+}
+.r-title-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+  /* Same font size as the h1, so 1em is its size: centers the 44px buttons on the name's first line (1.05 line height). */
+  font-size: clamp(36px, 4.6vw, 56px);
+  padding-top: max(0px, calc((1.05em - 44px) / 2));
 }
+.r-icon-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid var(--r-line);
+  border-radius: 999px;
+  background: var(--r-surface);
+  color: var(--r-ink);
+  font-size: 15px;
+  transition:
+    border-color 150ms,
+    background 150ms;
+}
+.r-icon-button:hover {
+  border-color: var(--r-accent);
+  background: var(--r-accent-soft);
+}
+.r-icon-button:active {
+  transform: scale(0.95);
+}
+/* Desktop: ingredients in a column that stays in view, preparation and tips beside it.
+   Narrower screens: one column, the cards tucked under each other (see .r-fold). */
 .r-method {
   display: grid;
-  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.6fr);
-  gap: 56px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1024px) {
+  .r-method {
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+    gap: 28px 32px;
+    align-items: start;
+  }
+  .r-method .r-ingredients {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    position: sticky;
+    top: 20px;
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .r-method .r-steps,
+  .r-method .r-notes {
+    grid-column: 2;
+  }
+  /* Side by side there is nothing to tuck under: .recetas wins over the fold rules further down. */
+  .recetas .r-method .r-fold:has(+ .r-fold) {
+    padding-bottom: 0;
+  }
+  .recetas .r-method .r-fold + .r-fold {
+    margin-top: 0;
+  }
+  .recetas .r-method .r-fold {
+    box-shadow: none;
+  }
+  .recetas .r-method .r-notes {
+    margin-top: 0;
+  }
 }
 .r-method h2 {
   font-size: 32px;
   margin-bottom: 18px;
 }
-.r-ingredients {
-  position: sticky;
-  top: 88px;
-  padding: 28px;
-  border-radius: var(--r-radius);
-  background: var(--r-surface);
-  box-shadow: var(--r-shadow);
-}
+
 .r-ingredients h2 {
   margin-bottom: 4px;
 }
@@ -539,7 +1362,7 @@ body:has(.recetas) {
 .r-checklist input:checked + span {
   color: var(--r-muted);
   text-decoration: line-through;
-  text-decoration-color: rgb(74 93 108 / 0.6);
+  text-decoration-color: rgb(35 26 20 / 0.45);
 }
 .r-steps ol {
   counter-reset: step;
@@ -559,8 +1382,8 @@ body:has(.recetas) {
   width: 44px;
   height: 44px;
   border-radius: 999px;
-  background: var(--r-accent);
-  color: #fff;
+  background: var(--r-yellow);
+  color: var(--r-ink);
   font-family: var(--r-display);
   font-size: 20px;
   font-weight: 600;
@@ -570,13 +1393,18 @@ body:has(.recetas) {
   max-width: 62ch;
   white-space: pre-line;
 }
+@media (min-width: 1024px) {
+  .r-steps li p {
+    font-size: 18px;
+    line-height: 1.6;
+  }
+}
 .r-notes {
   display: grid;
   gap: 8px;
   margin-top: 36px;
-  padding: 22px 24px;
-  border-left: 4px solid var(--r-accent);
-  border-radius: 0 var(--r-radius) var(--r-radius) 0;
+  padding: 24px 28px;
+  border-radius: var(--r-radius-lg);
   background: var(--r-accent-soft);
 }
 .r-notes h3 {
@@ -586,19 +1414,53 @@ body:has(.recetas) {
   font-size: 22px;
   color: var(--r-accent-dark);
 }
+/* After the method every section opens the same way: a hairline, room, and a 32px title. */
+.r-story,
+.r-comments,
 .r-related {
   margin-top: 80px;
-  padding-top: 40px;
+  padding-top: 48px;
   border-top: 1px solid var(--r-line);
 }
-.r-related h2 {
-  font-size: 32px;
+:is(.r-story, .r-comments, .r-related) > h2 {
   margin-bottom: 24px;
+  font-size: 32px;
+}
+
+/* The full description, as a short read: one column at reading width. */
+.r-story {
+  scroll-margin-top: 24px;
+}
+.r-story-body {
+  display: grid;
+  gap: 16px;
+  max-width: 68ch;
+  font-size: 18px;
+  line-height: 1.7;
+}
+.r-story-body h3 {
+  margin-top: 16px;
+  font-size: 22px;
+  font-weight: 600;
+}
+.r-story-body h3:first-child {
+  margin-top: 0;
+}
+.r-story-body ul {
+  display: grid;
+  gap: 10px;
+  padding-left: 22px;
+  list-style: disc;
+}
+.r-story-body li::marker {
+  color: var(--r-accent);
+}
+.r-story-body strong {
+  font-weight: 700;
 }
 
 @media (max-width: 860px) {
-  .r-hero,
-  .r-method {
+  .r-hero {
     grid-template-columns: minmax(0, 1fr);
     gap: 28px;
   }
@@ -607,7 +1469,6 @@ body:has(.recetas) {
   }
   .r-ingredients {
     position: static;
-    padding: 22px;
   }
 }
 @media (max-width: 640px) {
@@ -625,19 +1486,8 @@ body:has(.recetas) {
   .r-top .r-button {
     padding: 0 14px;
   }
-  .r-hero .r-photo {
-    margin-inline: -16px;
-    border-radius: 0;
-  }
   .r-facts div {
     flex-basis: 40%;
-  }
-  .r-facts div:nth-child(odd) {
-    padding-left: 0;
-    border-left: 0;
-  }
-  .r-facts div:nth-child(n + 3) {
-    border-top: 1px solid var(--r-line);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -672,8 +1522,6 @@ body:has(.recetas) {
   }
   .r-ingredients {
     position: static;
-    padding: 0;
-    box-shadow: none;
   }
   .r-steps li {
     break-inside: avoid;
@@ -711,7 +1559,7 @@ body:has(.recetas) {
 }
 .r-gallery .r-photo {
   aspect-ratio: 5 / 4;
-  border-radius: 24px;
+  border-radius: var(--r-radius-lg);
 }
 .r-thumbs {
   display: flex;
@@ -728,7 +1576,9 @@ body:has(.recetas) {
   border-radius: 14px;
   background: var(--r-sunken);
   opacity: 0.8;
-  transition: opacity 150ms, border-color 150ms;
+  transition:
+    opacity 150ms,
+    border-color 150ms;
 }
 .r-thumbs button:hover {
   opacity: 1;
@@ -762,7 +1612,7 @@ body:has(.recetas) {
   place-items: center;
 }
 .r-lightbox::backdrop {
-  background: rgb(8 18 26 / 0.88);
+  background: rgb(35 26 20 / 0.92);
 }
 .r-lightbox img {
   display: block;
@@ -811,4 +1661,355 @@ body:has(.recetas) {
   .r-photo-button {
     cursor: auto;
   }
+}
+
+/* Ingredients and preparation: cards that fold and overlap, each one tucked under the top edge of the next.
+   Open by default; phones start with the preparation folded. */
+.r-fold {
+  --r-tuck: 36px;
+  position: relative;
+  border-radius: 28px;
+  background: var(--r-yellow-soft);
+  box-shadow: 0 -10px 24px -12px rgb(35 26 20 / 0.28);
+}
+.r-fold.r-steps {
+  background: var(--r-lilac-soft);
+}
+.r-method .r-fold:has(+ .r-fold) {
+  padding-bottom: var(--r-tuck);
+}
+.r-method .r-fold + .r-fold {
+  margin-top: calc(var(--r-tuck) * -1);
+  z-index: 1;
+}
+.r-fold summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 18px 28px;
+  border-radius: 28px;
+  list-style: none;
+  cursor: pointer;
+}
+.r-fold summary::-webkit-details-marker {
+  display: none;
+}
+.r-fold summary h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 26px;
+}
+.r-fold summary:focus-visible {
+  outline: 2px solid var(--r-focus);
+  outline-offset: -4px;
+}
+.r-fold-summary {
+  color: var(--r-muted);
+  font-size: 15px;
+  white-space: nowrap;
+}
+.r-fold-caret {
+  flex: none;
+  color: var(--r-ink);
+  transition: transform 200ms var(--r-ease);
+}
+.r-fold details[open] > summary .r-fold-caret {
+  transform: rotate(180deg);
+}
+.r-fold-body {
+  padding: 0 28px 28px;
+}
+.r-method .r-notes {
+  margin-top: 28px;
+}
+@media (max-width: 640px) {
+  .r-fold summary {
+    min-height: 60px;
+    padding: 12px 18px;
+  }
+  .r-fold summary h2 {
+    font-size: 24px;
+  }
+  .r-fold-body {
+    padding: 0 18px 20px;
+  }
+}
+
+/* Comments: words only, no ratings. */
+/* Desktop: what people said on the left, the form on the right. */
+@media (min-width: 1024px) {
+  .r-comments {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 0 48px;
+    align-items: start;
+  }
+  .r-comments > h2 {
+    grid-column: 1 / -1;
+  }
+  .recetas .r-comments > :is(.r-comment-list, .r-comment-empty) {
+    grid-column: 1;
+    margin-bottom: 0;
+  }
+  .r-comments > .r-comment-form {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+.r-comments h2 span {
+  color: var(--r-muted);
+  font-weight: 400;
+}
+/* .r-comments in front: the `.recetas ul` reset (margin: 0) would otherwise win and glue the list to the form. */
+.r-comments .r-comment-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+/* Comments are quiet surface blocks, not raised cards. */
+.r-comment-list li {
+  padding: 20px 24px;
+  border: 1px solid var(--r-line);
+  border-radius: var(--r-radius);
+  background: var(--r-surface);
+}
+.r-comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  color: var(--r-muted);
+  font-size: 15px;
+}
+.r-comment-head strong {
+  color: var(--r-ink);
+  font-size: 17px;
+}
+.r-comments .r-comment-body {
+  max-width: 62ch;
+  margin-top: 10px;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.r-comment-empty {
+  margin-bottom: 28px;
+  color: var(--r-muted);
+}
+.r-comment-form {
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  border-radius: var(--r-radius);
+  background: var(--r-accent-soft);
+}
+.r-comment-form h3 {
+  font-size: 24px;
+}
+.r-comment-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.r-comment-form label small {
+  color: var(--r-muted);
+  font-weight: 400;
+}
+.r-comment-form input,
+.r-comment-form textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid color-mix(in srgb, var(--r-ink) 18%, transparent);
+  border-radius: 12px;
+  background: var(--r-bg);
+  color: var(--r-ink);
+  font: inherit;
+  font-weight: 400;
+}
+.r-comment-form :is(input, textarea)::placeholder {
+  color: var(--r-muted);
+}
+.r-comment-form input:focus,
+.r-comment-form textarea:focus {
+  border-color: var(--r-accent-dark);
+}
+.r-comment-form textarea {
+  resize: vertical;
+  min-height: 112px;
+}
+.r-comment-form .r-button {
+  justify-self: start;
+}
+.r-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.r-button.r-primary {
+  border-color: var(--r-accent);
+  background: var(--r-accent);
+  color: var(--r-ink);
+}
+/* Hover lightens instead of darkening, so the dark label keeps its contrast. */
+.r-button.r-primary:hover {
+  border-color: #ff7d1f;
+  background: #ff7d1f;
+}
+/* Donating uses the lilac of the palette, so it never competes with the orange "Instalar la app". Dark label: ~9:1. */
+.r-button.r-donate {
+  border-color: var(--r-lilac);
+  background: var(--r-lilac);
+  color: var(--r-ink);
+}
+.r-button.r-donate:hover {
+  border-color: #c88ae3;
+  background: #c88ae3;
+}
+.r-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.r-form-ok,
+.r-form-error {
+  font-weight: 700;
+}
+.r-form-ok {
+  color: #1a6b3a;
+}
+.r-form-error {
+  color: #a32020;
+}
+.r-form-ok:empty,
+.r-form-error:empty {
+  min-height: 0;
+  margin-top: -14px;
+}
+@media (max-width: 640px) {
+  .r-comment-form {
+    padding: 18px;
+  }
+}
+
+/* Printed recipes show both sections open and flat, without the folding controls. */
+@media print {
+  .r-fold {
+    background: none;
+    box-shadow: none;
+  }
+  .r-method .r-fold:has(+ .r-fold) {
+    padding-bottom: 0;
+  }
+  .r-method .r-fold + .r-fold {
+    margin-top: 16px;
+  }
+  .r-fold summary {
+    min-height: 0;
+    padding: 0 0 8px;
+  }
+  .r-fold summary h2 {
+    font-size: 20pt;
+  }
+  .r-fold-caret {
+    display: none;
+  }
+  .r-fold-body {
+    padding: 0;
+  }
+}
+
+/* Splash: logo centered on the first visit, then it flies to the header (see splash.tsx) */
+.r-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--r-bg, #fffefe);
+  transition: background-color 600ms var(--r-ease, ease);
+  /* Fallback if the script never runs. */
+  animation: r-splash-out 400ms ease 2.2s forwards;
+}
+.r-splash.go {
+  background-color: transparent;
+  pointer-events: none;
+}
+/* The poster almost fills the screen: 90% of the height, or of the width on narrow phones (120vw tall = 90vw wide at 3:4).
+   The flight to the header measures it, so any size lands on the logo. */
+.r-splash-mark {
+  height: min(90dvh, 120vw);
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: 24px;
+  transform-origin: 0 0;
+  /* Centered by the grid; the flight is a translate + scale set from JS. */
+  transition: transform 700ms cubic-bezier(0.65, 0, 0.35, 1);
+  box-shadow: 0 24px 60px -20px rgba(35, 26, 20, 0.35);
+}
+.r-splash-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+}
+.r-nosplash .r-splash {
+  display: none;
+}
+@keyframes r-splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .r-splash {
+    display: none;
+  }
+}
+
+/* Footer: install and donate buttons */
+.r-foot-actions {
+  min-width: 0;
+}
+.r-foot-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+@media (min-width: 1000px) {
+  .r-foot-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .r-foot-note {
+    max-width: 300px;
+  }
+}
+.r-foot-note {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--r-accent-soft);
+  color: var(--r-ink);
+  font-size: 15px;
+}
+.r-foot-note button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
 }

@@ -76,7 +76,7 @@ El catálogo del equipo (con notas internas y preparaciones) solo se entrega con
 ```powershell
 npm run lint
 npm run build
-node --experimental-strip-types --test tests/catalog.test.mjs tests/features.test.mjs tests/store.test.mjs tests/sites.test.mjs tests/recipes.test.mjs tests/images.test.mjs
+node --experimental-strip-types --test tests/catalog.test.mjs tests/features.test.mjs tests/store.test.mjs tests/sites.test.mjs tests/recipes.test.mjs tests/images.test.mjs tests/comments.test.mjs tests/metrics.test.mjs
 ```
 
 Las pruebas cubren sinónimos, normalización, coincidencias falsas, visibilidad de borradores y validación de combinaciones.

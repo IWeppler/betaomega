@@ -17,6 +17,8 @@ export type PanelState = {
   flushRef: MutableRefObject<() => Promise<boolean>>;
   /** True while a page holds unsaved work that a background refresh must not replace. */
   setDirty: (dirty: boolean) => void;
+  /** Counts shown next to a section of the menu, by section path (comments waiting for review). */
+  badges?: Record<string, number>;
 };
 export const PanelContext = createContext<PanelState | null>(null);
 export function usePanel() {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanSettings, cleanInstagram, cleanContact, effectiveSettings, socialLinks, recipeSiteDefaults } from '../lib/site-settings.ts';
+import { cleanSettings, blankSettings, cleanInstagram, cleanContact, effectiveSettings, socialLinks, recipeSiteDefaults, cleanDonation } from '../lib/site-settings.ts';
 import { isScheduled, looksLikeBot, mostViewed, maxExtraImages, blankRecipe, recipeShareInfo, duplicateRecipe, parseIngredientLines, parseStepLines, canonicalCategory, categoryKey, categoryUsage, cleanRecipe, normalizeCategories, renameCategory, formatMinutes, isoDuration, matchesRecipe, recipeCategories, recipeGaps, recipeJsonLd, relatedRecipes, slugify, toRecipeCard, totalMinutes } from '../lib/recipes.ts';
 import { validImagePath } from '../lib/images.ts';
 import { findSite, siteForHost } from '../lib/sites.ts';
@@ -40,7 +40,7 @@ test('rechaza datos inválidos y descarta campos desconocidos', () => {
   const clean = cleanRecipe(draft({ siteId: 'nekurel', extra: true, categories: ['Salado', 'Salado', ' '] }));
   assert.equal('siteId' in clean, false);
   assert.equal('extra' in clean, false);
-  assert.deepEqual(clean.categories, ['Salado']);
+  assert.deepEqual(clean.categories, ['SALADO']);
 });
 
 test('fotos en la carpeta del sitio y en la raíz', () => {
@@ -57,7 +57,7 @@ test('tiempos y faltantes', () => {
   assert.equal(formatMinutes(40), '40 min');
   assert.equal(formatMinutes(undefined), '');
   assert.equal(totalMinutes({}), undefined);
-  assert.deepEqual(recipeGaps({ ...draft(), siteId: 'x', prepMinutes: 10 }), ['foto', 'descripción', 'categoría']);
+  assert.deepEqual(recipeGaps({ ...draft(), siteId: 'x', prepMinutes: 10 }), ['foto', 'descripción', 'tipo', 'momento', 'complejidad']);
 });
 
 test('las direcciones que usa el sitio no se pueden tomar', () => {
@@ -115,10 +115,10 @@ test('la vista previa de un borrador solo se abre con la firma de esa receta', a
 
 test('las categorías que solo difieren en mayúsculas o tildes son la misma', () => {
   assert.equal(categoryKey('  Póstres  '), categoryKey('postres'));
-  assert.equal(canonicalCategory('postres', ['Sin TACC', 'Postres']), 'Postres');
-  assert.equal(canonicalCategory('  Para   el mate ', ['Postres']), 'Para el mate');
-  assert.deepEqual(normalizeCategories(['postres', 'Sin TACC', 'POSTRES', ' '], ['Postres']), ['Postres', 'Sin TACC']);
-  assert.deepEqual(cleanRecipe(draft({ categories: ['Postres', 'postres', 'Póstres', 'Dulce'] })).categories, ['Postres', 'Dulce']);
+  assert.equal(canonicalCategory('postres', ['Sin TACC', 'Postres']), 'POSTRES');
+  assert.equal(canonicalCategory('  Para   el mate ', ['Postres']), 'PARA EL MATE');
+  assert.deepEqual(normalizeCategories(['postres', 'Sin TACC', 'POSTRES', ' '], ['Postres']), ['POSTRES', 'SIN TACC']);
+  assert.deepEqual(cleanRecipe(draft({ categories: ['Postres', 'postres', 'Póstres', 'Dulce'] })).categories, ['POSTRES', 'DULCE']);
 });
 
 test('renombrar una categoría conserva el orden y no repite', () => {
@@ -235,11 +235,19 @@ test('datos del sitio: validación y normalización', () => {
   assert.throws(() => cleanContact('llamame'), /mail o un número/);
   assert.throws(() => cleanSettings({ tagline: 'x' }), /inválidos/);
   assert.throws(() => cleanSettings({ revision: 0, tagline: 'x'.repeat(61) }), /demasiado largo/);
+  assert.equal(cleanSettings({ revision: 1, donation: ' Ignacioweppler.MP ' }).donation, 'ignacioweppler.mp');
+  assert.equal(cleanSettings({ revision: 1, donation: '' }).donation, '');
+  assert.equal(cleanDonation('https://link.mercadopago.com.ar/abc'), 'https://link.mercadopago.com.ar/abc');
+  assert.throws(() => cleanDonation('hola que tal'), /Donaciones/);
+  assert.throws(() => cleanDonation('http://x.com'), /Donaciones/);
+  assert.equal(cleanDonation('link.mercadopago.com.ar/betayomega'), 'https://link.mercadopago.com.ar/betayomega');
+  assert.equal(effectiveSettings(null).donation, 'https://link.mercadopago.com.ar/betayomega');
+  assert.equal(effectiveSettings({ ...blankSettings(), donation: '' }).donation, '');
   assert.deepEqual(cleanSettings({ revision: 0 }), { revision: 0, tagline: '', description: '', instagram: '', contact: '' });
 });
 
 test('datos del sitio: sin documento se ve igual que hoy', () => {
-  assert.deepEqual(effectiveSettings(null), { ...recipeSiteDefaults, instagram: '', contact: '' });
+  assert.deepEqual(effectiveSettings(null), { ...recipeSiteDefaults, instagram: '', contact: '', donation: 'https://link.mercadopago.com.ar/betayomega' });
   assert.equal(effectiveSettings(cleanSettings({ revision: 1, tagline: 'Mi lema' })).description, recipeSiteDefaults.description);
   assert.equal(effectiveSettings(cleanSettings({ revision: 1, tagline: 'Mi lema' })).tagline, 'Mi lema');
 });
@@ -289,9 +297,90 @@ test('más vistas: sin buscadores y ordenadas', () => {
 });
 
 test('la tarjeta usa la segunda foto disponible para el hover', () => {
-  const base = { slug: 'a', title: 'A', summary: '', categories: [], servings: '', ingredients: [] };
+  const base = { slug: 'a', title: 'A', summary: '', categories: [], moments: [], cuisine: '', servings: '', ingredients: [] };
   assert.equal(toRecipeCard({ ...base, image: '/1', images: ['/2', '/3'] }).hoverImage, '/2');
   assert.equal(toRecipeCard({ ...base, image: '/1', images: [] }).hoverImage, undefined);
   assert.equal(toRecipeCard({ ...base, image: undefined, images: ['/2', '/3'] }).image, '/2');
   assert.equal(toRecipeCard({ ...base, image: undefined, images: ['/2', '/3'] }).hoverImage, '/3');
+});
+
+import { normalizeMoments, facetCounts, matchesFilters, sortRecipes, recipeCuisines, noFilters, filterHref, maxSummary } from '../lib/recipes.ts';
+
+test('momento, nación y complejidad se validan y limpian', () => {
+  const clean = cleanRecipe(draft({ moments: ['postre', 'desayuno-merienda', 'postre'], cuisine: '  Italia  ', difficulty: 'media' }));
+  assert.deepEqual(clean.moments, ['desayuno-merienda', 'postre']);
+  assert.equal(clean.cuisine, 'Italia');
+  assert.equal(clean.difficulty, 'media');
+  assert.deepEqual(cleanRecipe(draft()).moments, []);
+  assert.equal(cleanRecipe(draft({ difficulty: '' })).difficulty, undefined);
+  assert.throws(() => cleanRecipe(draft({ moments: ['brunch'] })), /Momento/);
+  assert.throws(() => cleanRecipe(draft({ difficulty: 'experto' })), /Complejidad/);
+});
+
+test('"cualquier momento" va solo', () => {
+  assert.deepEqual(normalizeMoments(['postre', 'cualquier-momento']), ['cualquier-momento']);
+  assert.deepEqual(cleanRecipe(draft({ moments: ['almuerzo-cena', 'cualquier-momento'] })).moments, ['cualquier-momento']);
+});
+
+test('la descripción acepta textos largos', () => {
+  assert.equal(cleanRecipe(draft({ summary: 'a'.repeat(maxSummary) })).summary.length, maxSummary);
+  assert.throws(() => cleanRecipe(draft({ summary: 'a'.repeat(maxSummary + 1) })), /demasiado largo/);
+});
+
+test('filtros combinados, conteos y orden del catálogo', () => {
+  const card = (title, patch) => ({ title, categories: [], moments: [], cuisine: '', difficulty: undefined, minutes: undefined, ...patch });
+  const tarta = card('Tarta de ricota', { moments: ['postre'], categories: ['Tartas'], cuisine: 'Italia', difficulty: 'media', minutes: 60 });
+  const pan = card('Pan de ajo', { moments: ['cualquier-momento'], categories: ['Panes'], difficulty: 'facil', minutes: 30 });
+  const salsa = card('Salsa criolla', { moments: ['almuerzo-cena'], categories: ['Salsas'], cuisine: 'Argentina' });
+  const all = [tarta, pan, salsa];
+  // "Cualquier momento" aparece también en cada momento.
+  assert.deepEqual(all.filter(r => matchesFilters(r, { ...noFilters, moment: 'postre' })), [tarta, pan]);
+  assert.deepEqual(all.filter(r => matchesFilters(r, { ...noFilters, moment: 'postre', difficulty: 'facil' })), [pan]);
+  assert.deepEqual(all.filter(r => matchesFilters(r, { ...noFilters, cuisine: 'Argentina' })), [salsa]);
+  // Los conteos de un eje respetan los demás filtros pero no el propio.
+  const counts = facetCounts(all, { ...noFilters, moment: 'postre', difficulty: 'media' }, 'moment', ['postre', 'almuerzo-cena']);
+  assert.equal(counts.get('postre'), 1);
+  assert.equal(counts.get('almuerzo-cena'), 0);
+  assert.deepEqual(sortRecipes(all, 'alfabetico').map(r => r.title), ['Pan de ajo', 'Salsa criolla', 'Tarta de ricota']);
+  assert.deepEqual(sortRecipes(all, 'tiempo').map(r => r.title), ['Pan de ajo', 'Tarta de ricota', 'Salsa criolla']);
+  assert.equal(sortRecipes(all, 'recientes'), all);
+  assert.deepEqual(recipeCuisines(all), ['Argentina', 'Italia']);
+  assert.equal(filterHref('type', 'Salsas y aderezos'), '/?tipo=Salsas%20y%20aderezos');
+});
+
+test('la tarjeta, los faltantes y el JSON-LD usan la taxonomía', () => {
+  const recipe = { ...cleanRecipe(draft({ moments: ['postre'], cuisine: 'Italia', difficulty: 'facil', categories: ['Tartas'] })), siteId: 'comidasdelcielo' };
+  const card = toRecipeCard(recipe);
+  assert.equal(card.difficulty, 'facil');
+  assert.ok(card.search.includes('italia') && card.search.includes('postre'));
+  assert.ok(!recipeGaps(recipe).includes('momento'));
+  assert.ok(recipeGaps({ ...recipe, moments: [], difficulty: undefined }).includes('complejidad'));
+  const ld = recipeJsonLd(recipe, 'https://comidasdelcielo.vercel.app', 'Comidas del cielo');
+  assert.equal(ld.recipeCategory, 'Postre');
+  assert.equal(ld.recipeCuisine, 'Italia');
+});
+
+test('una descripción larga se separa en títulos, párrafos y listas, y el primer párrafo es el resumen', async () => {
+  const { descriptionBlocks, descriptionLead } = await import('../lib/recipes.ts');
+  const text = 'Descripción de la planta\n\nUn arbusto de hojas tricolores.\n\n🍇 Perfil de sabor\n\nCuatro etapas:\n• Nota inicial: salada\n• Cierre terroso';
+  assert.deepEqual(descriptionBlocks(text), [
+    { kind: 'heading', text: 'Descripción de la planta' },
+    { kind: 'paragraph', text: 'Un arbusto de hojas tricolores.' },
+    { kind: 'heading', text: '🍇 Perfil de sabor' },
+    { kind: 'paragraph', text: 'Cuatro etapas:' },
+    { kind: 'list', items: [{ label: 'Nota inicial', text: 'salada' }, { text: 'Cierre terroso' }] },
+  ]);
+  assert.deepEqual(descriptionLead(text), { lead: 'Un arbusto de hojas tricolores.', more: true });
+  assert.deepEqual(descriptionLead('Clásica salsa de la abuela'), { lead: 'Clásica salsa de la abuela', more: false });
+});
+
+test('el filtro de tiempo total separa por rangos y deja afuera las recetas sin tiempo', async () => {
+  const { matchesFilters, noFilters, filterHref } = await import('../lib/recipes.ts');
+  const base = { categories: [], moments: [], cuisine: '', difficulty: undefined };
+  const rapida = { ...base, minutes: 30 }, media = { ...base, minutes: 45 }, larga = { ...base, minutes: 95 }, sinTiempo = { ...base };
+  const all = [rapida, media, larga, sinTiempo];
+  assert.deepEqual(all.filter(r => matchesFilters(r, { ...noFilters, time: '30' })), [rapida]);
+  assert.deepEqual(all.filter(r => matchesFilters(r, { ...noFilters, time: '60' })), [media]);
+  assert.deepEqual(all.filter(r => matchesFilters(r, { ...noFilters, time: 'mas' })), [larga]);
+  assert.equal(filterHref('time', '30'), '/?duracion=30');
 });

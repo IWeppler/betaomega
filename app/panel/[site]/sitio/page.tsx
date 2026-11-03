@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, Field } from "@/app/admin-fields";
 import { SaveForm } from "@/app/save-form";
-import { recipeSiteDefaults, type SiteSettings } from "@/lib/site-settings";
+import { defaultDonation, recipeSiteDefaults, type SiteSettings } from "@/lib/site-settings";
 import { usePanel } from "../panel-context";
 import { PageHeader } from "../shell";
 import { useParams } from "next/navigation";
@@ -31,7 +31,7 @@ export default function SitePage() {
     try {
       const saved = await api<SiteSettings>(base, {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ revision: revision.current, tagline: text("tagline"), description: text("description"), instagram: text("instagram"), contact: text("contact") }),
+        body: JSON.stringify({ revision: revision.current, tagline: text("tagline"), description: text("description"), instagram: text("instagram"), contact: text("contact"), donation: text("donation") }),
       });
       revision.current = saved.revision;
       return true;
@@ -53,7 +53,8 @@ export default function SitePage() {
           <Field label="Instagram" name="instagram" value={settings.instagram} hint="Tu usuario, por ejemplo @comidasdelcielo. Opcional." />
           <Field label="Contacto" name="contact" value={settings.contact} hint="Un mail o un WhatsApp con código de país (+54 9 11 5555 1234). Opcional." />
         </div>
-        <p className="panel-muted">Instagram y contacto aparecen en el pie del sitio. Los cambios se ven al recargar, sin desplegar.</p>
+        <Field label="Donaciones (Mercado Pago)" name="donation" value={settings.donation ?? defaultDonation} hint="Tu alias de Mercado Pago (por ejemplo ignacioweppler.mp) o un enlace https de pago. Vacío: se oculta el botón de donar." />
+        <p className="panel-muted">Instagram, contacto y donaciones aparecen en el pie del sitio. Los cambios se ven al recargar, sin desplegar.</p>
       </SaveForm>
     </section>}
   </>;

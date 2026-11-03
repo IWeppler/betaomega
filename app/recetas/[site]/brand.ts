@@ -8,16 +8,16 @@ import { findSite } from "@/lib/sites";
 export const brand = {
   // Tagline and description are the defaults: the panel can override them (getSettings).
   ...recipeSiteDefaults,
-  background: "#f2f7fb",
-  accent: "#0b72a8",
-  ink: "#10212e",
+  background: "#fffefe",
+  accent: "#ed6300",
+  ink: "#231a14",
   // Poster of the site, cropped to a square by the header.
   logo: "/comidasdelcielo-logo.webp",
 };
 
 // Public path (/og): a file convention would point at the internal /recetas/... tree.
-export const ogImage = (name: string, tagline: string = brand.tagline) => ({
-  url: "/og",
+export const ogImage = (name: string, tagline: string = brand.tagline, slug?: string) => ({
+  url: slug ? `/og?receta=${encodeURIComponent(slug)}` : "/og",
   width: 1200,
   height: 630,
   alt: `${name}. ${tagline}.`,

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Clock, CookingPot, UsersThree } from "@phosphor-icons/react/dist/ssr";
-import { formatMinutes, type RecipeCard } from "@/lib/recipes";
+import { ChefHat, Clock, CookingPot, UsersThree } from "@phosphor-icons/react/dist/ssr";
+import { difficultyLabel, formatMinutes, type RecipeCard } from "@/lib/recipes";
 
 /** The photo, or a pot on a warm background when there is none (the image covers it when it loads). */
 export function RecipePhoto({ title, image, hoverImage, priority, sizes }: { title: string; image?: string; hoverImage?: string; priority?: boolean; sizes: string }) {
@@ -12,11 +12,13 @@ export function RecipePhoto({ title, image, hoverImage, priority, sizes }: { tit
   </div>;
 }
 
-export function RecipeMeta({ minutes, servings }: { minutes?: number; servings: string }) {
-  if (!minutes && !servings) return null;
+/** Time · servings · difficulty, in that order. Missing ones are skipped without leaving a gap. */
+export function RecipeMeta({ minutes, servings, difficulty }: { minutes?: number; servings: string; difficulty?: string }) {
+  if (!minutes && !servings && !difficulty) return null;
   return <p className="r-meta">
     {minutes ? <span><Clock size={16} aria-hidden="true" /><span className="sr-only">Tiempo total: </span>{formatMinutes(minutes)}</span> : null}
     {servings && <span><UsersThree size={16} aria-hidden="true" /><span className="sr-only">Rinde: </span>{servings}</span>}
+    {difficulty && <span><ChefHat size={16} aria-hidden="true" /><span className="sr-only">Complejidad: </span>{difficultyLabel(difficulty)}</span>}
   </p>;
 }
 
@@ -29,7 +31,7 @@ export function RecipeCardView({ recipe, priority }: { recipe: RecipeCard; prior
         {recipe.categories.length > 0 && <p className="r-eyebrow">{recipe.categories.slice(0, 2).join(" · ")}</p>}
         <h3>{recipe.title}</h3>
         {recipe.summary && <p className="r-card-summary">{recipe.summary}</p>}
-        <RecipeMeta minutes={recipe.minutes} servings={recipe.servings} />
+        <RecipeMeta minutes={recipe.minutes} servings={recipe.servings} difficulty={recipe.difficulty} />
       </div>
     </Link>
   </li>;

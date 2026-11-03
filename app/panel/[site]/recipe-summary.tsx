@@ -24,12 +24,12 @@ export function RecipeSummary() {
   const issues = [
     !recipes.length && { text: "Todavía no hay recetas cargadas.", action: "Crear la primera" },
     drafts.length > 0 && { text: `${plural(drafts.length, "Una receta está", "# recetas están")} en borrador: no se van a ver en el sitio.`, action: "Revisar borradores" },
-    incomplete.length > 0 && { text: `${plural(incomplete.length, "Una receta publicada no tiene", "# recetas publicadas no tienen")} foto, descripción, categoría o tiempo: ${incomplete.slice(0, 5).map(r => r.title).join(", ")}${incomplete.length > 5 ? "…" : ""}.`, action: "Completar" },
+    incomplete.length > 0 && { text: `${plural(incomplete.length, "Una receta publicada no tiene", "# recetas publicadas no tienen")} foto, descripción, tipo o tiempo: ${incomplete.slice(0, 5).map(r => r.title).join(", ")}${incomplete.length > 5 ? "…" : ""}.`, action: "Completar" },
   ].filter(Boolean) as { text: string; action: string }[];
   const stats = [
     { label: "Publicadas", value: published.length, note: scheduled.length ? `${scheduled.length} programadas` : `de ${recipes.length} recetas` },
     { label: "Borradores", value: drafts.length, note: "no se ven en el sitio" },
-    { label: "Categorías", value: categories.size, note: "en recetas publicadas" },
+    { label: "Tipos", value: categories.size, note: "en recetas publicadas" },
     { label: "Con foto", value: published.filter(r => r.image).length, note: `de ${published.length} publicadas` },
   ];
   const siteUrl = findSite(site)?.url;

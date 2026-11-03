@@ -976,6 +976,7 @@ main {
 }
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 22px;
@@ -1556,6 +1557,17 @@ main {
   font-size: 15px;
   color: var(--muted);
   margin: 0 0 14px;
+}
+.save-feedback {
+  flex: 1 0 100%;
+  order: 1;
+  text-align: right;
+}
+.save-feedback .autosave-status {
+  margin: 0;
+}
+.save-feedback .autosave-status:empty {
+  display: none;
 }
 .autosave-status.saved {
   color: #25613c;
