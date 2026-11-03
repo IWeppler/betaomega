@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
-import { BookOpenText, Plus } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import { BookOpenText, Plus, X } from "@phosphor-icons/react";
 import { normalize } from "@/lib/catalog";
 import {
   blankRecipe,
   formatMinutes,
   isScheduled,
   totalMinutes,
+  type Recipe,
   type RecipeInput,
 } from "@/lib/recipes";
 import { findSite } from "@/lib/sites";
@@ -22,6 +23,7 @@ import {
 import { usePanel } from "../panel-context";
 import { RecipeEditor } from "../recipe-editor";
 import { useRecipes } from "../recipes-context";
+import { isRecipeView, recipeViews, type RecipeView } from "../recipe-views";
 import { PageHeader } from "../shell";
 
 /** A new recipe starts ticked as published in the site (the panel's default); the person can untick it to keep a draft. */
@@ -35,10 +37,14 @@ export default function RecipesPage() {
   const { selection, setSelection, select } = useSelection<RecipeInput>();
   useNewFromLink(() => setSelection({ item: newRecipe(), mode: "edit" }));
   const [filter, setFilter] = useState("");
+  const [view, setView] = useState<RecipeView | null>(null);
+  useLinkedRecipe(recipes, (item) => setSelection({ item, mode: "edit" }), setView);
   if (!recipes || !site) return null;
   const query = normalize(filter);
-  const rows = recipes.filter((r) =>
-    normalize([r.title, ...r.categories].join(" ")).includes(query),
+  const rows = recipes.filter(
+    (r) =>
+      (!view || recipeViews[view].test(r)) &&
+      normalize([r.title, ...r.categories].join(" ")).includes(query),
   );
   const saved = (id: string) => recipes.some((r) => r.id === id);
   const side =
@@ -93,6 +99,17 @@ export default function RecipesPage() {
               onChange={setFilter}
               label="Buscar por nombre o tipo"
             />
+            {view && (
+              <p className="panel-list-view">
+                <span>
+                  Mostrando: <strong>{recipeViews[view].label}</strong> ({rows.length})
+                </span>
+                <button className="button" onClick={() => setView(null)}>
+                  <X size={14} aria-hidden="true" />
+                  Ver todas
+                </button>
+              </p>
+            )}
           </div>
           {rows.length > 0 && (
             <table className="panel-table">
@@ -145,11 +162,17 @@ export default function RecipesPage() {
           {!rows.length && (
             <EmptyState
               title={
-                filter ? "No encontramos esa receta" : "Todavía no hay recetas"
+                filter
+                  ? "No encontramos esa receta"
+                  : view
+                    ? "No queda ninguna"
+                    : "Todavía no hay recetas"
               }
               text={
                 filter
                   ? "Probá con otro nombre o tipo."
+                  : view
+                    ? "Ya no hay recetas en este grupo. Tocá Ver todas para ver la lista completa."
                   : "Creá la primera receta con el botón Nueva receta."
               }
             />
@@ -166,6 +189,31 @@ export default function RecipesPage() {
       </div>
     </>
   );
+}
+
+/** Arriving from the summary: ?receta=<id> opens that recipe, ?ver=<view> filters the list. The parameters are dropped so a reload starts clean. */
+function useLinkedRecipe(
+  recipes: Recipe[] | null,
+  open: (item: Recipe) => void,
+  filterTo: (view: RecipeView) => void,
+) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current || !recipes) return;
+    done.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("receta");
+    const view = params.get("ver");
+    if (!id && !view) return;
+    router.replace(pathname, { scroll: false });
+    if (isRecipeView(view)) filterTo(view);
+    const item = id && recipes.find((r) => r.id === id);
+    if (item) open(item);
+    // Runs once, when the recipes arrive.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipes]);
 }
 
 function DeleteRecipe({

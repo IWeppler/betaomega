@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cleanSettings, blankSettings, cleanInstagram, cleanContact, effectiveSettings, socialLinks, recipeSiteDefaults, cleanDonation } from '../lib/site-settings.ts';
-import { isScheduled, looksLikeBot, mostViewed, maxExtraImages, blankRecipe, recipeShareInfo, duplicateRecipe, parseIngredientLines, parseStepLines, canonicalCategory, categoryKey, categoryUsage, cleanRecipe, normalizeCategories, renameCategory, formatMinutes, isoDuration, matchesRecipe, recipeCategories, recipeGaps, recipeJsonLd, relatedRecipes, slugify, toRecipeCard, totalMinutes } from '../lib/recipes.ts';
+import { isScheduled, looksLikeBot, mostViewed, maxExtraImages, blankRecipe, recipeShareInfo, duplicateRecipe, parseIngredientLines, parseStepLines, canonicalCategory, categoryKey, categoryUsage, cleanRecipe, normalizeCategories, renameCategory, formatMinutes, isoDuration, matchesRecipe, recipeCategories, recipeGaps, lacksContent, recipeJsonLd, relatedRecipes, slugify, toRecipeCard, totalMinutes } from '../lib/recipes.ts';
 import { validImagePath } from '../lib/images.ts';
 import { findSite, siteForHost } from '../lib/sites.ts';
 
@@ -57,7 +57,27 @@ test('tiempos y faltantes', () => {
   assert.equal(formatMinutes(40), '40 min');
   assert.equal(formatMinutes(undefined), '');
   assert.equal(totalMinutes({}), undefined);
-  assert.deepEqual(recipeGaps({ ...draft(), siteId: 'x', prepMinutes: 10 }), ['foto', 'descripción', 'tipo', 'momento', 'complejidad']);
+  assert.deepEqual(recipeGaps({ ...draft(), siteId: 'x', prepMinutes: 10 }), ['ingredientes', 'pasos', 'foto', 'descripción', 'tipo', 'momento', 'complejidad']);
+  assert.equal(lacksContent(draft()), true);
+  assert.equal(lacksContent(draft({ ingredients: [{ amount: '1', name: 'Harina' }], steps: ['Amasar'] })), false);
+  assert.equal(lacksContent(draft({ ingredients: [{ amount: '1', name: ' ' }], steps: ['Amasar'] })), true);
+});
+
+test('tipos flojos, momentos vacíos y última publicada', async () => {
+  const { thinCategories, emptyMoments, latestPublished, sinceLabel } = await import('../lib/recipes.ts');
+  const pub = (patch) => ({ published: true, categories: [], moments: [], ...patch });
+  assert.deepEqual(thinCategories([pub({ categories: ['Salsas', 'Panes'] }), pub({ categories: ['Panes'] })]), ['Salsas']);
+  assert.deepEqual(emptyMoments([pub({ moments: ['postre'] })]), ['Desayuno / Merienda', 'Almuerzo / Cena']);
+  assert.deepEqual(emptyMoments([pub({ moments: ['cualquier-momento'] })]), []);
+  const now = Date.parse('2026-11-03T12:00:00');
+  const list = [pub({ title: 'Vieja', publishedAt: '2026-10-01T10:00:00' }), pub({ title: 'Nueva', publishedAt: '2026-10-22T10:00:00' }), pub({ title: 'Programada', publishedAt: '2026-11-10T10:00:00' }), { published: false, publishedAt: '2026-11-01T10:00:00' }];
+  assert.equal(latestPublished(list, now).title, 'Nueva');
+  assert.equal(latestPublished([]), undefined);
+  const today = new Date('2026-11-03T12:00:00');
+  assert.equal(sinceLabel('2026-11-03T01:00:00', today), 'hoy');
+  assert.equal(sinceLabel('2026-11-02T23:00:00', today), 'ayer');
+  assert.equal(sinceLabel('2026-10-22T10:00:00', today), 'hace 12 días');
+  assert.equal(sinceLabel('2026-06-01T10:00:00', today), 'hace 5 meses');
 });
 
 test('las direcciones que usa el sitio no se pueden tomar', () => {

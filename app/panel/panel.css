@@ -484,6 +484,19 @@
   padding: 12px;
   border-bottom: 1px solid var(--line);
 }
+.panel-list-view {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.panel-list-view strong {
+  color: var(--ink);
+}
 .panel-search {
   display: flex;
   align-items: center;
@@ -1737,4 +1750,12 @@
 }
 .panel .combo-field {
   position: relative;
+}
+.panel .panel-latest {
+  margin: 0;
+}
+.panel .panel-latest a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
