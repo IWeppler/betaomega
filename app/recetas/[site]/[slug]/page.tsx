@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { after } from "next/server";
-import { ArrowLeft, Eye, Lightbulb } from "@phosphor-icons/react/dist/ssr";
+import { ArrowDown, ArrowLeft, Eye, Lightbulb } from "@phosphor-icons/react/dist/ssr";
 import { validPreview } from "@/lib/preview";
-import { countRecipeView, findRecipeBySlug } from "@/lib/recipe-store";
-import { formatMinutes, isScheduled, looksLikeBot, recipeJsonLd, recipeShareInfo, relatedRecipes, toRecipeCard, totalMinutes } from "@/lib/recipes";
+import { findRecipeBySlug } from "@/lib/recipe-store";
+import { descriptionLead, difficultyLabel, filterHref, formatMinutes, isScheduled, momentLabel, recipeJsonLd, recipeShareInfo, relatedRecipes, toRecipeCard, totalMinutes } from "@/lib/recipes";
 import { getRecipes, getSettings, ogImage, recipeSite } from "../brand";
 import { RecipeCardView } from "../recipe-card";
 import { PrintButton, ShareButton, SiteFooter, SiteHeader } from "../site-chrome";
+import { PageView } from "../page-view";
 import { IngredientList } from "./ingredient-list";
+import { RecipeComments } from "./recipe-comments";
 import { RecipeGallery } from "./recipe-gallery";
+import { RecipeSection } from "./recipe-section";
+import { RecipeStory } from "./recipe-story";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ site: string; slug: string }>; searchParams: Promise<{ vista?: string | string[] }> };
@@ -36,7 +38,8 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   if (preview) return { title: `Vista previa: ${recipe.title}`, robots: { index: false, follow: false }, alternates: { canonical: null } };
   const share = recipeShareInfo(recipe, site.name);
   const { description } = share;
-  const images = share.image ? [{ url: share.image, alt: recipe.title }] : [ogImage(site.name, (await getSettings(site.id)).tagline)];
+  // Photo + title card (/og?receta=): same 1200 × 630 for every recipe, falls back to the site card without a photo.
+  const images = [{ ...ogImage(site.name, (await getSettings(site.id)).tagline, recipe.slug), alt: recipe.title }];
   return {
     title: recipe.title,
     description,
@@ -55,23 +58,25 @@ export default async function RecipePage({ params, searchParams }: Props) {
   }
   const { site, recipes, recipe, preview } = found;
   if (!site || !recipe) notFound();
-  if (!preview) {
-    // Counted after the response, and only real visits: not previews, link-preview fetchers, crawlers or router prefetches.
-    const request = await headers();
-    if (!looksLikeBot(request.get("user-agent")) && !request.get("next-router-prefetch") && !/prefetch|preview/i.test(request.get("purpose") ?? request.get("sec-purpose") ?? "")) after(() => countRecipeView(recipe.id));
-  }
   const total = totalMinutes(recipe);
   const facts = [
     recipe.prepMinutes && { label: "Preparación", value: formatMinutes(recipe.prepMinutes) },
     recipe.cookMinutes && { label: "Cocción", value: formatMinutes(recipe.cookMinutes) },
     recipe.prepMinutes && recipe.cookMinutes && total && { label: "Total", value: formatMinutes(total) },
     recipe.servings && { label: "Rinde", value: recipe.servings },
+    recipe.difficulty && { label: "Complejidad", value: difficultyLabel(recipe.difficulty) },
+    recipe.cuisine && { label: "Nación", value: recipe.cuisine },
   ].filter(Boolean) as { label: string; value: string }[];
+  const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
+  const ingredientsLabel = plural(recipe.ingredients.length, "ingrediente", "ingredientes");
+  const stepsLabel = plural(recipe.steps.length, "paso", "pasos");
+  // Long descriptions (titles, lists, several paragraphs) show their first paragraph under the title and the whole text after the method.
+  const { lead, more } = descriptionLead(recipe.summary);
   const related = relatedRecipes(recipe, recipes).map(toRecipeCard);
   // "<" escaped so a recipe's text can never close the script tag.
   const jsonLd = JSON.stringify(recipeJsonLd(recipe, site.url, site.name)).replace(/</g, "\\u003c");
   return <>
-    <SiteHeader name={site.name} />
+    <SiteHeader name={site.name} siteId={site.id} />
     <main className="r-page r-recipe">
       {preview
         ? <p className="r-preview no-print" role="status"><Eye size={20} weight="fill" aria-hidden="true" /><span>{isScheduled(recipe)
@@ -83,36 +88,42 @@ export default async function RecipePage({ params, searchParams }: Props) {
         <header className="r-hero">
           <RecipeGallery title={recipe.title} images={[recipe.image, ...recipe.images].filter((src): src is string => Boolean(src))} sizes="(max-width: 860px) 100vw, 560px" />
           <div className="r-hero-text">
-            {recipe.categories.length > 0 && <ul className="r-tags" aria-label="Categorías">
-              {recipe.categories.map(c => <li key={c}><Link href={`/?categoria=${encodeURIComponent(c)}`}>{c}</Link></li>)}
+            {(recipe.moments.length > 0 || recipe.categories.length > 0) && <ul className="r-tags" aria-label="Tipos">
+              {recipe.moments.map(m => <li key={m}><Link href={filterHref("moment", m)}>{momentLabel(m)}</Link></li>)}
+              {recipe.categories.map(c => <li key={c}><Link href={filterHref("type", c)}>{c}</Link></li>)}
             </ul>}
-            <h1>{recipe.title}</h1>
-            {recipe.summary && <p className="r-lead">{recipe.summary}</p>}
+            <div className="r-title-row">
+              <h1>{recipe.title}</h1>
+              <div className="r-title-actions no-print">
+                {!preview && <ShareButton iconOnly label="Compartir receta" path={`/${recipe.slug}`} text={recipe.title} siteId={site.id} recipeId={recipe.id} />}
+                <PrintButton iconOnly />
+              </div>
+            </div>
+            {lead && <p className={`r-lead${more ? " is-clipped" : ""}`}>{lead}</p>}
+            {more && <a className="r-more no-print" href="#sobre-la-receta">Seguir leyendo<ArrowDown size={16} weight="bold" aria-hidden="true" /></a>}
             {facts.length > 0 && <dl className="r-facts">
               {facts.map(f => <div key={f.label}><dt>{f.label}</dt><dd>{f.value}</dd></div>)}
             </dl>}
-            <div className="r-actions no-print">
-              {!preview && <ShareButton path={`/${recipe.slug}`} text={recipe.title} />}
-              <PrintButton />
-            </div>
           </div>
         </header>
         <div className="r-method">
-          <section className="r-ingredients" aria-labelledby="ingredients-title">
-            <h2 id="ingredients-title">Ingredientes</h2>
+          <RecipeSection id="ingredients" title="Ingredientes" summary={ingredientsLabel} className="r-ingredients">
             {recipe.servings && <p className="r-yield">Para {recipe.servings}</p>}
             <IngredientList ingredients={recipe.ingredients} />
-          </section>
-          <section className="r-steps" aria-labelledby="steps-title">
-            <h2 id="steps-title">Preparación</h2>
+          </RecipeSection>
+          <RecipeSection id="steps" title="Preparación" summary={stepsLabel} foldOnPhone className="r-steps">
             <ol>{recipe.steps.map((step, n) => <li key={n}><p>{step}</p></li>)}</ol>
-            {recipe.notes && <aside className="r-notes" aria-labelledby="notes-title">
-              <h3 id="notes-title"><Lightbulb size={20} weight="fill" aria-hidden="true" />Consejos</h3>
-              {recipe.notes.split(/\n+/).map((line, n) => <p key={n}>{line}</p>)}
-            </aside>}
-          </section>
+          </RecipeSection>
+          {recipe.notes && <aside className="r-notes" aria-labelledby="notes-title">
+            <h3 id="notes-title"><Lightbulb size={20} weight="fill" aria-hidden="true" />Consejos</h3>
+            {recipe.notes.split(/\n+/).map((line, n) => <p key={n}>{line}</p>)}
+          </aside>}
         </div>
+        {more && <RecipeStory text={recipe.summary} />}
       </article>
+      {/* Counted by the browser, so link-preview fetchers and router prefetches never add a view; the API also drops crawlers and previews. */}
+      {!preview && <PageView siteId={site.id} recipeId={recipe.id} />}
+      {!preview && <RecipeComments siteId={site.id} recipeId={recipe.id} />}
       {related.length > 0 && <section className="r-related no-print" aria-labelledby="related-title">
         <h2 id="related-title">Más recetas</h2>
         <ul className="r-grid">{related.map(r => <RecipeCardView key={r.slug} recipe={r} />)}</ul>

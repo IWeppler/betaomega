@@ -1,5 +1,6 @@
-import type { Recipe, RecipeInput } from "./recipes";
-import { rpc, supabase, SupabaseError } from "./supabase";
+import { normalizeCategories, type Recipe, type RecipeInput } from "./recipes";
+import { recordedViews } from "./metric-store";
+import { supabase, SupabaseError } from "./supabase";
 
 // Server-only reads and writes of the recipes table (supabase/schema.sql).
 export class RecipeConflictError extends Error {}
@@ -13,16 +14,25 @@ type Row = {
   /** Missing until schema.sql is run again: views counter and extra photos. */
   views?: number;
   images?: string[];
+  /** Missing until schema.sql is run again: moment, nation and difficulty. */
+  moments?: Recipe["moments"];
+  cuisine?: string | null;
+  difficulty?: Recipe["difficulty"] | null;
 };
+const taxonomyColumns = ["moments", "cuisine", "difficulty"];
+/** Which optional columns a write sends. Each one is left out only while it is missing and the recipe has nothing to store in it. */
+type Columns = { images: boolean; taxonomy: boolean };
 const fromRow = (row: Row): Recipe => ({
-  id: row.id, siteId: row.site_id, slug: row.slug, title: row.title, summary: row.summary, image: row.image ?? undefined, categories: row.categories,
+  id: row.id, siteId: row.site_id, slug: row.slug, title: row.title, summary: row.summary, image: row.image ?? undefined, categories: normalizeCategories(row.categories),
   servings: row.servings, prepMinutes: row.prep_minutes ?? undefined, cookMinutes: row.cook_minutes ?? undefined, ingredients: row.ingredients,
   steps: row.steps, notes: row.notes, published: row.published, revision: row.revision, updatedAt: row.updated_at,
   publishedAt: row.published_at ?? undefined, views: row.views, images: row.images ?? [],
+  moments: row.moments ?? [], cuisine: row.cuisine ?? "", difficulty: row.difficulty ?? undefined,
 });
-// `images` only travels when it can matter (see saveRecipe) and `published_at` only when a date was chosen, so saving keeps working before schema.sql is run again.
-const toRow = (siteId: string, recipe: RecipeInput, withImages: boolean) => ({
-  ...(withImages ? { images: recipe.images } : {}),
+// Optional columns only travel when they can matter (see saveRecipe) and `published_at` only when a date was chosen, so saving keeps working before schema.sql is run again.
+const toRow = (siteId: string, recipe: RecipeInput, columns: Columns) => ({
+  ...(columns.images ? { images: recipe.images } : {}),
+  ...(columns.taxonomy ? { moments: recipe.moments, cuisine: recipe.cuisine, difficulty: recipe.difficulty ?? null } : {}),
   ...(recipe.scheduledAt ? { published_at: recipe.scheduledAt } : {}),
   site_id: siteId, slug: recipe.slug, title: recipe.title, summary: recipe.summary, image: recipe.image ?? null, categories: recipe.categories,
   servings: recipe.servings, prep_minutes: recipe.prepMinutes ?? null, cook_minutes: recipe.cookMinutes ?? null, ingredients: recipe.ingredients,
@@ -48,8 +58,17 @@ async function rows(pathname: string, init: RequestInit = {}) {
 }
 const eq = (value: string | number) => `eq.${encodeURIComponent(String(value))}`;
 
+/** The panel's list. `views` is the old counter plus what the metrics have recorded since. */
 export async function listRecipes(siteId: string) {
-  return (await rows(`?site_id=${eq(siteId)}&select=*&order=title.asc`)).map(fromRow);
+  const [list, recorded] = await Promise.all([rows(`?site_id=${eq(siteId)}&select=*&order=title.asc`), recordedViews(siteId)]);
+  return list.map(fromRow).map(recipe => (recorded[recipe.id] ? { ...recipe, views: (recipe.views ?? 0) + recorded[recipe.id] } : recipe));
+}
+
+/** True when the recipe is published and its date has come: the only ones that take comments, views and shares. */
+export async function isLiveRecipe(siteId: string, recipeId: string) {
+  const live = `&or=(published_at.is.null,published_at.lte.${new Date().toISOString()})`;
+  const response = await supabase(`/rest/v1/recipes?id=${eq(recipeId)}&site_id=${eq(siteId)}&published=is.true${live}&select=id`, { headers: { Accept: "application/json" } });
+  return response.ok && ((await response.json()) as unknown[]).length > 0;
 }
 
 /** Published recipes of a site, the most recently published first: what the public site shows. */
@@ -77,36 +96,34 @@ export async function findRecipeBySlug(siteId: string, slug: string) {
 export async function saveRecipe(siteId: string, recipe: RecipeInput) {
   const taken = await rows(`?site_id=${eq(siteId)}&slug=${eq(recipe.slug)}&id=neq.${recipe.id}&select=id`);
   if (taken.length) throw new RecipeConflictError("Ya hay otra receta con esa dirección. Cambiá la dirección o el nombre.");
-  const missing = (error: unknown, column: string) => error instanceof SupabaseError && error.message.includes(column);
-  try {
-    return await write(siteId, recipe, true);
-  } catch (error) {
-    // Before schema.sql is run again there is no `images` column: that is fine while the recipe has no extra photos.
-    if (!recipe.images.length && missing(error, "images")) return write(siteId, recipe, false);
-    if (recipe.scheduledAt && missing(error, "published_at")) throw new SupabaseError("Para programar la publicación hay que correr supabase/schema.sql en el SQL Editor.");
-    if (recipe.images.length && missing(error, "images")) throw new SupabaseError("Para guardar fotos adicionales hay que correr supabase/schema.sql en el SQL Editor.");
-    throw error;
+  const missing = (error: unknown, ...columns: string[]) => error instanceof SupabaseError && columns.some(column => error.message.includes(column));
+  const hasTaxonomy = Boolean(recipe.moments.length || recipe.cuisine || recipe.difficulty);
+  // Before schema.sql is run again some columns do not exist: that is fine while the recipe has nothing to store in them.
+  const columns: Columns = { images: true, taxonomy: true };
+  for (;;) {
+    try {
+      return await write(siteId, recipe, columns);
+    } catch (error) {
+      if (columns.images && !recipe.images.length && missing(error, "images")) { columns.images = false; continue; }
+      if (columns.taxonomy && !hasTaxonomy && missing(error, ...taxonomyColumns)) { columns.taxonomy = false; continue; }
+      if (recipe.scheduledAt && missing(error, "published_at")) throw new SupabaseError("Para programar la publicación hay que correr supabase/schema.sql en el SQL Editor.");
+      if (recipe.images.length && missing(error, "images")) throw new SupabaseError("Para guardar fotos adicionales hay que correr supabase/schema.sql en el SQL Editor.");
+      if (hasTaxonomy && missing(error, ...taxonomyColumns)) throw new SupabaseError("Para guardar el momento, la nación o la complejidad hay que correr supabase/schema.sql en el SQL Editor.");
+      throw error;
+    }
   }
 }
-async function write(siteId: string, recipe: RecipeInput, withImages: boolean) {
+async function write(siteId: string, recipe: RecipeInput, columns: Columns) {
   if (recipe.revision === 0) {
-    const [created] = await rows("", { method: "POST", body: JSON.stringify({ id: recipe.id, ...toRow(siteId, recipe, withImages), revision: 1 }) });
+    const [created] = await rows("", { method: "POST", body: JSON.stringify({ id: recipe.id, ...toRow(siteId, recipe, columns), revision: 1 }) });
     return fromRow(created);
   }
   // The revision filter and the update run in one statement, so concurrent saves cannot overwrite each other.
   const [updated] = await rows(`?id=${eq(recipe.id)}&site_id=${eq(siteId)}&revision=${eq(recipe.revision)}`, {
-    method: "PATCH", body: JSON.stringify({ ...toRow(siteId, recipe, withImages), revision: recipe.revision + 1, updated_at: new Date().toISOString() }),
+    method: "PATCH", body: JSON.stringify({ ...toRow(siteId, recipe, columns), revision: recipe.revision + 1, updated_at: new Date().toISOString() }),
   });
   if (!updated) throw new RecipeConflictError("Otra persona modificó o eliminó esta receta. Recargá la página antes de guardar.");
   return fromRow(updated);
-}
-
-let viewWarned = false;
-/** Adds one view to a published recipe (the Postgres function bumps the counter in one statement). Never throws: a failed count must not break the page. */
-export async function countRecipeView(recipeId: string) {
-  try { await rpc("increment_recipe_view", { recipe_id: recipeId }); } catch (error) {
-    if (!viewWarned) { viewWarned = true; console.warn("[recipes] no se pudo contar la vista (¿falta correr supabase/schema.sql?):", error); }
-  }
 }
 
 export async function deleteRecipe(siteId: string, id: string) {
