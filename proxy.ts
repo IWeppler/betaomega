@@ -20,5 +20,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // APIs, Next's assets and files in public/ are shared by every site and are not rewritten.
-  matcher: ["/((?!api/|_next/|favicon\\.ico$|sw\\.js$|.*\\.(?:png|jpe?g|webp|svg|gif|ico)$).*)"],
+  matcher: ["/((?!api/|_next/|favicon\\.ico$|sw\\.js$|panel-sw\\.js$|.*\\.(?:png|jpe?g|webp|svg|gif|ico)$).*)"],
 };
