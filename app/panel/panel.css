@@ -298,6 +298,7 @@
   border-radius: var(--radius-card);
   box-shadow: var(--shadow);
   min-width: 0;
+  padding: 6px;
 }
 .panel-pad {
   padding: 20px;
@@ -1056,6 +1057,12 @@
   .panel-table th,
   .panel-table td {
     padding: 0 8px;
+  }
+  .panel-editor-body {
+    padding: 20px 6px;
+  }
+  .panel-main {
+    padding: 20px 6px 48px;
   }
 }
 
