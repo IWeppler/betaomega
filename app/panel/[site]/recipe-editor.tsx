@@ -7,7 +7,6 @@ import {
   ArrowUp,
   Check,
   Copy,
-  CopySimple,
   Plus,
   X,
 } from "@phosphor-icons/react";
@@ -15,18 +14,28 @@ import { SaveForm } from "@/app/save-form";
 import { ImageField } from "@/app/catalog-image";
 import { Field } from "@/app/admin-fields";
 import {
+  anyMoment,
   isScheduled,
   maxExtraImages,
+  maxSummary,
+  canonicalLabel,
   normalizeCategories,
+  normalizeMoments,
   parseIngredientLines,
   parseStepLines,
   recipeCategories,
+  recipeCuisines,
+  recipeDifficulties,
+  recipeMoments,
   slugify,
   type Ingredient,
   type Recipe,
+  type RecipeDifficulty,
   type RecipeInput,
+  type RecipeMoment,
 } from "@/lib/recipes";
 import { CategoryInput } from "./category-input";
+import { ComboInput } from "./combo-input";
 import { EditorFrame } from "./editors";
 import { PasteList } from "./paste-list";
 import { SharePreview } from "./share-preview";
@@ -190,7 +199,6 @@ export function RecipeEditor({
   onSaved,
   onClose,
   onDelete,
-  onDuplicate,
 }: {
   recipe: RecipeInput;
   siteId: string;
@@ -199,15 +207,12 @@ export function RecipeEditor({
   onSaved: (item: RecipeInput) => void;
   onClose: () => void;
   onDelete?: () => void;
-  onDuplicate?: (item: RecipeInput) => void;
 }) {
   const { busy, setBusy, error, setError, flushRef } = usePanel();
   const { recipes, save } = useRecipes();
   const stored = recipes?.find((r) => r.id === recipe.id);
   // The revision of the last save: the next one must start from it.
   const revision = useRef(recipe.revision);
-  // What was last stored: the source of a duplicate.
-  const lastSaved = useRef<RecipeInput>(recipe);
   const [title, setTitle] = useState(recipe.title);
   // The description is an uncontrolled field; this copy only feeds the share preview.
   const [summary, setSummary] = useState(recipe.summary);
@@ -221,6 +226,21 @@ export function RecipeEditor({
   const [steps, setSteps] = useState<string[]>(recipe.steps);
   const [categories, setCategories] = useState<string[]>(recipe.categories);
   const siteCategories = recipeCategories(recipes ?? []).map((c) => c.label);
+  const [moments, setMoments] = useState<RecipeMoment[]>(recipe.moments ?? []);
+  const [difficulty, setDifficulty] = useState<RecipeDifficulty | undefined>(
+    recipe.difficulty,
+  );
+  const siteCuisines = recipeCuisines(recipes ?? []);
+  const [cuisine, setCuisine] = useState(recipe.cuisine ?? "");
+  // "Cualquier momento" goes alone: choosing it clears the others, and choosing another clears it.
+  const toggleMoment = (id: RecipeMoment) =>
+    setMoments(
+      moments.includes(id)
+        ? moments.filter((m) => m !== id)
+        : id === anyMoment
+          ? [anyMoment]
+          : normalizeMoments([...moments.filter((m) => m !== anyMoment), id]),
+    );
   // While a draft keeps the address derived from its name, the address follows the name. Published addresses stay put.
   const [slug, setSlug] = useState(recipe.slug);
   const [slugFollows, setSlugFollows] = useState(
@@ -273,6 +293,10 @@ export function RecipeEditor({
       ),
       summary: text("summary"),
       categories: normalizeCategories(categories, siteCategories),
+      moments,
+      difficulty,
+      // Same nation typed differently ("italia", "Itália") is stored as the one already in use.
+      cuisine: canonicalLabel(text("cuisine"), siteCuisines),
       servings: text("servings"),
       prepMinutes,
       cookMinutes,
@@ -293,7 +317,6 @@ export function RecipeEditor({
       setSlug(saved.slug);
       setSlugFollows(false);
     }
-    lastSaved.current = saved;
     onSaved(saved);
     return true;
   };
@@ -315,6 +338,9 @@ export function RecipeEditor({
           ingredients,
           steps,
           categories,
+          moments,
+          difficulty,
+          cuisine,
         ])}
       >
         <label className="field">
@@ -329,36 +355,17 @@ export function RecipeEditor({
             required
           />
         </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            name="published"
-            defaultChecked={recipe.published}
-          />
-          Publicada en el sitio
-        </label>
-        <SiteLink stored={stored} siteId={siteId} siteUrl={siteUrl} />
-        {onDuplicate && stored && (
-          <div className="recipe-site-link">
-            <button
-              type="button"
-              className="button"
-              disabled={busy}
-              onClick={async () => {
-                // Saves or discards open changes first (asking), then copies what is stored.
-                if (!(await flushRef.current())) return;
-                onDuplicate(lastSaved.current);
-              }}
-            >
-              <CopySimple size={16} aria-hidden="true" />
-              Duplicar receta
-            </button>
-            <small>
-              Abre una copia como borrador. No se guarda hasta que toques
-              Guardar.
-            </small>
-          </div>
-        )}
+        <div className="publish-row">
+          <label className="check">
+            <input
+              type="checkbox"
+              name="published"
+              defaultChecked={recipe.published}
+            />
+            Publicada en el sitio
+          </label>
+          <SiteLink stored={stored} siteId={siteId} siteUrl={siteUrl} />
+        </div>
         <ImageField
           label="Foto de la receta"
           site={siteId}
@@ -411,20 +418,83 @@ export function RecipeEditor({
             if (target.name === "summary") setSummary(target.value);
           }}
         >
-          <Field
-            label="Descripción corta"
-            name="summary"
-            value={recipe.summary}
-            multiline
-            rows={2}
-            hint="Una o dos oraciones."
-          />
+          <label className="field">
+            <span>Descripción</span>
+            <textarea
+              className="recipe-summary-input"
+              name="summary"
+              defaultValue={recipe.summary}
+              rows={3}
+              maxLength={maxSummary}
+            />
+            <small>
+              Hasta {maxSummary.toLocaleString("es-AR")} caracteres (
+              {summary.length.toLocaleString("es-AR")} usados).
+            </small>
+          </label>
         </div>
+        <fieldset className="field recipe-choice">
+          <legend>Momento del día</legend>
+          <div
+            className="choice-chips"
+            role="group"
+            aria-label="Momento del día"
+          >
+            {recipeMoments.map((m) => (
+              <button
+                type="button"
+                key={m.id}
+                aria-pressed={moments.includes(m.id)}
+                onClick={() => toggleMoment(m.id)}
+              >
+                {moments.includes(m.id) && (
+                  <Check size={14} weight="bold" aria-hidden="true" />
+                )}
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <small>
+            Podés marcar varios. “Cualquier momento” va solo y la receta aparece
+            en todos los momentos.
+          </small>
+        </fieldset>
         <CategoryInput
           value={categories}
           onChange={setCategories}
           suggestions={siteCategories}
         />
+        <div className="form-grid">
+          <ComboInput
+            label="Nación"
+            name="cuisine"
+            value={cuisine}
+            onChange={setCuisine}
+            suggestions={siteCuisines}
+            maxLength={40}
+            placeholder="Argentina, Italia…"
+            createLabel="Crear nación"
+            hint="Opcional. Tocá el campo para ver las que ya existen."
+          />
+          <fieldset className="field recipe-choice">
+            <legend>Complejidad</legend>
+            <div className="choice-chips" role="group" aria-label="Complejidad">
+              {recipeDifficulties.map((d) => (
+                <button
+                  type="button"
+                  key={d.id}
+                  aria-pressed={difficulty === d.id}
+                  onClick={() =>
+                    setDifficulty(difficulty === d.id ? undefined : d.id)
+                  }
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+            <small>Tocá la elegida de nuevo para quitarla.</small>
+          </fieldset>
+        </div>
         <div className="form-grid recipe-times">
           <Field
             label="Porciones"

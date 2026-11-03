@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "@/app/admin-fields";
+import { pendingCount, type CommentStatus, type RecipeComment } from "@/lib/comments";
 import type { Recipe, RecipeInput } from "@/lib/recipes";
 import { PanelContext } from "./panel-context";
 
@@ -10,6 +11,11 @@ type Value = {
   /** Saves one recipe and returns the stored version, or null (the error is in the panel state). */
   save: (recipe: RecipeInput) => Promise<Recipe | null>;
   remove: (id: string) => Promise<boolean>;
+  /** Reader comments of the site (null until loaded). A failed read does not block the panel: the reason is in commentsError. */
+  comments: RecipeComment[] | null;
+  commentsError: string;
+  moderate: (id: string, status: CommentStatus) => Promise<boolean>;
+  removeComment: (id: string) => Promise<boolean>;
   /** Renames (or joins) a category in every recipe. Returns the outcome, or null when the request failed (the error is in the panel state). */
   renameCategory: (from: string, to: string) => Promise<{ to: string; changed: number; failed: { title: string; error: string }[] } | null>;
 };
@@ -24,6 +30,8 @@ export function useRecipes() {
 export function RecipesProvider({ siteId, children }: { siteId: string; children: ReactNode }) {
   const base = `/api/sites/${siteId}/recipes`;
   const [recipes, setRecipes] = useState<Recipe[] | null>(null);
+  const [comments, setComments] = useState<RecipeComment[] | null>(null);
+  const [commentsError, setCommentsError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -34,7 +42,12 @@ export function RecipesProvider({ siteId, children }: { siteId: string; children
       setRecipes(await api<Recipe[]>(base));
       setLoadError("");
     } catch (e) { setLoadError((e as Error).message); }
-  }, [base]);
+    // Comments load apart: if their table is missing the recipes still work.
+    try {
+      setComments(await api<RecipeComment[]>(`/api/sites/${siteId}/comments`));
+      setCommentsError("");
+    } catch (e) { setCommentsError((e as Error).message); }
+  }, [base, siteId]);
   useEffect(() => { void Promise.resolve().then(reload); }, [reload]);
   useEffect(() => {
     const refresh = () => { if (!busy && !dirty) void reload(); };
@@ -67,6 +80,31 @@ export function RecipesProvider({ siteId, children }: { siteId: string; children
       return false;
     } finally { setBusy(false); }
   }, [base]);
+  const moderate = useCallback(async (id: string, status: CommentStatus) => {
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await api<RecipeComment>(`/api/sites/${siteId}/comments/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+      setComments(list => (list ?? []).map(c => (c.id === id ? updated : c)));
+      return true;
+    } catch (e) {
+      setError((e as Error).message);
+      return false;
+    } finally { setBusy(false); }
+  }, [siteId]);
+  const removeComment = useCallback(async (id: string) => {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/sites/${siteId}/comments/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "No se pudo eliminar el comentario.");
+      setComments(list => (list ?? []).filter(c => c.id !== id));
+      return true;
+    } catch (e) {
+      setError((e as Error).message);
+      return false;
+    } finally { setBusy(false); }
+  }, [siteId]);
   const renameCategory = useCallback(async (from: string, to: string) => {
     setBusy(true);
     setError("");
@@ -79,7 +117,7 @@ export function RecipesProvider({ siteId, children }: { siteId: string; children
       return null;
     } finally { setBusy(false); }
   }, [base, reload]);
-  return <PanelContext.Provider value={{ ready: Boolean(recipes), loadError, reload, error, setError, busy, setBusy, flushRef, setDirty }}>
-    <RecipesContext.Provider value={{ recipes, save, remove, renameCategory }}>{children}</RecipesContext.Provider>
+  return <PanelContext.Provider value={{ ready: Boolean(recipes), loadError, reload, error, setError, busy, setBusy, flushRef, setDirty, badges: { comentarios: pendingCount(comments ?? []) } }}>
+    <RecipesContext.Provider value={{ recipes, save, remove, comments, commentsError, moderate, removeComment, renameCategory }}>{children}</RecipesContext.Provider>
   </PanelContext.Provider>;
 }

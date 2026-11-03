@@ -60,7 +60,7 @@ export function SaveForm({
     setStatus(success ? "saved" : "error");
     if (confirmTimer.current) clearTimeout(confirmTimer.current);
     setConfirmed(success);
-    if (success) confirmTimer.current = setTimeout(() => setConfirmed(false), 5000);
+    if (success) confirmTimer.current = setTimeout(() => setConfirmed(false), 3000);
     return success;
   }, []);
   const leave = useCallback(async (): Promise<boolean> => {
@@ -123,27 +123,6 @@ export function SaveForm({
         void submit();
       }}
     >
-      <p className={`autosave-status ${status}`} role="status">
-        {status === "dirty"
-          ? "Hay cambios sin guardar."
-          : status === "saving"
-            ? "Guardando…"
-            : status === "saved"
-              ? "Todos los cambios guardados"
-              : status === "error"
-                ? "No se guardaron los cambios. Revisá el error e intentá de nuevo."
-                : ""}
-      </p>
-      {confirmed && status === "saved" && (
-        <div className="alert success" role="status">
-          ✓ Se guardó correctamente.
-        </div>
-      )}
-      {status === "error" && error && (
-        <div className="alert error" role="alert">
-          {error}
-        </div>
-      )}
       <fieldset className="autosave-fields" disabled={status === "saving"}>
         {children}
       </fieldset>
@@ -151,6 +130,24 @@ export function SaveForm({
         <button className="button primary" type="submit" disabled={status === "saving" || paused}>
           {status === "saving" ? "Guardando…" : "Guardar"}
         </button>
+        <div className="save-feedback">
+          <p className={`autosave-status ${status}`} role="status">
+            {status === "dirty"
+              ? "Hay cambios sin guardar."
+              : status === "saving"
+                ? "Guardando…"
+                : status === "saved"
+                  ? confirmed ? "✓ Se guardó correctamente." : ""
+                  : status === "error"
+                    ? "No se guardaron los cambios."
+                    : ""}
+          </p>
+          {status === "error" && error && (
+            <p className="autosave-status error" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
       </div>
       <dialog
         ref={dialog}

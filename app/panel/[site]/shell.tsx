@@ -3,7 +3,7 @@
 import { useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSelectedLayoutSegment } from "next/navigation";
-import { ArrowSquareOut, BookOpenText, CaretUpDown, Flask, Gear, Leaf, List, SignOut, SquaresFour, Storefront, Tag, X, type Icon } from "@phosphor-icons/react";
+import { ArrowSquareOut, BookOpenText, CaretUpDown, ChartLineUp, ChatCircleText, Flask, Gear, Leaf, List, SignOut, SquaresFour, Storefront, Tag, X, type Icon } from "@phosphor-icons/react";
 import { api } from "@/app/admin-fields";
 import type { SiteKind } from "@/lib/sites";
 import { EmptyState } from "./list-tools";
@@ -23,7 +23,9 @@ const nav: Record<SiteKind, NavItem[]> = {
   recetas: [
     { path: "", label: "Resumen", icon: SquaresFour },
     { path: "recetas", label: "Recetas", icon: BookOpenText },
-    { path: "categorias", label: "Categorías", icon: Tag },
+    { path: "categorias", label: "Tipos", icon: Tag },
+    { path: "comentarios", label: "Comentarios", icon: ChatCircleText },
+    { path: "metricas", label: "Métricas", icon: ChartLineUp },
     { path: "sitio", label: "Sitio", icon: Gear },
   ],
 };
@@ -32,7 +34,7 @@ const kindLabel: Record<SiteKind, string> = { herboristeria: "Herboristería", r
 export function PanelShell({ site, sites, children }: { site: SiteSummary; sites: SiteSummary[]; children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { ready, loadError, reload, busy, flushRef, setError } = usePanel();
+  const { ready, loadError, reload, busy, flushRef, setError, badges } = usePanel();
   // Every site shares the [site] tree, so a section of another kind (/comidasdelcielo/tonicos) must not render.
   const segment = useSelectedLayoutSegment();
   const known = segment === null || nav[site.kind].some(item => item.path === segment);
@@ -76,6 +78,7 @@ export function PanelShell({ site, sites, children }: { site: SiteSummary; sites
           const href = `/${site.id}${path ? `/${path}` : ""}`;
           return <Link key={path} href={href} aria-current={current(path) ? "page" : undefined} onClick={e => void leave(href, e)}>
             <ItemIcon size={18} weight={current(path) ? "fill" : "regular"} aria-hidden="true" />{label}
+            {Boolean(badges?.[path]) && <span className="panel-nav-badge" aria-label={`${badges?.[path]} pendientes`}>{badges?.[path]}</span>}
           </Link>;
         })}
       </nav>
