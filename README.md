@@ -121,6 +121,7 @@ La URL pública de cada sitio está en `lib/sites.ts` (`url`). Si cambia el domi
 La app sirve varios sitios según el dominio (plan y estado en `docs/plataforma-multisitio.md`). Los sitios están en `lib/sites.ts`; `proxy.ts` lee el host y reescribe a `app/<tipo>/<sitio>/...`.
 
 - **Ñekurel:** `/` es la tienda, `/<producto>` y `/combos/<combo>` sus fichas, y `/equipo` el buscador del vendedor y la administración. Los links viejos `/catalogo/...` redirigen solos.
+- **Purificación y Yakuchil:** comparten el template `app/productos/[site]`: portada con búsqueda por nombre o "para qué sirve" y una página por ficha. Purificación publica productos y Yakuchil, voces sagradas; se cargan en la sección del panel con ese nombre. Lo que cambia entre ellos está en `products` de `lib/sites.ts`. En Purificación cada agua publicada debe decir si es bebible o de uso externo. Hay que agregar `purificacion.vercel.app` y `yakuchil.vercel.app` en Vercel; en desarrollo, `http://purificacion.localhost:3000`.
 - **Dominio desconocido** (localhost, la IP de la tablet, previews): se muestra `DEFAULT_SITE` (por defecto `nekurel`). En desarrollo, `http://nekurel.localhost:3000` elige el sitio por subdominio.
 - **Tablet con la app instalada:** la app abre en `/equipo`. Si una tablet ya instalada abre la tienda, quitar la app y volver a instalarla desde `/equipo`.
 - **Agregar un dominio:** sumarlo a `domains` en `lib/sites.ts`, agregarlo al proyecto en Vercel y configurar el DNS.

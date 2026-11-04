@@ -2,16 +2,16 @@
 // Its own app, separate from each site's: the panel always needs the network, so nothing is cached.
 export function GET() {
   const manifest = {
-    name: "Betayomega",
-    short_name: "Betayomega",
+    name: "BetaOmega",
+    short_name: "BetaOmega",
     description: "Panel de administración de los sitios.",
     id: "/",
     start_url: "/",
     scope: "/",
     display: "standalone",
     lang: "es-AR",
-    background_color: "#f7f8f7",
-    theme_color: "#f7f8f7",
+    background_color: "#fffefe",
+    theme_color: "#f2f2f1",
     icons: [
       { src: "/betayomega-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/betayomega-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

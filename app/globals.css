@@ -31,6 +31,20 @@
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--ink);
+  /* The panel's sidebar is written in Tailwind: these read the tokens .panel redefines. */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sidebar: var(--sidebar);
+  --color-surface-sidebar: var(--surface-sidebar);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-wash: var(--accent-wash);
 }
 
 *,

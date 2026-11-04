@@ -1,0 +1,131 @@
+/* Product sites. Standalone: globals.css (Ñekurel) is not loaded here. Everything lives under .productos.
+   Shapes: controls are full pills, photos and signs use --p-radius. --p-accent comes from lib/sites.ts. */
+body:has(.productos) { margin: 0; background: #f6f8f8; }
+.productos {
+  --p-bg: #f6f8f8;
+  --p-ink: #14211f;
+  --p-muted: #4d5c5a;
+  --p-line: #d9e0df;
+  --p-radius: 14px;
+  --p-display: var(--font-product-display), "Arial Narrow", sans-serif;
+  --p-text: var(--font-product-text), system-ui, sans-serif;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--p-bg);
+  color: var(--p-ink);
+  font-family: var(--p-text);
+  font-size: 18px;
+  line-height: 1.55;
+}
+.productos *, .productos *::before, .productos *::after { box-sizing: border-box; }
+.productos a { color: inherit; }
+.productos :focus-visible { outline: 3px solid var(--p-accent); outline-offset: 2px; }
+.productos .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.p-page { flex: 1; width: 100%; max-width: 1240px; margin: 0 auto; padding: 48px 32px 72px; }
+.productos .p-title {
+  margin: 0;
+  font-family: var(--p-display);
+  font-weight: 700;
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.p-foot { padding: 24px 32px; border-top: 1px solid var(--p-line); color: var(--p-muted); font-size: 15px; text-align: center; }
+.p-empty { margin: 32px 0 0; color: var(--p-muted); }
+/* Site actions: donating at the top right and at the end of the page, installing at the end. */
+.p-top { width: 100%; max-width: 1240px; margin: 0 auto; padding: 20px 32px 0; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.p-top + .p-page { padding-top: 12px; }
+.p-heart, .p-button { border: 0; background: var(--p-accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.p-heart { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; }
+.p-button { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 24px; border-radius: 999px; white-space: nowrap; }
+.p-heart:hover, .p-button:hover { background: color-mix(in srgb, var(--p-accent) 82%, #000); }
+.p-heart:active, .p-button:active { transform: translateY(1px); }
+.p-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px; }
+.productos .p-note { flex-basis: 100%; max-width: 480px; margin: 0; color: var(--p-ink); font-size: 15px; text-align: left; }
+.p-actions .p-note { text-align: center; margin: 0 auto; }
+
+/* Search */
+.p-search { display: block; margin-top: 32px; max-width: 640px; font-weight: 700; }
+.p-search-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 0 22px;
+  height: 60px;
+  border: 2px solid var(--p-ink);
+  border-radius: 999px;
+  background: #fff;
+}
+.p-search-box:focus-within { border-color: var(--p-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-accent) 25%, transparent); }
+.p-search-box input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; color: inherit; font: inherit; font-weight: 400; outline: none; }
+
+/* Grid */
+.p-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 40px 28px; margin: 40px 0 0; padding: 0; list-style: none; }
+.p-card { display: block; text-decoration: none; }
+.p-card h2 { margin: 14px 0 0; font-family: var(--p-display); font-weight: 700; font-size: 2.1rem; line-height: 1.05; text-transform: uppercase; overflow-wrap: anywhere; }
+.p-card:hover h2 { color: var(--p-accent); }
+.p-photo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--p-radius);
+  background: color-mix(in srgb, var(--p-accent) 10%, var(--p-bg));
+  color: var(--p-accent);
+}
+.p-photo img { object-fit: cover; }
+.p-card .p-photo img { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.p-card:hover .p-photo img { transform: scale(1.03); }
+
+/* Use sign: full colour and a heavy border, so it reads as a warning and not as a tag. */
+.productos .p-sign {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 8px 14px;
+  border: 2px solid currentColor;
+  border-radius: var(--p-radius);
+  line-height: 1.2;
+}
+.p-sign strong { display: block; font-family: var(--p-display); font-size: 1.25rem; letter-spacing: 0.02em; text-transform: uppercase; }
+.p-sign small { display: block; font-size: 14px; }
+.p-sign svg { flex: none; }
+.p-sign.is-beber { color: #075279; background: #e2f2fa; }
+.p-sign.is-piel { color: #8a2c00; background: #ffe9c7; border-width: 3px; }
+.productos .p-sign.is-large { margin: 20px 0 0; padding: 14px 20px; gap: 14px; }
+.p-sign.is-large strong { font-size: 1.9rem; }
+.p-sign.is-large small { font-size: 17px; }
+
+/* Product page */
+.p-back { margin: 0 0 28px; }
+.p-back a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 700; }
+.p-detail { display: grid; grid-template-columns: 5fr 6fr; gap: 56px; align-items: start; }
+.p-info section { margin-top: 36px; max-width: 65ch; }
+.p-info h2 { margin: 0 0 10px; font-family: var(--p-display); font-weight: 600; font-size: 1.75rem; line-height: 1.1; color: var(--p-accent); text-transform: uppercase; }
+.p-info p { margin: 0 0 12px; }
+.p-info .p-sign { margin-bottom: 0; }
+.p-keywords { margin: 0; padding: 0; list-style: none; }
+.p-keywords a { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; min-height: 40px; text-decoration: none; }
+.p-keywords a:hover { color: var(--p-accent); text-decoration: underline; }
+.p-keywords svg { flex: none; margin-top: 5px; color: var(--p-accent); }
+
+@media (max-width: 860px) {
+  .p-detail { grid-template-columns: 1fr; gap: 28px; }
+}
+@media (max-width: 640px) {
+  .p-page { padding: 32px 16px 56px; }
+  .p-top { padding: 16px 16px 0; }
+  .p-grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .p-card .p-photo img { transition: none; }
+  .p-card:hover .p-photo img { transform: none; }
+}

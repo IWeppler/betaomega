@@ -1,15 +1,22 @@
 import { isAdmin, sameOrigin } from "@/lib/auth";
 import { cleanSettings } from "@/lib/site-settings";
 import { readSiteSettings, saveSiteSettings } from "@/lib/site-store";
-import { failure, forbidden, notFound, recipeSite, type SiteParams } from "../recipes/helpers";
+import { findSite } from "@/lib/sites";
+import { failure, forbidden, notFound, type SiteParams } from "../recipes/helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** Recipe sites use every field; product sites only the donation. */
+const settingsSite = async (params: SiteParams["params"]) => {
+  const site = findSite((await params).site);
+  return site?.kind === "recetas" || site?.kind === "productos" ? site : undefined;
+};
+
 // Stored values only (empty = the template's text). The panel shows the defaults as placeholders.
 export async function GET(_request: Request, { params }: SiteParams) {
   if (!await isAdmin()) return Response.json({ error: "Ingresá como administrador." }, { status: 401 });
-  const site = await recipeSite(params);
+  const site = await settingsSite(params);
   if (!site) return notFound();
   try {
     const stored = await readSiteSettings(site.id);
@@ -19,7 +26,7 @@ export async function GET(_request: Request, { params }: SiteParams) {
 
 export async function PUT(request: Request, { params }: SiteParams) {
   if (!sameOrigin(request) || !await isAdmin()) return forbidden();
-  const site = await recipeSite(params);
+  const site = await settingsSite(params);
   if (!site) return notFound();
   try {
     const text = await request.text();
