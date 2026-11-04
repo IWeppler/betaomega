@@ -36,7 +36,7 @@ export default function ProductsPage() {
     ? <DeleteProduct product={selection.item} words={words} onCancel={() => setSelection({ item: selection.item, mode: "edit" })} onDeleted={() => setSelection(null)} />
     : selection
       ? <ProductEditor key={selection.item.id} product={selection.item} siteId={siteId} options={options} words={words}
-          onSaved={item => setSelection({ item, mode: "edit" })}
+          onSaved={() => setSelection(null)}
           onClose={() => void select(null)}
           onDelete={saved(selection.item.id) ? () => void select({ item: selection.item, mode: "delete" }) : undefined} />
       : null;
@@ -67,7 +67,8 @@ export default function ProductsPage() {
 }
 
 function ProductEditor({ product, siteId, options, words, onSaved, onClose, onDelete }: { product: Product; siteId: string; options: ProductSiteOptions; words: Words; onSaved: (item: Product) => void; onClose: () => void; onDelete?: () => void }) {
-  const { save } = useProducts();
+  const { products, save } = useProducts();
+  const suggestions = [...new Set((products ?? []).flatMap(p => p.keywords))].sort((a, b) => a.localeCompare(b, "es"));
   const { busy, setBusy, error, flushRef } = usePanel();
   const [image, setImage] = useState(product.image ?? "");
   const [keywords, setKeywords] = useState(product.keywords);
@@ -100,7 +101,7 @@ function ProductEditor({ product, siteId, options, words, onSaved, onClose, onDe
         </label>)}
         <small>Se muestra como aviso en la tarjeta y en la página {words.ofThe}.</small>
       </fieldset>}
-      <KeywordInput value={keywords} onChange={setKeywords} />
+      <KeywordInput value={keywords} onChange={setKeywords} suggestions={suggestions} />
       <label className="check"><input type="checkbox" name="published" defaultChecked={product.published} />{words.Published} en el sitio</label>
     </SaveForm>
   </EditorFrame>;
