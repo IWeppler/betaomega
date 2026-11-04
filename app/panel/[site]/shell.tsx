@@ -3,7 +3,7 @@
 import { useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSelectedLayoutSegment } from "next/navigation";
-import { ArrowSquareOut, BookOpenText, CaretUpDown, ChartLineUp, ChatCircleText, Flask, Gear, Leaf, List, SignOut, SquaresFour, Storefront, Tag, X, type Icon } from "@phosphor-icons/react";
+import { ArrowSquareOut, BookOpenText, CaretUpDown, ChartLineUp, ChatCircleText, Flask, Gear, Leaf, List, Package, SignOut, SquaresFour, Storefront, Tag, X, type Icon } from "@phosphor-icons/react";
 import { api } from "@/app/admin-fields";
 import type { SiteKind } from "@/lib/sites";
 import { EmptyState } from "./list-tools";
@@ -28,8 +28,13 @@ const nav: Record<SiteKind, NavItem[]> = {
     { path: "metricas", label: "Métricas", icon: ChartLineUp },
     { path: "sitio", label: "Sitio", icon: Gear },
   ],
+  productos: [
+    { path: "", label: "Resumen", icon: SquaresFour },
+    { path: "productos", label: "Productos", icon: Package },
+    { path: "sitio", label: "Sitio", icon: Gear },
+  ],
 };
-const kindLabel: Record<SiteKind, string> = { herboristeria: "Herboristería", recetas: "Recetas" };
+const kindLabel: Record<SiteKind, string> = { herboristeria: "Herboristería", recetas: "Recetas", productos: "Productos" };
 
 export function PanelShell({ site, sites, children }: { site: SiteSummary; sites: SiteSummary[]; children: ReactNode }) {
   const router = useRouter();
@@ -56,12 +61,12 @@ export function PanelShell({ site, sites, children }: { site: SiteSummary; sites
   return <div className="panel-shell" data-menu={open ? "open" : undefined}>
     <header className="panel-topbar">
       <button className="panel-icon-button" aria-label="Abrir menú" aria-expanded={open} aria-controls="panel-sidebar" onClick={() => setOpen(true)}><List size={20} aria-hidden="true" /></button>
-      <span className="panel-wordmark">Betayomega</span>
+      <span className="panel-wordmark">BetaOmega</span>
       <span className="panel-topbar-site">{site.name}</span>
     </header>
     <aside id="panel-sidebar" className="panel-sidebar" aria-label="Navegación del panel">
       <div className="panel-sidebar-head">
-        <span className="panel-wordmark">Betayomega</span>
+        <span className="panel-wordmark">BetaOmega</span>
         <button className="panel-icon-button panel-close" aria-label="Cerrar menú" onClick={() => setOpen(false)}><X size={20} aria-hidden="true" /></button>
       </div>
       <label className="panel-site-switch">

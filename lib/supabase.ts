@@ -32,3 +32,23 @@ export async function readDocument(documentKey: string): Promise<unknown> {
   const rows = await response.json() as { data: unknown }[];
   return rows[0]?.data ?? null;
 }
+
+/**
+ * Creates the document (revision 0) or updates it if nobody saved since `revision`; false means somebody did.
+ * No SQL function needed: the revision filter and the update are one REST statement.
+ */
+export async function saveDocument(documentKey: string, data: unknown, revision: number): Promise<boolean> {
+  const headers = { "Content-Type": "application/json", Accept: "application/json", Prefer: "return=representation" };
+  const next = revision + 1;
+  try {
+    const response = revision === 0
+      ? await supabase("/rest/v1/app_data", { method: "POST", headers, body: JSON.stringify({ key: documentKey, data, revision: next }) })
+      : await supabase(`/rest/v1/app_data?key=eq.${encodeURIComponent(documentKey)}&revision=eq.${revision}`, { method: "PATCH", headers, body: JSON.stringify({ data, revision: next, updated_at: new Date().toISOString() }) });
+    if (response.status === 404) throw new SupabaseError("Falta la tabla app_data en Supabase.");
+    return (await response.json() as unknown[]).length > 0;
+  } catch (error) {
+    // 23505: the first save raced with another first save.
+    if (error instanceof SupabaseError && error.message.includes("23505")) return false;
+    throw error;
+  }
+}

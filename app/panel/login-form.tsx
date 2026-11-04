@@ -23,7 +23,7 @@ export function LoginForm() {
   };
   return <main className="panel-login">
     <div className="panel-login-card">
-      <p className="panel-wordmark">Betayomega</p>
+      <p className="panel-wordmark">BetaOmega</p>
       <h1>Ingresar al panel</h1>
       <p className="panel-muted">Administrá todos tus sitios desde un solo lugar.</p>
       <form onSubmit={submit}>

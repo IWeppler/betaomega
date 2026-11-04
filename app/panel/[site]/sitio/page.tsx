@@ -8,12 +8,15 @@ import {
   recipeSiteDefaults,
   type SiteSettings,
 } from "@/lib/site-settings";
+import { findSite } from "@/lib/sites";
 import { usePanel } from "../panel-context";
 import { PageHeader } from "../shell";
 import { useParams } from "next/navigation";
 
 export default function SitePage() {
   const { site } = useParams<{ site: string }>();
+  // Product sites only use the donation for now.
+  const onlyDonation = findSite(site)?.kind === "productos";
   const { busy, setBusy, error, setError, flushRef } = usePanel();
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -69,7 +72,7 @@ export default function SitePage() {
     <>
       <PageHeader
         title="Sitio"
-        description="Textos y contacto que se ven en el sitio público. Los colores y las tipografías no se editan acá."
+        description={onlyDonation ? "El botón de donar del sitio público." : "Textos y contacto que se ven en el sitio público. Los colores y las tipografías no se editan acá."}
       />
       {loadError && (
         <div className="alert error" role="alert">
@@ -91,6 +94,7 @@ export default function SitePage() {
             onSave={submit}
             changes=""
           >
+            {!onlyDonation && <>
             <Field
               label="Lema"
               name="tagline"
@@ -119,6 +123,7 @@ export default function SitePage() {
                 hint="Un mail o un WhatsApp con código de país (+54 9 11 5555 1234). Opcional."
               />
             </div>
+            </>}
             <Field
               label="Donaciones (Mercado Pago)"
               name="donation"
@@ -126,7 +131,7 @@ export default function SitePage() {
               hint="Un enlace de pago como por ejemplo: https://link.mercadopago.com.ar/betayomega. Vacío: se oculta el botón de donar."
             />
             <p className="panel-muted">
-              Instagram, contacto y donaciones aparecen en el pie del sitio. Los
+              {onlyDonation ? "El botón aparece arriba y en el pie del sitio." : "Instagram, contacto y donaciones aparecen en el pie del sitio."} Los
               cambios se ven al recargar, sin desplegar.
             </p>
           </SaveForm>

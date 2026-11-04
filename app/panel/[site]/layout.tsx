@@ -3,6 +3,7 @@ import { isAdmin } from "@/lib/auth";
 import { findSite, sites } from "@/lib/sites";
 import { LoginForm } from "../login-form";
 import { CatalogProvider } from "./catalog-context";
+import { ProductsProvider } from "./products-context";
 import { RecipesProvider } from "./recipes-context";
 import { PanelShell } from "./shell";
 
@@ -16,5 +17,7 @@ export default async function SitePanelLayout({ children, params }: { children: 
   const summary = ({ id, name, kind, url }: typeof site) => ({ id, name, kind, url });
   const shell = <PanelShell site={summary(site)} sites={sites.map(summary)}>{children}</PanelShell>;
   // Each kind of site loads its own data; the shell and the list tools read it through PanelContext.
+  // The key drops the loaded list on a site change, so one site's products can never be saved into another.
+  if (site.kind === "productos") return <ProductsProvider key={site.id} siteId={site.id}>{shell}</ProductsProvider>;
   return site.kind === "recetas" ? <RecipesProvider siteId={site.id}>{shell}</RecipesProvider> : <CatalogProvider>{shell}</CatalogProvider>;
 }

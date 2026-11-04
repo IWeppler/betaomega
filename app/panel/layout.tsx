@@ -8,10 +8,10 @@ import { RegisterPanelServiceWorker } from "./register-panel-sw";
 const geist = Geist({ subsets: ["latin"], display: "swap", variable: "--font-geist" });
 
 export const metadata: Metadata = {
-  title: { default: "Betayomega", template: "%s | Betayomega" },
+  title: { default: "BetaOmega", template: "%s | BetaOmega" },
   robots: { index: false, follow: false },
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "Betayomega", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "BetaOmega", statusBarStyle: "default" },
   icons: { apple: "/betayomega-icon-192.png" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f7f8f7" };

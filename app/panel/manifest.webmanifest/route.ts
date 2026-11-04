@@ -2,8 +2,8 @@
 // Its own app, separate from each site's: the panel always needs the network, so nothing is cached.
 export function GET() {
   const manifest = {
-    name: "Betayomega",
-    short_name: "Betayomega",
+    name: "BetaOmega",
+    short_name: "BetaOmega",
     description: "Panel de administración de los sitios.",
     id: "/",
     start_url: "/",

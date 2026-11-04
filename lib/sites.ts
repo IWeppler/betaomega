@@ -1,5 +1,16 @@
 // Every public site the platform serves. proxy.ts imports this, so keep it free of server-only code.
-export type SiteKind = "herboristeria" | "recetas";
+export type SiteKind = "herboristeria" | "recetas" | "productos";
+/** What changes between product sites (kind "productos"). */
+export type ProductSiteOptions = {
+  /** Heading of the description, in the panel and on the public page. */
+  descriptionLabel: string;
+  /** Each product must say whether it is for drinking or for the skin, and the public pages show it as a warning sign. */
+  application: boolean;
+  /** Accent colour of the public site. It must keep 4.5:1 contrast with white text. */
+  accent: string;
+  /** Icon files in public/: with transparent corners, and full bleed for Android and Apple. Without them, /icon draws the site's initial. */
+  icon?: { any: string; maskable: string };
+};
 export type Site = {
   id: string;
   kind: SiteKind;
@@ -10,12 +21,16 @@ export type Site = {
   url: string;
   /** Key of the catalogue document in app_data. Herboristerías only: recipe sites use the recipes table. */
   catalogKey?: string;
+  /** Product sites only. */
+  products?: ProductSiteOptions;
 };
 
 export const sites: Site[] = [
   { id: "nekurel", kind: "herboristeria", name: "Ñekurel", domains: ["nekurel.com", "nekurel.vercel.app", "nekurel.localhost"], url: "https://nekurel.vercel.app", catalogKey: "catalog" },
   // No own domain yet: add it to `domains` and `url` once it is bought.
   { id: "comidasdelcielo", kind: "recetas", name: "Comidas del cielo", domains: ["comidasdelcielo.vercel.app", "comidasdelcielo.localhost"], url: "https://comidasdelcielo.vercel.app" },
+  { id: "purificacion", kind: "productos", name: "Purificación", domains: ["purificacion.vercel.app", "purificacion.localhost"], url: "https://purificacion.vercel.app", products: { descriptionLabel: "Cómo se obtiene", application: true, accent: "#0b6e99", icon: { any: "/purificacion-icon.png", maskable: "/purificacion-icon-maskable.png" } } },
+  { id: "yakuchil", kind: "productos", name: "Yakuchil", domains: ["yakuchil.vercel.app", "yakuchil.localhost"], url: "https://yakuchil.vercel.app", products: { descriptionLabel: "Descripción", application: false, accent: "#1f6f50" } },
 ];
 
 export const findSite = (id: string) => sites.find(site => site.id === id);
