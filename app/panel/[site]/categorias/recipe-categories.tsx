@@ -4,7 +4,8 @@ import { useState } from "react";
 import { GitMerge, PencilSimple, Tag } from "@phosphor-icons/react";
 import { categoryKey, categoryUsage } from "@/lib/recipes";
 import { EditorFrame } from "../editors";
-import { EmptyState } from "../list-tools";
+import { EmptyState, Paged } from "../list-tools";
+import { SideSheet } from "../sheet";
 import { usePanel } from "../panel-context";
 import { useRecipes } from "../recipes-context";
 import { PageHeader } from "../shell";
@@ -69,11 +70,11 @@ export function RecipeCategories() {
       {outcome.text}
       {outcome.failed.length > 0 && <> No se pudieron actualizar:<ul>{outcome.failed.map(f => <li key={f.title}>{f.title}: {f.error}</li>)}</ul>Repetí la acción para reintentar.</>}
     </div>}
-    <div className="panel-split" data-open={side ? "true" : undefined}>
+    <div>
       <section className="panel-card panel-list" aria-label="Lista de tipos">
-        {usage.length > 0 ? <table className="panel-table">
+        {usage.length > 0 ? <Paged rows={usage} resetKey={""}>{shown => <table className="panel-table">
           <thead><tr><th scope="col">Tipo</th><th scope="col" className="is-num">Publicadas</th><th scope="col" className="is-num">Borradores</th><th scope="col"><span className="sr-only">Acciones</span></th></tr></thead>
-          <tbody>{usage.map(u => <tr key={u.label} aria-selected={action?.from === u.label}>
+          <tbody>{shown.map(u => <tr key={u.label} aria-selected={action?.from === u.label}>
             <th scope="row"><span className="panel-row-label"><Tag size={16} aria-hidden="true" />{u.label}</span></th>
             <td className="is-num">{u.published}</td>
             <td className="is-num">{u.drafts}</td>
@@ -82,9 +83,9 @@ export function RecipeCategories() {
               <button className="button" disabled={busy || usage.length < 2} onClick={() => open({ from: u.label, mode: "merge" })}><GitMerge size={16} aria-hidden="true" />Juntar</button>
             </div></td>
           </tr>)}</tbody>
-        </table> : <EmptyState title="Todavía no hay tipos" text="Aparecen cuando agregás tipos a una receta." />}
+        </table>}</Paged> : <EmptyState title="Todavía no hay tipos" text="Aparecen cuando agregás tipos a una receta." />}
       </section>
-      <div className="panel-side">{side ?? <EmptyState title="Elegí una acción" text="Renombrá un tipo o juntalo con otro para que las recetas queden ordenadas." />}</div>
+      <SideSheet onClose={close}>{side}</SideSheet>
     </div>
   </>;
 }

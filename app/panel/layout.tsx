@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "BetaOmega", statusBarStyle: "default" },
   icons: { apple: "/betayomega-icon-192.png" },
 };
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f7f8f7" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f2f2f1" };
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   return <div className={`panel ${geist.variable}`}>{children}<RegisterPanelServiceWorker /></div>;

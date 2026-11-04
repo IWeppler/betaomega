@@ -8,7 +8,7 @@ import { searchProducts, type Product } from "@/lib/products";
 import { ApplicationSign } from "./application-sign";
 
 /** Search box and grid. The search stays in the address (?q=), so the "para qué sirve" links and shared searches open it filled in. */
-export function ProductBrowser({ products, initialQuery }: { products: Product[]; initialQuery: string }) {
+export function ProductBrowser({ products, initialQuery, one, many }: { products: Product[]; initialQuery: string; one: string; many: string }) {
   const [query, setQuery] = useState(initialQuery);
   const results = searchProducts(products, query);
   const change = (value: string) => {
@@ -25,7 +25,7 @@ export function ProductBrowser({ products, initialQuery }: { products: Product[]
         <input type="search" value={query} onChange={e => change(e.target.value)} autoComplete="off" />
       </span>
     </label>
-    <p className="sr-only" role="status">{results.length === 1 ? "1 producto" : `${results.length} productos`}</p>
+    <p className="sr-only" role="status">{results.length === 1 ? `1 ${one}` : `${results.length} ${many}`}</p>
     {results.length > 0
       ? <ul className="p-grid">
         {results.map(product => <li key={product.id}>
@@ -40,6 +40,6 @@ export function ProductBrowser({ products, initialQuery }: { products: Product[]
           <ApplicationSign application={product.application} />
         </li>)}
       </ul>
-      : <p className="p-empty">No encontramos productos para “{query.trim()}”. Probá con otra palabra.</p>}
+      : <p className="p-empty">No encontramos {many} para “{query.trim()}”. Probá con otra palabra.</p>}
   </>;
 }

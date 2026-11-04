@@ -16,10 +16,12 @@ import { findSite } from "@/lib/sites";
 import { EditorFrame } from "../editors";
 import {
   EmptyState,
+  Paged,
   SearchBox,
   useNewFromLink,
   useSelection,
 } from "../list-tools";
+import { SideSheet } from "../sheet";
 import { usePanel } from "../panel-context";
 import { RecipeEditor } from "../recipe-editor";
 import { useRecipes } from "../recipes-context";
@@ -88,7 +90,7 @@ export default function RecipesPage() {
           </button>
         }
       />
-      <div className="panel-split" data-open={side ? "true" : undefined}>
+      <div>
         <section
           className="panel-card panel-list"
           aria-label="Lista de recetas"
@@ -112,7 +114,7 @@ export default function RecipesPage() {
             )}
           </div>
           {rows.length > 0 && (
-            <table className="panel-table">
+            <Paged rows={rows} resetKey={`${filter}|${view ?? ""}`}>{(shown) => <table className="panel-table">
               <thead>
                 <tr>
                   <th scope="col">Nombre</th>
@@ -123,7 +125,7 @@ export default function RecipesPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((item) => (
+                {shown.map((item) => (
                   <tr
                     key={item.id}
                     aria-selected={selection?.item.id === item.id}
@@ -157,7 +159,7 @@ export default function RecipesPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table>}</Paged>
           )}
           {!rows.length && (
             <EmptyState
@@ -178,14 +180,7 @@ export default function RecipesPage() {
             />
           )}
         </section>
-        <div className="panel-side">
-          {side ?? (
-            <EmptyState
-              title="Elegí una receta"
-              text="Seleccioná una receta de la lista para editarla, o creá una nueva."
-            />
-          )}
-        </div>
+        <SideSheet onClose={() => void select(null)}>{side}</SideSheet>
       </div>
     </>
   );

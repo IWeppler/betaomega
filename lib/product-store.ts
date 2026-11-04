@@ -20,6 +20,6 @@ export async function listPublishedProducts(site: Site): Promise<Product[]> {
 export async function saveProducts(site: Site, value: unknown): Promise<ProductList> {
   const list = cleanProductList(value, rules(site));
   const next = { ...list, revision: list.revision + 1 };
-  if (!await saveDocument(productsKey(site.id), next, list.revision)) throw new ProductConflictError("Otra persona modificó los productos. Recargá la página antes de guardar.");
+  if (!await saveDocument(productsKey(site.id), next, list.revision)) throw new ProductConflictError("Otra persona hizo cambios en este sitio. Recargá la página antes de guardar.");
   return next;
 }

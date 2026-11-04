@@ -10,8 +10,8 @@ export function GET() {
     scope: "/",
     display: "standalone",
     lang: "es-AR",
-    background_color: "#f7f8f7",
-    theme_color: "#f7f8f7",
+    background_color: "#fffefe",
+    theme_color: "#f2f2f1",
     icons: [
       { src: "/betayomega-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/betayomega-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

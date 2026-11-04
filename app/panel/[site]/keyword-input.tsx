@@ -30,6 +30,6 @@ export function KeywordInput({ value, onChange }: { value: string[]; onChange: (
         }}
         onBlur={() => add(draft)} />
     </div>
-    <small id={`${id}-hint`}>Enter o coma para agregar. En el sitio público, la gente encuentra el producto buscando estas frases.</small>
+    <small id={`${id}-hint`}>Enter o coma para agregar. En el sitio público, la gente lo encuentra buscando estas frases.</small>
   </div>;
 }

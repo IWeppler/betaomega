@@ -34,7 +34,7 @@ export default async function ProductPage({ params }: Props) {
   let found;
   try { found = await find(params); } catch (error) {
     console.error("[productos/slug] read failed:", error);
-    return <main className="p-page"><p className="p-empty" role="alert">No se pudo cargar el producto. Intentá de nuevo en unos minutos.</p></main>;
+    return <main className="p-page"><p className="p-empty" role="alert">No se pudo cargar esta página. Intentá de nuevo en unos minutos.</p></main>;
   }
   const { site, product } = found;
   if (!site?.products || !product) notFound();

@@ -2,6 +2,8 @@
 export type SiteKind = "herboristeria" | "recetas" | "productos";
 /** What changes between product sites (kind "productos"). */
 export type ProductSiteOptions = {
+  /** What the site calls what it publishes, in lower case. `productWords` (lib/products.ts) builds the phrases. */
+  items: { one: string; many: string; feminine: boolean };
   /** Heading of the description, in the panel and on the public page. */
   descriptionLabel: string;
   /** Each product must say whether it is for drinking or for the skin, and the public pages show it as a warning sign. */
@@ -21,6 +23,8 @@ export type Site = {
   url: string;
   /** Key of the catalogue document in app_data. Herboristerías only: recipe sites use the recipes table. */
   catalogKey?: string;
+  /** App icon in public/, shown in the panel's site switcher. Without it, the switcher shows the site's initial. */
+  panelIcon?: string;
   /** Product sites only. */
   products?: ProductSiteOptions;
 };
@@ -28,9 +32,9 @@ export type Site = {
 export const sites: Site[] = [
   { id: "nekurel", kind: "herboristeria", name: "Ñekurel", domains: ["nekurel.com", "nekurel.vercel.app", "nekurel.localhost"], url: "https://nekurel.vercel.app", catalogKey: "catalog" },
   // No own domain yet: add it to `domains` and `url` once it is bought.
-  { id: "comidasdelcielo", kind: "recetas", name: "Comidas del cielo", domains: ["comidasdelcielo.vercel.app", "comidasdelcielo.localhost"], url: "https://comidasdelcielo.vercel.app" },
-  { id: "purificacion", kind: "productos", name: "Purificación", domains: ["purificacion.vercel.app", "purificacion.localhost"], url: "https://purificacion.vercel.app", products: { descriptionLabel: "Cómo se obtiene", application: true, accent: "#0b6e99", icon: { any: "/purificacion-icon.png", maskable: "/purificacion-icon-maskable.png" } } },
-  { id: "yakuchil", kind: "productos", name: "Yakuchil", domains: ["yakuchil.vercel.app", "yakuchil.localhost"], url: "https://yakuchil.vercel.app", products: { descriptionLabel: "Descripción", application: false, accent: "#1f6f50" } },
+  { id: "comidasdelcielo", kind: "recetas", name: "Comidas del cielo", domains: ["comidasdelcielo.vercel.app", "comidasdelcielo.localhost"], url: "https://comidasdelcielo.vercel.app", panelIcon: "/comidasdelcielo-icon.png" },
+  { id: "purificacion", kind: "productos", name: "Purificación", domains: ["purificacion.vercel.app", "purificacion.localhost"], url: "https://purificacion.vercel.app", panelIcon: "/purificacion-icon.png", products: { items: { one: "agua", many: "aguas", feminine: true }, descriptionLabel: "Cómo se obtiene", application: true, accent: "#0b6e99", icon: { any: "/purificacion-icon.png", maskable: "/purificacion-icon-maskable.png" } } },
+  { id: "yakuchil", kind: "productos", name: "Yakuchil", domains: ["yakuchil.vercel.app", "yakuchil.localhost"], url: "https://yakuchil.vercel.app", products: { items: { one: "voz sagrada", many: "voces sagradas", feminine: true }, descriptionLabel: "Descripción", application: false, accent: "#1f6f50" } },
 ];
 
 export const findSite = (id: string) => sites.find(site => site.id === id);

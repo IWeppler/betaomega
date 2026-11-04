@@ -15,7 +15,7 @@ type Props = { params: Promise<{ site: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const site = await productSite(params);
   if (!site) return {};
-  const description = siteDescription(site.name);
+  const description = siteDescription(site);
   const image = { url: "/og", width: 1200, height: 630, alt: site.name };
   return {
     metadataBase: new URL(site.url),

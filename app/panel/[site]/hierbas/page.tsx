@@ -5,9 +5,10 @@ import { Leaf, Plus } from "@phosphor-icons/react";
 import { newHerb } from "@/app/admin-fields";
 import { formatPrice, normalize, type Plant } from "@/lib/catalog";
 import { useCatalog } from "../catalog-context";
+import { SideSheet } from "../sheet";
 import { PageHeader } from "../shell";
 import { deleteBlocker, DeleteConfirm, HerbEditor } from "../editors";
-import { EmptyState, SearchBox, StatusBadges, useNewFromLink, useSelection } from "../list-tools";
+import { EmptyState, Paged, SearchBox, StatusBadges, useNewFromLink, useSelection } from "../list-tools";
 
 export default function HerbsPage() {
   const { catalog, busy } = useCatalog();
@@ -25,21 +26,21 @@ export default function HerbsPage() {
     <PageHeader title="Hierbas" description={`${catalog.plants.length} hierbas. Las que se usan en un tónico no se pueden eliminar.`} actions={
       <button className="button primary" disabled={busy} onClick={() => void select({ item: newHerb(""), mode: "edit" })}><Plus size={16} aria-hidden="true" />Nueva hierba</button>
     } />
-    <div className="panel-split" data-open={side ? "true" : undefined}>
+    <div>
       <section className="panel-card panel-list" aria-label="Lista de hierbas">
         <div className="panel-list-tools"><SearchBox value={filter} onChange={setFilter} label="Buscar una hierba" /></div>
-        {rows.length > 0 && <table className="panel-table">
+        {rows.length > 0 && <Paged rows={rows} resetKey={filter}>{shown => <table className="panel-table">
           <thead><tr><th scope="col">Nombre</th><th scope="col" className="is-hide-sm">Nombre científico</th><th scope="col" className="is-num">Tónicos</th><th scope="col" className="is-num">Precio</th></tr></thead>
-          <tbody>{rows.map(plant => <tr key={plant.id} aria-selected={selection?.item.id === plant.id}>
+          <tbody>{shown.map(plant => <tr key={plant.id} aria-selected={selection?.item.id === plant.id}>
             <th scope="row"><button className="panel-row-button" disabled={busy} onClick={() => void select({ item: plant, mode: "edit" })}><Leaf size={16} aria-hidden="true" /><span>{plant.name}</span><StatusBadges item={plant} /></button></th>
             <td className="is-hide-sm panel-italic">{plant.scientificName || <span className="panel-muted">Sin cargar</span>}</td>
             <td className="is-num">{used(plant)}</td>
             <td className="is-num">{formatPrice(plant) || <span className="panel-muted">Sin precio</span>}</td>
           </tr>)}</tbody>
-        </table>}
+        </table>}</Paged>}
         {!rows.length && <EmptyState title={filter ? "No encontramos esa hierba" : "Todavía no hay hierbas"} text={filter ? "Probá con otro nombre." : "Creá una hierba o agregala al armar un tónico."} />}
       </section>
-      <div className="panel-side">{side ?? <EmptyState title="Elegí una hierba" text="Seleccioná una hierba de la lista para editarla, o creá una nueva." />}</div>
+      <SideSheet onClose={() => void select(null)}>{side}</SideSheet>
     </div>
   </>;
 }

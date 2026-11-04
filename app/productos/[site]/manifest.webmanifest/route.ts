@@ -8,7 +8,7 @@ export async function GET(_request: Request, context: { params: Promise<{ site: 
   const manifest = {
     name: site.name,
     short_name: site.name,
-    description: siteDescription(site.name),
+    description: siteDescription(site),
     id: "/",
     start_url: "/",
     scope: "/",

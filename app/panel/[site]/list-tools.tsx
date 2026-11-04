@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowSquareOut, MagnifyingGlass, type Icon } from "@phosphor-icons/react";
+import { ArrowSquareOut, CaretLeft, CaretRight, MagnifyingGlass, type Icon } from "@phosphor-icons/react";
 import type { Plant, Preparation } from "@/lib/catalog";
 import { usePanel } from "./panel-context";
 
@@ -67,4 +67,26 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
       })}
     </ul>
   </section>;
+}
+
+export const PAGE_SIZE = 12;
+
+/** Shows `rows` a page at a time under the table `children` draws. Going back to page 1 when `resetKey` (the search or view) changes. */
+export function Paged<T>({ rows, resetKey, children }: { rows: T[]; resetKey: string; children: (shown: T[]) => ReactNode }) {
+  const [state, setState] = useState({ page: 0, key: resetKey });
+  const pages = Math.ceil(rows.length / PAGE_SIZE);
+  const page = Math.min(state.key === resetKey ? state.page : 0, pages - 1);
+  const first = page * PAGE_SIZE;
+  const go = (next: number) => setState({ page: next, key: resetKey });
+  return <>
+    {children(rows.slice(first, first + PAGE_SIZE))}
+    {pages > 1 && <nav className="panel-pager" aria-label="Paginación">
+      <span aria-live="polite">{first + 1}–{Math.min(first + PAGE_SIZE, rows.length)} de {rows.length}</span>
+      <div>
+        <button className="button" disabled={page === 0} onClick={() => go(page - 1)}><CaretLeft size={14} aria-hidden="true" />Anterior</button>
+        <span>Página {page + 1} de {pages}</span>
+        <button className="button" disabled={page >= pages - 1} onClick={() => go(page + 1)}>Siguiente<CaretRight size={14} aria-hidden="true" /></button>
+      </div>
+    </nav>}
+  </>;
 }

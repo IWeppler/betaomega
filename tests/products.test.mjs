@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanKeywords, cleanProductList, productApplications, searchProducts } from '../lib/products.ts';
+import { cleanKeywords, cleanProductList, productApplications, productWords, searchProducts } from '../lib/products.ts';
 import { findSite, siteForHost, sites } from '../lib/sites.ts';
 
 const water = { application: true, descriptionLabel: 'Cómo se obtiene' };
@@ -15,6 +15,20 @@ test('Purificación y Yakuchil son sitios de productos con su propio dominio', (
   assert.equal(findSite('yakuchil').products.application, false);
   assert.equal(findSite('purificacion').products.icon.any, '/purificacion-icon.png');
   for (const site of sites) assert.equal(site.kind === 'productos', Boolean(site.products), site.id);
+});
+
+test('cada sitio nombra lo que publica con su propia palabra', () => {
+  const voices = productWords(findSite('yakuchil').products.items);
+  assert.equal(voices.Many, 'Voces sagradas');
+  assert.equal(voices.new, 'Nueva voz sagrada');
+  assert.equal(voices.firstMany, 'las primeras voces sagradas');
+  assert.equal(voices.ofThe, 'de la voz sagrada');
+  assert.equal(voices.Published, 'Publicada');
+  const items = productWords(findSite('purificacion').products.items);
+  assert.equal(items.Many, 'Aguas');
+  assert.equal(items.new, 'Nueva agua');
+  assert.equal(items.ofThe, 'del agua');
+  assert.equal(items.PublishedMany, 'Publicadas');
 });
 
 test('un agua publicada tiene que decir si se bebe o va en la piel', () => {
@@ -47,7 +61,7 @@ test('valida la imagen y descarta campos desconocidos', () => {
 
 test('las direcciones son únicas, estables y no pisan rutas del sitio', () => {
   const { products } = cleanProductList(list(item(), item({ id: 'b' }), item({ id: 'c', name: 'Icon' })), plain);
-  assert.deepEqual(products.map(p => p.slug), ['agua-de-lluvia', 'agua-de-lluvia-2', 'icon-producto']);
+  assert.deepEqual(products.map(p => p.slug), ['agua-de-lluvia', 'agua-de-lluvia-2', 'icon-2']);
   const renamed = cleanProductList(list(item({ name: 'Otro nombre', slug: 'agua-de-lluvia' })), plain);
   assert.equal(renamed.products[0].slug, 'agua-de-lluvia');
   assert.throws(() => cleanProductList(list(item({ slug: 'og' })), plain), /Dirección/);

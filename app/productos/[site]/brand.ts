@@ -21,4 +21,4 @@ export const getDonation = cache(async (siteId: string) => {
   }
 });
 
-export const siteDescription = (name: string) => `${name}. Buscá productos por nombre o para qué sirve.`;
+export const siteDescription = (site: Site) => `${site.name}. Buscá ${site.products?.items.many} por nombre o para qué sirve.`;
