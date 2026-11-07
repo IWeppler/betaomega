@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowRight, CheckCircle, Flask, Leaf, Storefront, Tag, WarningCircle } from "@phosphor-icons/react";
-import { findSite } from "@/lib/sites";
+import { useSite } from "./panel-context";
 import { brokenCombos, effectivePrice, isComboInStore, isInStore, storeToday } from "@/lib/catalog";
 import { useCatalog } from "./catalog-context";
 import { QuickActions, type QuickAction } from "./list-tools";
@@ -13,6 +13,7 @@ import { InstallPanelButton } from "./install-panel";
 export function HerbSummary() {
   const { catalog } = useCatalog();
   const { site } = useParams<{ site: string }>();
+  const { url: storeUrl } = useSite();
   if (!catalog) return null;
   const today = storeToday();
   const products = [...catalog.preparations, ...catalog.plants];
@@ -37,7 +38,6 @@ export function HerbSummary() {
     { label: "Hierbas", value: catalog.plants.length, note: `${catalog.plants.filter(p => isInStore(catalog, p)).length} en la tienda` },
     { label: "Ofertas vigentes", value: offers.length, note: `${combos.length} combos a la venta` },
   ];
-  const storeUrl = findSite(site)?.url;
   const actions: QuickAction[] = [
     { label: "Nuevo tónico", text: "Cargar una preparación", href: href("tonicos?nuevo"), icon: Flask },
     { label: "Nueva hierba", text: "Sumar una planta al catálogo", href: href("hierbas?nuevo"), icon: Leaf },

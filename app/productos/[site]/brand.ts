@@ -2,11 +2,12 @@ import { cache } from "react";
 import { listPublishedProducts } from "@/lib/product-store";
 import { defaultDonation, effectiveSettings } from "@/lib/site-settings";
 import { readSiteSettings } from "@/lib/site-store";
-import { findSite, type Site } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
+import type { Site } from "@/lib/sites";
 
 /** The site of a product route, or undefined when the id is unknown or belongs to another kind of site. */
 export const productSite = async (params: Promise<{ site: string }>) => {
-  const site = findSite((await params).site);
+  const site = await getSite((await params).site);
   return site?.kind === "productos" ? site : undefined;
 };
 

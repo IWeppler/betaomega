@@ -28,6 +28,7 @@ import { Screen } from "@/app/screen";
 import { CategoryPicker } from "@/app/category-picker";
 import { CategoryImageEditor } from "@/app/category-images";
 import { AvoidSelector } from "@/app/avoid-selector";
+import { Toaster } from "@/shared/ui/toast";
 import { SaveForm } from "@/app/save-form";
 import { StoreTab } from "@/app/store-tab";
 import { api, blankTonic, Field, newHerb, parsePrice, PriceFields, proportions, splitTags } from "@/app/admin-fields";
@@ -1305,6 +1306,7 @@ export default function Home() {
         />
       )}
       {!adminWorkspace && deletePanel}
+      <Toaster />
     </>
   );
 }

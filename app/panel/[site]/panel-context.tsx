@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, type MutableRefObject } from "react";
+import type { SiteSummary } from "./site-switcher";
 
 /** What the shell and the list tools need from any site's data provider (catalogue, recipes…). */
 export type PanelState = {
@@ -24,5 +25,13 @@ export const PanelContext = createContext<PanelState | null>(null);
 export function usePanel() {
   const value = useContext(PanelContext);
   if (!value) throw new Error("usePanel fuera del panel");
+  return value;
+}
+
+/** The site being managed, as the server's registry describes it. Set by the shell, so pages never need the site list themselves. */
+export const SiteContext = createContext<SiteSummary | null>(null);
+export function useSite() {
+  const value = useContext(SiteContext);
+  if (!value) throw new Error("useSite fuera del panel");
   return value;
 }

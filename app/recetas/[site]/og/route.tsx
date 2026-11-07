@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import sharp from "sharp";
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 import { brand, getRecipes, getSettings } from "../brand";
 
 // Social preview, 1200 × 630. Without ?receta= it is the site's card (logo + name); with the slug of a
@@ -26,7 +26,7 @@ async function logoUri(request: Request): Promise<string | undefined> {
 }
 
 export async function GET(request: Request, context: { params: Promise<{ site: string }> }) {
-  const site = findSite((await context.params).site);
+  const site = await getSite((await context.params).site);
   if (site?.kind !== "recetas") return new Response("No encontrado", { status: 404 });
   const options = { width: 1200, height: 630, headers: { "Cache-Control": "public, max-age=86400" } };
   const logo = await logoUri(request);

@@ -1,0 +1,10 @@
+# The repository stores LF on every system, and working copies follow it.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

@@ -35,7 +35,7 @@ export default async function ProductSiteLayout({ children, params }: Props & { 
   const site = await productSite(params);
   if (!site?.products) notFound();
   const donation = await getDonation(site.id);
-  return <div className={`productos ${display.variable} ${text.variable}`} style={{ "--p-accent": site.products.accent } as CSSProperties}>
+  return <div data-theme="productos" className={`productos ${display.variable} ${text.variable}`} style={{ "--p-accent": site.products.accent } as CSSProperties}>
     <HeaderDonate donation={donation} />
     {children}
     <footer className="p-foot"><FooterActions donation={donation} />© {new Date().getFullYear()} {site.name}.</footer>

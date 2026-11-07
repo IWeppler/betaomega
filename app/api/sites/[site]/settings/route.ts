@@ -1,7 +1,7 @@
 import { isAdmin, sameOrigin } from "@/lib/auth";
 import { cleanSettings } from "@/lib/site-settings";
 import { readSiteSettings, saveSiteSettings } from "@/lib/site-store";
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 import { failure, forbidden, notFound, type SiteParams } from "../recipes/helpers";
 
 export const runtime = "nodejs";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /** Recipe sites use every field; product sites only the donation. */
 const settingsSite = async (params: SiteParams["params"]) => {
-  const site = findSite((await params).site);
+  const site = await getSite((await params).site);
   return site?.kind === "recetas" || site?.kind === "productos" ? site : undefined;
 };
 

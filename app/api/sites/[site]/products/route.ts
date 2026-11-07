@@ -1,13 +1,13 @@
 import { isAdmin, sameOrigin } from "@/lib/auth";
 import { ProductConflictError, readProducts, saveProducts } from "@/lib/product-store";
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type SiteParams = { params: Promise<{ site: string }> };
 const productSite = async (params: SiteParams["params"]) => {
-  const site = findSite((await params).site);
+  const site = await getSite((await params).site);
   return site?.kind === "productos" ? site : undefined;
 };
 const notFound = () => Response.json({ error: "Sitio no encontrado." }, { status: 404 });

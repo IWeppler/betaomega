@@ -19,10 +19,10 @@ export function ProductBrowser({ products, initialQuery, one, many }: { products
   };
   return <>
     <label className="p-search">
-      <span>Buscá por nombre o para qué sirve</span>
+      <span className="sr-only">Buscá por nombre o para qué sirve</span>
       <span className="p-search-box">
         <MagnifyingGlass size={22} aria-hidden="true" />
-        <input type="search" value={query} onChange={e => change(e.target.value)} autoComplete="off" />
+        <input type="search" placeholder="Buscá por nombre o para qué sirve" value={query} onChange={e => change(e.target.value)} autoComplete="off" />
       </span>
     </label>
     <p className="sr-only" role="status">{results.length === 1 ? `1 ${one}` : `${results.length} ${many}`}</p>

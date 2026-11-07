@@ -2,7 +2,7 @@ import { cache } from "react";
 import { listPublishedRecipes } from "@/lib/recipe-store";
 import { effectiveSettings, recipeSiteDefaults } from "@/lib/site-settings";
 import { readSiteSettings } from "@/lib/site-store";
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 
 // The recipe template's brand. It lives in code until themes are edited from the panel (fase 4).
 export const brand = {
@@ -38,6 +38,6 @@ export const getSettings = cache(async (siteId: string) => {
 
 /** The site of a recipe route, or undefined when the id is unknown or belongs to another kind of site. */
 export const recipeSite = async (params: Promise<{ site: string }>) => {
-  const site = findSite((await params).site);
+  const site = await getSite((await params).site);
   return site?.kind === "recetas" ? site : undefined;
 };

@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Cards, Plus } from "@phosphor-icons/react";
+import { Plus } from "@phosphor-icons/react";
+import { Droplet, TriangleExclamationPoint } from "lucide-react";
 import { ImageField } from "@/app/catalog-image";
 import { Field } from "@/app/admin-fields";
 import { SaveForm } from "@/app/save-form";
 import { normalize } from "@/lib/catalog";
 import { blankProduct, productApplications, productWords, type Product, type ProductApplication } from "@/lib/products";
-import { findSite, type ProductSiteOptions } from "@/lib/sites";
+import type { ProductSiteOptions } from "@/lib/sites";
 import { EditorFrame } from "../editors";
 import { KeywordInput } from "../keyword-input";
 import { EmptyState, Paged, SearchBox, useNewFromLink, useSelection } from "../list-tools";
@@ -21,8 +22,7 @@ type Words = ReturnType<typeof productWords>;
 
 export default function ProductsPage() {
   const { site: siteId } = useParams<{ site: string }>();
-  const options = findSite(siteId)?.products;
-  const { products } = useProducts();
+  const { products, options } = useProducts();
   const { busy } = usePanel();
   const { selection, setSelection, select } = useSelection<Product>();
   useNewFromLink(() => setSelection({ item: blankProduct(), mode: "edit" }));
@@ -36,7 +36,7 @@ export default function ProductsPage() {
     ? <DeleteProduct product={selection.item} words={words} onCancel={() => setSelection({ item: selection.item, mode: "edit" })} onDeleted={() => setSelection(null)} />
     : selection
       ? <ProductEditor key={selection.item.id} product={selection.item} siteId={siteId} options={options} words={words}
-          onSaved={item => setSelection({ item, mode: "edit" })}
+          onSaved={() => setSelection(null)}
           onClose={() => void select(null)}
           onDelete={saved(selection.item.id) ? () => void select({ item: selection.item, mode: "delete" }) : undefined} />
       : null;
@@ -47,15 +47,23 @@ export default function ProductsPage() {
       <section className="panel-card panel-list" aria-label={`Lista de ${words.many}`}>
         <div className="panel-list-tools"><SearchBox value={filter} onChange={setFilter} label="Buscar por nombre o para qué sirve" /></div>
         {rows.length > 0 && <Paged rows={rows} resetKey={filter}>{shown => <table className="panel-table">
-          <thead><tr><th scope="col">Nombre</th><th scope="col">Para qué sirve</th>{options.application && <th scope="col">Uso</th>}</tr></thead>
+          <thead><tr><th scope="col">Nombre</th><th scope="col" className="is-hide-sm">Para qué sirve</th>{options.application && <th scope="col" className="w-14 sm:w-32">Uso</th>}</tr></thead>
           <tbody>
             {shown.map(item => <tr key={item.id} aria-selected={selection?.item.id === item.id}>
               <th scope="row"><button className="panel-row-button" disabled={busy} onClick={() => void select({ item, mode: "edit" })}>
-                <Cards size={16} aria-hidden="true" /><span>{item.name}</span>
-                {!item.published && <span className="panel-badge is-draft">Borrador</span>}
+                <span role="img" aria-label={item.published ? "Publicado" : "Borrador"} className={`size-2.5 flex-none rounded-full sm:hidden ${item.published ? "bg-green-500" : "bg-amber-400"}`} />
+                <span>{item.name}</span>
+                {!item.published && <span className="panel-badge is-draft max-sm:hidden">Borrador</span>}
               </button></th>
-              <td>{item.keywords.join(", ") || <span className="panel-muted">Sin cargar</span>}</td>
-              {options.application && <td>{item.application ? productApplications[item.application].sign : <span className="panel-muted">Sin elegir</span>}</td>}
+              <td className="is-hide-sm">{item.keywords.join(", ") || <span className="panel-muted">Sin cargar</span>}</td>
+              {options.application && <td>{item.application
+                ? <>
+                  <span className="max-sm:hidden">{productApplications[item.application].sign}</span>
+                  <span role="img" aria-label={productApplications[item.application].sign} title={productApplications[item.application].sign} className="inline-flex sm:hidden">
+                    {item.application === "piel" ? <TriangleExclamationPoint size={20} aria-hidden="true" /> : <Droplet size={20} aria-hidden="true" />}
+                  </span>
+                </>
+                : <span className="panel-muted">Sin elegir</span>}</td>}
             </tr>)}
           </tbody>
         </table>}</Paged>}
@@ -67,7 +75,8 @@ export default function ProductsPage() {
 }
 
 function ProductEditor({ product, siteId, options, words, onSaved, onClose, onDelete }: { product: Product; siteId: string; options: ProductSiteOptions; words: Words; onSaved: (item: Product) => void; onClose: () => void; onDelete?: () => void }) {
-  const { save } = useProducts();
+  const { products, save } = useProducts();
+  const suggestions = [...new Set((products ?? []).flatMap(p => p.keywords))].sort((a, b) => a.localeCompare(b, "es"));
   const { busy, setBusy, error, flushRef } = usePanel();
   const [image, setImage] = useState(product.image ?? "");
   const [keywords, setKeywords] = useState(product.keywords);
@@ -100,7 +109,7 @@ function ProductEditor({ product, siteId, options, words, onSaved, onClose, onDe
         </label>)}
         <small>Se muestra como aviso en la tarjeta y en la página {words.ofThe}.</small>
       </fieldset>}
-      <KeywordInput value={keywords} onChange={setKeywords} />
+      <KeywordInput value={keywords} onChange={setKeywords} suggestions={suggestions} />
       <label className="check"><input type="checkbox" name="published" defaultChecked={product.published} />{words.Published} en el sitio</label>
     </SaveForm>
   </EditorFrame>;

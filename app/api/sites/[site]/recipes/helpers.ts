@@ -1,11 +1,11 @@
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 import { RecipeConflictError } from "@/lib/recipe-store";
 import { SiteConflictError } from "@/lib/site-store";
 
 export type SiteParams = { params: Promise<{ site: string }> };
 /** The recipe site named in the URL, or undefined when it does not exist or is another kind of site. */
 export async function recipeSite(params: Promise<{ site: string }>) {
-  const site = findSite((await params).site);
+  const site = await getSite((await params).site);
   return site?.kind === "recetas" ? site : undefined;
 }
 export const notFound = () => Response.json({ error: "Sitio no encontrado." }, { status: 404 });

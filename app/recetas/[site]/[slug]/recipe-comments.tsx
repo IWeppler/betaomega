@@ -7,7 +7,7 @@ const when = (iso: string) => new Date(iso).toLocaleDateString("es-AR", { dateSt
 /** Approved comments of a recipe and the form to add one. There are no ratings: only words. */
 export async function RecipeComments({ siteId, recipeId }: { siteId: string; recipeId: string }) {
   let comments;
-  try { comments = await listApprovedComments(recipeId); } catch (error) {
+  try { comments = await listApprovedComments(siteId, recipeId); } catch (error) {
     // Until supabase/schema.sql is run the table does not exist: the recipe shows without a comments section.
     console.warn("[recetas] no se pudieron leer los comentarios:", error);
     return null;

@@ -1,6 +1,8 @@
+import { Toaster } from "@/shared/ui/toast";
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "@/app/globals.css";
+import "@/app/legacy.css";
 import "./panel.css";
 import { RegisterPanelServiceWorker } from "./register-panel-sw";
 
@@ -17,5 +19,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f2f2f1" };
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
-  return <div className={`panel ${geist.variable}`}>{children}<RegisterPanelServiceWorker /></div>;
+  return <div data-theme="panel" className={`panel ${geist.variable}`}>{children}<Toaster /><RegisterPanelServiceWorker /></div>;
 }

@@ -1,23 +1,21 @@
 import { notFound } from "next/navigation";
 import { isAdmin } from "@/lib/auth";
-import { findSite, sites } from "@/lib/sites";
+import { listPanelSites } from "@/lib/site-registry";
+import { findIn, type Site } from "@/lib/sites";
 import { LoginForm } from "../login-form";
-import { CatalogProvider } from "./catalog-context";
-import { ProductsProvider } from "./products-context";
-import { RecipesProvider } from "./recipes-context";
+import { panelKinds } from "./kinds";
 import { PanelShell } from "./shell";
 
 export const dynamic = "force-dynamic";
 
 export default async function SitePanelLayout({ children, params }: { children: React.ReactNode; params: Promise<{ site: string }> }) {
-  const site = findSite((await params).site);
+  const sites = await listPanelSites();
+  const site = findIn(sites, (await params).site);
   if (!site) notFound();
   // The APIs check the session again on every read and write; this only decides what to render.
   if (!await isAdmin()) return <LoginForm />;
-  const summary = ({ id, name, kind, url }: typeof site) => ({ id, name, kind, url });
+  const summary = ({ id, name, kind, url, panelIcon, products, inactive }: Site) => ({ id, name, kind, url, panelIcon, products, inactive });
   const shell = <PanelShell site={summary(site)} sites={sites.map(summary)}>{children}</PanelShell>;
   // Each kind of site loads its own data; the shell and the list tools read it through PanelContext.
-  // The key drops the loaded list on a site change, so one site's products can never be saved into another.
-  if (site.kind === "productos") return <ProductsProvider key={site.id} siteId={site.id}>{shell}</ProductsProvider>;
-  return site.kind === "recetas" ? <RecipesProvider siteId={site.id}>{shell}</RecipesProvider> : <CatalogProvider>{shell}</CatalogProvider>;
+  return panelKinds[site.kind].provider(site, shell);
 }

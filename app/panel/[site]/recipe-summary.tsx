@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowRight, BookOpenText, CheckCircle, Globe, Plus, WarningCircle } from "@phosphor-icons/react";
 import { emptyMoments, isScheduled, lacksContent, latestPublished, mostViewed, recipeGaps, sinceLabel, thinCategories, type Recipe } from "@/lib/recipes";
-import { findSite } from "@/lib/sites";
+import { useSite } from "./panel-context";
 import { useRecipes } from "./recipes-context";
 import { QuickActions, type QuickAction } from "./list-tools";
 import { PageHeader } from "./shell";
@@ -20,6 +20,7 @@ const releaseDate = new Intl.DateTimeFormat("es-AR", { weekday: "short", day: "n
 export function RecipeSummary() {
   const { recipes } = useRecipes();
   const { site } = useParams<{ site: string }>();
+  const { url: siteUrl } = useSite();
   if (!recipes) return null;
   const scheduled = recipes.filter(r => isScheduled(r));
   const published = recipes.filter(r => r.published && !isScheduled(r));
@@ -48,7 +49,6 @@ export function RecipeSummary() {
     { label: "Tipos", value: categories.size, note: "en recetas publicadas" },
     { label: "Con foto", value: published.filter(r => r.image).length, note: `de ${published.length} publicadas` },
   ];
-  const siteUrl = findSite(site)?.url;
   const actions: QuickAction[] = [
     { label: "Nueva receta", text: "Empezar una receta desde cero", href: `${href}?nuevo`, icon: Plus },
     { label: "Todas las recetas", text: "Buscar y editar las cargadas", href, icon: BookOpenText },

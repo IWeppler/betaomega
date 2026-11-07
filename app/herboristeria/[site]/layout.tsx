@@ -1,13 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import "@/app/globals.css";
+import "@/app/legacy.css";
 import { RegisterServiceWorker } from "@/app/register-sw";
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 import { ogImage } from "./og-image";
 
 type Props = { params: Promise<{ site: string }> };
 const herbSite = async (params: Props["params"]) => {
-  const site = findSite((await params).site);
+  const site = await getSite((await params).site);
   return site?.kind === "herboristeria" ? site : undefined;
 };
 

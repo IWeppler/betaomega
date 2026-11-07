@@ -1,12 +1,12 @@
 import { listPublishedRecipes } from "@/lib/recipe-store";
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 
 // Next treats a route named like a metadata file as static; this one depends on the host and the data.
 export const dynamic = "force-dynamic";
 
 // Served at /sitemap.xml of each recipe site's own host: the home page and every published recipe.
 export async function GET(_request: Request, context: { params: Promise<{ site: string }> }) {
-  const site = findSite((await context.params).site);
+  const site = await getSite((await context.params).site);
   if (site?.kind !== "recetas") return new Response("No encontrado", { status: 404 });
   let recipes;
   try { recipes = await listPublishedRecipes(site.id); } catch (error) {

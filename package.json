@@ -6,16 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --experimental-strip-types --test \"tests/*.test.mjs\" \"modules/**/*.test.ts\" \"platform/**/*.test.ts\" \"shared/**/*.test.ts\""
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-dialog": "^1.3.1",
     "@radix-ui/react-select": "^2.4.1",
+    "@radix-ui/react-switch": "^1.4.1",
     "lucide-react": "^1.68.0",
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
     "sharp": "^0.35.5"
   },
   "devDependencies": {
@@ -25,6 +28,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
+    "eslint-plugin-better-tailwindcss": "^4.10.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
