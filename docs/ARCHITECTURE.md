@@ -200,6 +200,7 @@ Fotos: bucket privado `images` de Supabase Storage, servidas por `/api/images/<n
 | `MERCADOPAGO_CLIENT_ID` | Número de la aplicación de Mercado Pago de la plataforma (una sola para todos los saunas). Cada sitio conecta **su cuenta** desde el panel (Configuración → Cobros) y sus tokens se guardan cifrados en `sauna_mercadopago_accounts`, no acá. | No: sin las tres, ningún sitio ofrece Mercado Pago |
 | `MERCADOPAGO_CLIENT_SECRET` | Clave secreta de esa aplicación, para canjear y renovar los tokens de las cuentas. Solo servidor. | Junto con las otras dos |
 | `MERCADOPAGO_WEBHOOK_SECRET` | Clave secreta de los webhooks de esa aplicación, con la que se verifica la firma de cada aviso. | Junto con las otras dos |
+| `MERCADOPAGO_REDIRECT_URL` | La URL de redireccionamiento cargada en esa aplicación, exacta: `https://<host del panel>/api/mercadopago/oauth`. Una sola para todos los sitios. | No: sin ella se usa el host desde el que se abrió el panel (alcanza en local) |
 
 `ANKORA_SESSION_SECRET` también deriva la clave que cifra los tokens de Mercado Pago: cambiarlo desconecta las cuentas, que se vuelven a conectar desde el panel.
 

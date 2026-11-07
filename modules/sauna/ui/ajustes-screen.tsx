@@ -83,6 +83,8 @@ const resultNotices: Record<string, { kind: "warn" | "error"; text: string } | u
   conectado: { kind: "warn", text: "Listo: la cuenta de Mercado Pago quedó conectada. Desde ahora las señas se cobran en esa cuenta." },
   cancelado: { kind: "warn", text: "No se conectó ninguna cuenta: la autorización se canceló en Mercado Pago." },
   error: { kind: "error", text: "No se pudo conectar la cuenta. Probá de nuevo; si sigue fallando, revisá que la aplicación de Mercado Pago tenga cargada la URL de redireccionamiento." },
+  dominio: { kind: "error", text: "Para conectar la cuenta, abrí el panel desde la misma dirección que la URL de redireccionamiento de la aplicación de Mercado Pago (MERCADOPAGO_REDIRECT_URL)." },
+  pais: { kind: "error", text: "Esa cuenta no es de Mercado Pago Argentina. Las señas se cobran en pesos, así que hay que conectar una cuenta argentina." },
 };
 
 /** The account the deposits go into. Connecting is OAuth: Mercado Pago asks the owner to authorize, and the panel only keeps the encrypted tokens. */

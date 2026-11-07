@@ -2,20 +2,24 @@ import { createHash, randomBytes } from "node:crypto";
 import { equal, isAdmin } from "@/platform/auth/server";
 import { getPanelSite } from "@/platform/sites/server";
 import { readAccount, removeAccount, saveAccount, type ConnectedAccount } from "../data/mercadopago-account";
-import { accountName, exchangeCode, MercadoPagoError, mercadoPagoApp } from "../data/mercadopago";
-import { authorizationUrl, readOauthCookie, tokensFrom } from "../domain/mercadopago";
+import { accountProfile, exchangeCode, MercadoPagoError, mercadoPagoApp } from "../data/mercadopago";
+import { ARGENTINA, authorizationUrl, OAUTH_CALLBACK_PATH, oauthCookieValue, oauthRedirect, readOauthCookie, tokensFrom } from "../domain/mercadopago";
 import { fail, failure, panelWrite, type SiteContext } from "./route-tools";
 
 // Connecting the Mercado Pago account a site charges into, from the panel (OAuth with PKCE, docs/SAUNA.md §6).
 //
-// The panel's session cookie is SameSite=Strict, so it does not come along when Mercado Pago sends the browser back. The answer is tied to the start
-// instead: only an administrator can start, and the start leaves a short Lax cookie with a random `state` and the PKCE verifier. The return is accepted
-// only with that same state, so nobody can link another account by sending someone a crafted link: that account is where the money would go.
+// Mercado Pago only returns to a static address registered in the application, so every site comes back to the same one (OAUTH_CALLBACK_PATH) and the
+// site travels in the start's cookie. The panel's session cookie is SameSite=Strict, so it does not come along when Mercado Pago sends the browser back.
+// The answer is tied to the start instead: only an administrator can start, and the start leaves a short Lax cookie with the site, a random `state` and
+// the PKCE verifier. The return is accepted only with that same state, so nobody can link another account by sending someone a crafted link: that
+// account is where the money would go.
 
 const COOKIE = "sauna_mp_oauth";
 const COOKIE_SECONDS = 600; // Mercado Pago's code lasts 10 minutes
 
-/** The panel's own address, as the browser reached it. The return address has to be exactly one of those registered in the application. */
+type Result = "conectado" | "cancelado" | "error" | "dominio" | "pais";
+
+/** The panel's own address, as the browser reached it. */
 function panelOrigin(request: Request) {
   const url = new URL(request.url);
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? url.host;
@@ -23,17 +27,18 @@ function panelOrigin(request: Request) {
   return `${protocol}://${host}`;
 }
 
-const callbackPath = (siteId: string) => `/api/sites/${siteId}/sauna/mercadopago/oauth`;
+const redirectUri = (origin: string) => oauthRedirect(process.env.MERCADOPAGO_REDIRECT_URL?.trim() || undefined, origin);
 
-function cookie(siteId: string, value: string, maxAge: number, secure: boolean) {
-  return `${COOKIE}=${value}; Path=/api/sites/${siteId}/sauna/mercadopago; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
+function cookie(value: string, maxAge: number, secure: boolean) {
+  return `${COOKIE}=${value}; Path=${OAUTH_CALLBACK_PATH}; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
 }
 
-/** Back to the configuration, on the tab of payments, saying how it went. */
-function backToPanel(origin: string, siteId: string, result: "conectado" | "cancelado" | "error", secure: boolean) {
+/** Back to the configuration, on the tab of payments, saying how it went. Without a known site, to the panel's start. */
+function backToPanel(origin: string, siteId: string | null, result: Result, secure: boolean) {
+  const location = siteId ? `${origin}/${siteId}/ajustes?mercadopago=${result}#cobros` : `${origin}/`;
   return new Response(null, {
     status: 303,
-    headers: { Location: `${origin}/${siteId}/ajustes?mercadopago=${result}#cobros`, "Set-Cookie": cookie(siteId, "", 0, secure), "Cache-Control": "no-store" },
+    headers: { Location: location, "Set-Cookie": cookie("", 0, secure), "Cache-Control": "no-store" },
   });
 }
 
@@ -46,41 +51,52 @@ export async function startMercadoPagoConnect(request: Request, context: SiteCon
   const secure = origin.startsWith("https://");
   const app = mercadoPagoApp();
   if (!app) return backToPanel(origin, site.id, "error", secure);
+  // The return has to land on this same host, or the start's cookie does not come with it.
+  const returnTo = redirectUri(origin);
+  if (!returnTo) {
+    console.error("[sauna mercadopago] MERCADOPAGO_REDIRECT_URL is not on the host the panel was opened from");
+    return backToPanel(origin, site.id, "dominio", secure);
+  }
   const state = randomBytes(32).toString("base64url");
   const verifier = randomBytes(48).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");
-  const location = authorizationUrl({ clientId: app.clientId, redirectUri: `${origin}${callbackPath(site.id)}`, state, challenge });
+  const location = authorizationUrl({ clientId: app.clientId, redirectUri: returnTo, state, challenge });
   return new Response(null, {
     status: 303,
-    headers: { Location: location, "Set-Cookie": cookie(site.id, `${state}.${verifier}`, COOKIE_SECONDS, secure), "Cache-Control": "no-store" },
+    headers: { Location: location, "Set-Cookie": cookie(oauthCookieValue(site.id, state, verifier), COOKIE_SECONDS, secure), "Cache-Control": "no-store" },
   });
 }
 
 const cookieOf = (request: Request) =>
   request.headers.get("cookie")?.split(";").map(part => part.trim()).find(part => part.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1);
 
-/** GET: where Mercado Pago sends the browser back, with `code` and `state`, or `error` when the person did not authorize. */
-export async function finishMercadoPagoConnect(request: Request, context: SiteContext) {
-  const site = await getPanelSite((await context.params).site);
-  if (site?.kind !== "sauna") return fail(404, "Sitio no encontrado.");
+/** GET: where Mercado Pago sends the browser back, with `code` and `state`, or `error` when the person did not authorize. The same for every site. */
+export async function finishMercadoPagoConnect(request: Request) {
   const origin = panelOrigin(request);
   const secure = origin.startsWith("https://");
   const params = new URL(request.url).searchParams;
   const started = readOauthCookie(cookieOf(request));
-  const state = params.get("state") ?? "";
-  if (!started || !equal(started.state, state)) {
+  if (!started || !equal(started.state, params.get("state") ?? "")) {
     console.error("[sauna mercadopago] oauth return without a matching start");
-    return backToPanel(origin, site.id, "error", secure);
+    return backToPanel(origin, started?.siteId ?? null, "error", secure);
   }
+  const site = await getPanelSite(started.siteId);
+  if (site?.kind !== "sauna") return backToPanel(origin, null, "error", secure);
   const code = params.get("code");
   if (!code || params.get("error")) return backToPanel(origin, site.id, "cancelado", secure);
   const app = mercadoPagoApp();
-  if (!app || !/^[A-Za-z0-9_-]{1,300}$/.test(code)) return backToPanel(origin, site.id, "error", secure);
+  const returnTo = redirectUri(origin);
+  if (!app || !returnTo || !/^[A-Za-z0-9_-]{1,300}$/.test(code)) return backToPanel(origin, site.id, "error", secure);
   try {
-    const tokens = tokensFrom(await exchangeCode(app, code, `${origin}${callbackPath(site.id)}`, started.verifier), new Date().toISOString());
+    const tokens = tokensFrom(await exchangeCode(app, code, returnTo, started.verifier), new Date().toISOString());
     if (!tokens) throw new MercadoPagoError("token answer incomplete");
-    const nickname = await accountName(tokens.accessToken).catch(() => "");
-    await saveAccount(site.id, tokens, nickname, true);
+    const profile = await accountProfile(tokens.accessToken);
+    // Another country's account would take the checkout in its own currency, and those payments are never applied: it is not saved.
+    if (profile.siteId !== ARGENTINA) {
+      console.error("[sauna mercadopago] account of another country refused:", profile.siteId);
+      return backToPanel(origin, site.id, "pais", secure);
+    }
+    await saveAccount(site.id, tokens, profile.nickname, true);
     return backToPanel(origin, site.id, "conectado", secure);
   } catch (error) {
     console.error("[sauna mercadopago] oauth failed:", error instanceof Error ? error.message.slice(0, 200) : "error");

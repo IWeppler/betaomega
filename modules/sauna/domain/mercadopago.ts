@@ -144,8 +144,44 @@ export function tokensFrom(answer: unknown, now: Instant): AccountTokens | null 
 /** Renewed a week before it lapses, so a quiet week never leaves the site unable to charge. */
 export const needsRefresh = (expiresAt: Instant, now: Instant) => Date.parse(expiresAt) - Date.parse(now) < 7 * 86_400_000;
 
-/** The `state` and the PKCE verifier travel together in one cookie: `<state>.<verifier>`, both URL-safe. */
-export function readOauthCookie(value: string | undefined): { state: string; verifier: string } | null {
-  const match = /^([A-Za-z0-9_-]{32,128})\.([A-Za-z0-9_-]{43,128})$/.exec(value ?? "");
-  return match ? { state: match[1], verifier: match[2] } : null;
+/**
+ * The one return address for every site. Mercado Pago only accepts a static redirect_uri, exactly one of those registered in the application, so the site
+ * does not go in it: it travels in the start's cookie, next to the `state` that proves it.
+ */
+export const OAUTH_CALLBACK_PATH = "/api/mercadopago/oauth";
+
+/**
+ * The redirect_uri: MERCADOPAGO_REDIRECT_URL when it is set (the same text registered in the application), or this panel's own address otherwise, which
+ * is enough locally. Null when the configured one is not a web address or lives on another host: the start's cookie would not reach it.
+ */
+export function oauthRedirect(configured: string | undefined, panelOrigin: string): string | null {
+  if (!configured) return `${panelOrigin}${OAUTH_CALLBACK_PATH}`;
+  try {
+    const url = new URL(configured);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url.origin === panelOrigin ? url.href : null;
+  } catch { return null; }
+}
+
+const SITE_ID = "[a-z0-9][a-z0-9-]{1,38}";
+
+/** The site, the `state` and the PKCE verifier travel together in one cookie: `<site>.<state>.<verifier>`, all URL-safe and without dots. */
+export const oauthCookieValue = (siteId: string, state: string, verifier: string) => `${siteId}.${state}.${verifier}`;
+
+export function readOauthCookie(value: string | undefined): { siteId: string; state: string; verifier: string } | null {
+  const match = new RegExp(`^(${SITE_ID})\\.([A-Za-z0-9_-]{32,128})\\.([A-Za-z0-9_-]{43,128})$`).exec(value ?? "");
+  return match ? { siteId: match[1], state: match[2], verifier: match[3] } : null;
+}
+
+/** Charges are in pesos and payments are only applied in ARS, so only an account of Mercado Pago Argentina can be connected. */
+export const ARGENTINA = "MLA";
+
+export type AccountProfile = { nickname: string; siteId: string };
+
+/** What GET /users/me answers, only the name to show and the country of the account. Null when the country is missing. */
+export function profileFrom(answer: unknown): AccountProfile | null {
+  if (typeof answer !== "object" || answer === null) return null;
+  const value = answer as Record<string, unknown>;
+  if (typeof value.site_id !== "string" || !/^[A-Z]{3}$/.test(value.site_id)) return null;
+  return { nickname: typeof value.nickname === "string" ? value.nickname.slice(0, 120) : "", siteId: value.site_id };
 }

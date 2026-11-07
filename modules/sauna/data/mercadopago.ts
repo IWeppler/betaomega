@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import type { ProviderPayment } from "../domain/mercadopago";
+import { profileFrom, type AccountProfile, type ProviderPayment } from "../domain/mercadopago";
 
 // Mercado Pago's REST API. Two kinds of credentials:
-// - The application (one for the whole platform), in environment variables: MERCADOPAGO_CLIENT_ID, MERCADOPAGO_CLIENT_SECRET and
-//   MERCADOPAGO_WEBHOOK_SECRET (docs/ARCHITECTURE.md §9).
+// - The application (one for the whole platform), in environment variables: MERCADOPAGO_CLIENT_ID, MERCADOPAGO_CLIENT_SECRET,
+//   MERCADOPAGO_WEBHOOK_SECRET and, optionally, MERCADOPAGO_REDIRECT_URL (docs/ARCHITECTURE.md §9).
 // - The account each site charges into, connected from the panel (mercadopago-account.ts). Its access token is what charges and reads payments.
 
 const API = "https://api.mercadopago.com";
@@ -62,8 +62,9 @@ export const exchangeCode = (app: MercadoPagoApp, code: string, redirectUri: str
 export const refreshTokens = (app: MercadoPagoApp, refreshToken: string) =>
   tokenRequest({ client_id: app.clientId, client_secret: app.clientSecret, grant_type: "refresh_token", refresh_token: refreshToken });
 
-/** The connected account's public name, for the panel to show which one charges. */
-export async function accountName(accessToken: string): Promise<string> {
-  const me = await call("/users/me", {}, accessToken) as { nickname?: unknown };
-  return typeof me.nickname === "string" ? me.nickname.slice(0, 120) : "";
+/** The connected account's public name and country: the panel shows the name, and the country decides whether it can charge here. */
+export async function accountProfile(accessToken: string): Promise<AccountProfile> {
+  const profile = profileFrom(await call("/users/me", {}, accessToken));
+  if (!profile) throw new MercadoPagoError("users/me without site_id");
+  return profile;
 }

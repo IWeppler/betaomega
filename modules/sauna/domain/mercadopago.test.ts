@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   amountToCents, approvedPayment, argentineDate, bookingOfReference, bookingReference, centsToAmount, cleanPaymentId, isSigned, paymentRef, parseSignature,
-  preferenceBody, signatureManifest, authorizationUrl, tokensFrom, needsRefresh, readOauthCookie,
+  preferenceBody, signatureManifest, authorizationUrl, tokensFrom, needsRefresh, readOauthCookie, oauthCookieValue, oauthRedirect, OAUTH_CALLBACK_PATH,
+  ARGENTINA, profileFrom,
 } from "./mercadopago.ts";
 
 const BOOKING = "3f2a1b4c-5d6e-4f70-8a9b-0c1d2e3f4a5b";
@@ -96,11 +97,11 @@ test("un identificador de pago es solo dígitos", () => {
 });
 
 test("la autorización lleva la aplicación, la vuelta, el state y el desafío PKCE", () => {
-  const url = new URL(authorizationUrl({ clientId: "217995404308633", redirectUri: "https://panel.example/api/sites/fropexio/sauna/mercadopago/oauth", state: "s".repeat(43), challenge: "c".repeat(43) }));
+  const url = new URL(authorizationUrl({ clientId: "217995404308633", redirectUri: "https://panel.example/api/mercadopago/oauth", state: "s".repeat(43), challenge: "c".repeat(43) }));
   assert.equal(url.origin + url.pathname, "https://auth.mercadopago.com/authorization");
   assert.equal(url.searchParams.get("client_id"), "217995404308633");
   assert.equal(url.searchParams.get("response_type"), "code");
-  assert.equal(url.searchParams.get("redirect_uri"), "https://panel.example/api/sites/fropexio/sauna/mercadopago/oauth");
+  assert.equal(url.searchParams.get("redirect_uri"), "https://panel.example/api/mercadopago/oauth");
   assert.equal(url.searchParams.get("state"), "s".repeat(43));
   assert.equal(url.searchParams.get("code_challenge_method"), "S256");
 });
@@ -122,12 +123,36 @@ test("el token se renueva una semana antes de vencer", () => {
   assert.equal(needsRefresh("2026-11-01T00:00:00.000Z", "2026-11-07T00:00:00.000Z"), true);
 });
 
-test("la cookie del OAuth solo acepta un state y un verificador bien formados", () => {
+test("la cookie del OAuth solo acepta un sitio, un state y un verificador bien formados", () => {
   const state = "a".repeat(43);
   const verifier = "B-_".repeat(15);
-  assert.deepEqual(readOauthCookie(`${state}.${verifier}`), { state, verifier });
+  assert.equal(oauthCookieValue("fropexio", state, verifier), `fropexio.${state}.${verifier}`);
+  assert.deepEqual(readOauthCookie(oauthCookieValue("fropexio", state, verifier)), { siteId: "fropexio", state, verifier });
+  assert.deepEqual(readOauthCookie(`sauna-2.${state}.${verifier}`), { siteId: "sauna-2", state, verifier });
   assert.equal(readOauthCookie(undefined), null);
-  assert.equal(readOauthCookie(`${state}`), null);
-  assert.equal(readOauthCookie(`${state}.corto`), null);
-  assert.equal(readOauthCookie(`${state}.${verifier};x=1`), null);
+  assert.equal(readOauthCookie(`${state}.${verifier}`), null);
+  assert.equal(readOauthCookie(`Fropexio.${state}.${verifier}`), null);
+  assert.equal(readOauthCookie(`../x.${state}.${verifier}`), null);
+  assert.equal(readOauthCookie(`fropexio.${state}.corto`), null);
+  assert.equal(readOauthCookie(`fropexio.${state}.${verifier};x=1`), null);
+});
+
+test("la URL de vuelta es una sola para todos los sitios y vive en el host del panel", () => {
+  assert.equal(OAUTH_CALLBACK_PATH, "/api/mercadopago/oauth");
+  assert.equal(oauthRedirect(undefined, "http://panel.localhost:3000"), "http://panel.localhost:3000/api/mercadopago/oauth");
+  assert.equal(oauthRedirect("https://panel.example/api/mercadopago/oauth", "https://panel.example"), "https://panel.example/api/mercadopago/oauth");
+  // Started from another host, the start's cookie would not reach the return.
+  assert.equal(oauthRedirect("https://panel.example/api/mercadopago/oauth", "https://otro.example"), null);
+  assert.equal(oauthRedirect("no es una dirección", "https://panel.example"), null);
+  assert.equal(oauthRedirect("ftp://panel.example/x", "ftp://panel.example"), null);
+});
+
+test("solo se conecta una cuenta de Mercado Pago Argentina", () => {
+  assert.equal(ARGENTINA, "MLA");
+  assert.deepEqual(profileFrom({ nickname: "SAUNA", site_id: "MLA" }), { nickname: "SAUNA", siteId: "MLA" });
+  assert.deepEqual(profileFrom({ site_id: "MLB" }), { nickname: "", siteId: "MLB" });
+  assert.equal(profileFrom({ nickname: "SAUNA" }), null);
+  assert.equal(profileFrom({ site_id: "mla" }), null);
+  assert.equal(profileFrom(null), null);
+  assert.equal(profileFrom({ nickname: "x".repeat(200), site_id: "MLA" })?.nickname.length, 120);
 });
