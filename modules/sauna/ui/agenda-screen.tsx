@@ -6,11 +6,11 @@ import { agendaByDay, agendaRange, cellInstant, dayClosureState, moveAgenda, typ
 import { isCurrent } from "../domain/booking";
 import { bandsOfDay, type TimeBand } from "../domain/hours";
 import type { ClosureEntry } from "../domain/setup";
-import { addDays, businessDate, dayLabel, monthLabel, startOfWeek, shortDayLabel, weekdayOf } from "../domain/time";
+import { addDays, businessDate, dayLabel, isDateText, monthLabel, startOfWeek, shortDayLabel, weekdayOf } from "../domain/time";
 import { AgendaAside, daySelection, type AgendaSelection } from "./agenda-aside";
 import { DayAgenda, MonthAgenda } from "./agenda-views";
 import { WeekAgenda } from "./agenda-week";
-import { Button, Notice } from "./controls";
+import { Button, inputClass, Notice } from "./controls";
 import { useResource } from "./use-resource";
 import { useManualBookingDraft } from "./use-manual-booking-draft";
 type Agenda = { now: string; closures: ClosureEntry[]; bookings: AgendaBooking[]; rooms: Record<string, string>; bands: TimeBand[]; stepMinutes: number };
@@ -26,11 +26,12 @@ export function AgendaScreen() {
   const manual = useManualBookingDraft();
   const [created, setCreated] = useState(false);
   const [today] = useState(() => businessDate(new Date().toISOString()));
-  const [view, setView] = useState<AgendaView>("day");
+  const [view, setView] = useState<AgendaView>("week");
   const [date, setDate] = useState(today);
   const [selected, setSelected] = useState<string | null>(today);
   const aside = useRef<HTMLElement>(null);
   const { from, to } = agendaRange(view, date);
+  const showsToday = view === "month" ? date.slice(0, 7) === today.slice(0, 7) : today >= from && today <= to && (view !== "day" || date === today);
   const { data, error, reload, loading } = useResource<Agenda>(`/api/sites/${site.id}/sauna/agenda?from=${from}&to=${to}`, { live: true });
   const days = data ? agendaByDay(data.bookings, data.now) : null;
   const bookings = data?.bookings.filter(booking => isCurrent(booking, data.now)) ?? [];
@@ -62,10 +63,13 @@ export function AgendaScreen() {
     <PageHeader title="Agenda" />
     {created && <p role="status" className="rounded-field border border-line bg-surface px-3 py-2 text-ink">La reserva se creó confirmada, con el total pendiente de cobro y la aceptación de condiciones del cliente pendiente.</p>}
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <Button aria-label="Anterior" onClick={() => navigate(view, moveAgenda(view, date, -1))}><ChevronLeft size={18} aria-hidden="true" /></Button>
         <h2 className="m-0 text-base font-semibold text-ink first-letter:uppercase sm:text-lg" aria-live="polite">{heading(view, date)}</h2>
         <Button aria-label="Siguiente" onClick={() => navigate(view, moveAgenda(view, date, 1))}><ChevronRight size={18} aria-hidden="true" /></Button>
+        <Button disabled={showsToday} onClick={() => navigate(view, today)}>Hoy</Button>
+        <label className="sr-only" htmlFor="agenda-date">Ir a la fecha</label>
+        <input id="agenda-date" type="date" className={`${inputClass} w-auto`} value={date} onChange={event => { if (isDateText(event.target.value)) navigate(view, event.target.value); }} />
       </div>
       <div className="inline-flex overflow-hidden rounded-control border border-line-strong" role="group" aria-label="Vista">
         {views.map(item => <button key={item.id} type="button" className={`min-h-control px-4 font-semibold ${view === item.id ? "bg-accent text-accent-ink" : "bg-surface text-ink hover:bg-sunken"}`} aria-pressed={view === item.id} onClick={() => navigate(item.id, date)}>{item.label}</button>)}
@@ -76,7 +80,7 @@ export function AgendaScreen() {
     {data && days && <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]" aria-busy={loading}>
       <div className="min-w-0">
         {view === "day" && <DayAgenda turns={days.get(date) ?? []} closed={dayClosureState(date, data.closures) !== null} rooms={data.rooms} now={data.now} onChanged={reload} />}
-        {view === "week" && <WeekAgenda from={from} bands={data.bands} stepMinutes={data.stepMinutes} bookings={bookings} closures={data.closures} selected={selected} onSelect={select} />}
+        {view === "week" && <WeekAgenda from={from} bands={data.bands} stepMinutes={data.stepMinutes} bookings={bookings} closures={data.closures} now={data.now} selected={selected} onSelect={select} />}
         {view === "month" && <MonthAgenda date={date} days={days} closureState={day => dayClosureState(day, data.closures)} today={today} selected={selected} onOpen={select} />}
       </div>
       <aside ref={aside} className="min-w-0 scroll-mt-4 lg:sticky lg:top-4 lg:self-start" aria-label="Detalle de la selección">
