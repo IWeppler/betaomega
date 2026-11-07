@@ -75,9 +75,13 @@ export async function finishMercadoPagoConnect(request: Request) {
   const origin = panelOrigin(request);
   const secure = origin.startsWith("https://");
   const params = new URL(request.url).searchParams;
-  const started = readOauthCookie(cookieOf(request));
+  const raw = cookieOf(request);
+  const started = readOauthCookie(raw);
   if (!started || !equal(started.state, params.get("state") ?? "")) {
-    console.error("[sauna mercadopago] oauth return without a matching start");
+    // Which check failed, never the values: whether the start's cookie came, whether it could be read, whether the state matched.
+    const names = request.headers.get("cookie")?.split(";").map(part => part.trim().split("=")[0]).join(",") ?? "";
+    const reason = raw === undefined ? "no start cookie" : !started ? "start cookie unreadable" : !params.get("state") ? "no state in the return" : "state differs";
+    console.error(`[sauna mercadopago] oauth return without a matching start: ${reason}; cookies: [${names.slice(0, 200)}]; mercado pago error: ${params.get("error") ?? "none"}`);
     return backToPanel(origin, started?.siteId ?? null, "error", secure);
   }
   const site = await getPanelSite(started.siteId);
