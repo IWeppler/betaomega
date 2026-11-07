@@ -15,6 +15,10 @@ export type Settings = {
   contactWhatsapp: string | null;
   /** How often a turn can begin within a band, in minutes. */
   startStepMinutes: number;
+  /** Where transfers go (docs/SAUNA.md §6). Transfer is offered only with an alias or a CBU/CVU, and the holder. */
+  transferAlias: string | null;
+  transferCbu: string | null;
+  transferHolder: string | null;
   revision: number;
 };
 
@@ -51,9 +55,47 @@ export function cleanSettings(input: unknown): Settings {
     transferHoldHours: whole(value.transferHoldHours, 1, 168, "La retención de transferencia"),
     contactWhatsapp,
     startStepMinutes: whole(value.startStepMinutes, 5, 240, "El inicio de los turnos"),
+    ...cleanTransfer(value),
     revision: revisionOf(value.revision),
   };
 }
+
+const optionalText = (value: unknown) => (typeof value === "string" ? value.trim() : value === null || value === undefined ? "" : null);
+
+/**
+ * A CBU or CVU has two check digits: the 8th closes the first block and the 22nd the second, with the weights the BCRA defines. Checking them catches a
+ * mistyped digit before people transfer to the wrong account.
+ */
+export function isValidCbu(text: string): boolean {
+  if (!/^\d{22}$/.test(text)) return false;
+  const digits = [...text].map(Number);
+  const check = (block: number[], weights: number[]) => (10 - (block.reduce((sum, digit, index) => sum + digit * weights[index], 0) % 10)) % 10;
+  return check(digits.slice(0, 7), [7, 1, 3, 9, 7, 1, 3]) === digits[7]
+    && check(digits.slice(8, 21), [3, 9, 7, 1, 3, 9, 7, 1, 3, 9, 7, 1, 3]) === digits[21];
+}
+
+/** All three blank leaves transfer off. Otherwise the holder and at least one of alias or CBU/CVU are required. */
+export function cleanTransfer(value: Record<string, unknown>): Pick<Settings, "transferAlias" | "transferCbu" | "transferHolder"> {
+  const alias = optionalText(value.transferAlias);
+  const cbu = optionalText(value.transferCbu);
+  const holder = optionalText(value.transferHolder);
+  if (alias === null || cbu === null || holder === null) throw new SetupError("Datos de transferencia inválidos.");
+  const cleanCbu = cbu.replace(/[\s-]/g, "");
+  if (alias && !/^[A-Za-z0-9.-]{6,20}$/.test(alias)) throw new SetupError("El alias tiene de 6 a 20 caracteres: letras, números, puntos o guiones.");
+  if (cleanCbu && !isValidCbu(cleanCbu)) throw new SetupError("Revisá el CBU o CVU: son 22 números y alguno no coincide.");
+  if (holder.length > 80) throw new SetupError("El titular puede tener hasta 80 caracteres.");
+  if ((alias || cleanCbu) && !holder) throw new SetupError("Escribí el titular de la cuenta, para que quien transfiere lo pueda comprobar.");
+  if (holder && !alias && !cleanCbu) throw new SetupError("Escribí el alias o el CBU/CVU de la cuenta.");
+  return { transferAlias: alias || null, transferCbu: cleanCbu || null, transferHolder: holder || null };
+}
+
+export type TransferAccount = { alias: string | null; cbu: string | null; holder: string };
+
+/** What the booking page needs to offer a transfer, or null when the site does not take them. */
+export const transferAccount = (settings: Pick<Settings, "transferAlias" | "transferCbu" | "transferHolder">): TransferAccount | null =>
+  settings.transferHolder && (settings.transferAlias || settings.transferCbu)
+    ? { alias: settings.transferAlias, cbu: settings.transferCbu, holder: settings.transferHolder }
+    : null;
 
 /** Closures entered from the panel are whole Buenos Aires days, both included. */
 export function closureFromDays(input: unknown): NewClosure {

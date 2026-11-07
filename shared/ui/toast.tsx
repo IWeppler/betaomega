@@ -9,11 +9,11 @@ const emit = () => listeners.forEach(listener => listener());
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
 const snapshot = () => current;
 const serverSnapshot = () => null;
-export function showToast(message: string) {
+export function showToast(message: string, durationMs = 3000) {
   clearTimeout(timer);
   current = { id: ++serial, message };
   emit();
-  timer = setTimeout(() => { current = null; emit(); }, 3000);
+  timer = setTimeout(() => { current = null; emit(); }, durationMs);
 }
 
 export function Toaster() {

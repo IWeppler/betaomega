@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cancellationMessage, cancellationRequestMessage, confirmationMessage, contactMessage, reminderMessage, whatsappLink, type MessageBooking } from "./messages.ts";
+import { cancellationMessage, cancellationRequestMessage, confirmationMessage, contactMessage, reminderMessage, transferProofMessage, whatsappLink, type MessageBooking } from "./messages.ts";
+import { formatCents } from "../../../platform/money/index.ts";
 
 const booking: MessageBooking = {
   siteName: "Fropexio", customerName: "Ana", startsAt: "2026-11-10T21:30:00.000Z", kind: "shared", seats: 2, owedCents: 140000, link: "https://fropexio.example/reserva/abc",
@@ -38,4 +39,11 @@ test("la cancelación identifica el turno", () => {
 test("quien reservó consulta o pide cancelar con el enlace de su reserva", () => {
   assert.equal(contactMessage(booking), "Hola, tengo una consulta sobre mi reserva en Fropexio del martes 10 de noviembre a las 18:30: https://fropexio.example/reserva/abc");
   assert.equal(cancellationRequestMessage(booking), "Hola, quiero cancelar mi reserva en Fropexio del martes 10 de noviembre a las 18:30: https://fropexio.example/reserva/abc");
+});
+
+test("el comprobante de transferencia nombra el monto y la reserva", () => {
+  assert.equal(
+    transferProofMessage({ ...booking, amountCents: 600_000 }),
+    `Hola, te mando el comprobante de la transferencia de ${formatCents(600_000)} para mi reserva en Fropexio del martes 10 de noviembre a las 18:30: https://fropexio.example/reserva/abc`,
+  );
 });

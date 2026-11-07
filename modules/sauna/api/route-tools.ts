@@ -1,6 +1,8 @@
 import { isAdmin, sameOrigin } from "@/platform/auth/server";
 import { getPanelSite } from "@/platform/sites/server";
 import type { Site } from "@/platform/sites";
+import { createHmac } from "node:crypto";
+import { CodeConflictError } from "../data/codes";
 import { SetupConflictError } from "../data/setup";
 import { CustomerError } from "../domain/customer";
 import { SetupError } from "../domain/setup";
@@ -34,7 +36,7 @@ const forLog = (error: unknown) => (error instanceof Error ? error.message : Str
 export function failure(error: unknown, action: string) {
   if (error instanceof BodyError) return fail(error.status, error.message);
   if (error instanceof SetupError || error instanceof CustomerError) return fail(400, error.message);
-  if (error instanceof SetupConflictError) return fail(409, error.message);
+  if (error instanceof SetupConflictError || error instanceof CodeConflictError) return fail(409, error.message);
   console.error(`[sauna] ${action} failed:`, forLog(error));
   return fail(500, `No se pudo ${action}. Probá de nuevo.`);
 }
@@ -53,3 +55,9 @@ function panelRoute<C extends SiteContext>(write: boolean, handler: Handler<C>) 
 
 export const panelRead = <C extends SiteContext>(handler: Handler<C>) => panelRoute(false, handler);
 export const panelWrite = <C extends SiteContext>(handler: Handler<C>) => panelRoute(true, handler);
+
+/** A keyed hash of the visitor's address, never the address: enough to limit how much one origin can try, and useless to identify anyone. */
+export const originHash = (request: Request) => {
+  const address = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "local";
+  return createHmac("sha256", process.env.ANKORA_SESSION_SECRET || "").update(`sauna-origin:${address}`).digest("hex").slice(0, 32);
+};

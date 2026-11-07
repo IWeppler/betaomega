@@ -1884,3 +1884,86 @@ grant execute on function public.sauna_reserve_core(text, uuid, timestamptz, uui
 grant execute on function public.sauna_reserve_manual(text, uuid, timestamptz, uuid, text, text, text, uuid, bigint) to service_role;
 grant execute on function public.sauna_availability_core(text, date, date, boolean) to service_role;
 grant execute on function public.sauna_manual_availability(text, date, date) to service_role;
+
+-- Sauna, phase S3: payments (docs/SAUNA.md §6). The account the transfers go to, filled in from the panel. Transfer is offered only when an alias or a
+-- CBU/CVU and the holder are there. Mercado Pago needs nothing here: its credentials are server secrets per site (docs/ARCHITECTURE.md §9).
+alter table public.sauna_settings add column if not exists transfer_alias text check (transfer_alias ~ '^[A-Za-z0-9.-]{6,20}$');
+alter table public.sauna_settings add column if not exists transfer_cbu text check (transfer_cbu ~ '^[0-9]{22}$');
+alter table public.sauna_settings add column if not exists transfer_holder text check (char_length(transfer_holder) between 1 and 80);
+
+-- The person chose to pay by transfer: a current hold becomes pending_transfer and keeps its seat for transfer_hold_hours, never past the start of the turn
+-- and never less than it already had. The room is locked first, as in sauna_reserve and sauna_confirm_payment: a hold about to lapse competes for its
+-- seat with new bookings, so it is extended only while it still holds it. Repeating the request on a pending transfer changes nothing.
+create or replace function public.sauna_choose_transfer(p_site text, p_booking uuid, p_actor text)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_settings public.sauna_settings;
+  v_slot public.sauna_slots;
+  v_booking public.sauna_bookings;
+  v_expires timestamptz;
+begin
+  if p_actor is null or p_actor = '' then return public.sauna_reject('invalid_request'); end if;
+  select * into v_settings from public.sauna_settings s where s.site_id = p_site;
+  if not found or v_settings.transfer_holder is null or (v_settings.transfer_alias is null and v_settings.transfer_cbu is null) then
+    return public.sauna_reject('transfer_unavailable');
+  end if;
+
+  select s.* into v_slot from public.sauna_bookings b join public.sauna_slots s on s.site_id = b.site_id and s.id = b.slot_id where b.site_id = p_site and b.id = p_booking;
+  if not found then return public.sauna_reject('not_found'); end if;
+  perform 1 from public.sauna_rooms r where r.site_id = p_site and r.id = v_slot.room_id for update;
+  select * into v_booking from public.sauna_bookings b where b.site_id = p_site and b.id = p_booking for update;
+
+  if v_booking.status = 'pending_transfer' and v_booking.expires_at > now() then
+    return jsonb_build_object('ok', true, 'booking', to_jsonb(v_booking));
+  end if;
+  if v_booking.status <> 'held' or v_booking.expires_at <= now() or v_booking.deposit_cents < 1 then
+    return public.sauna_reject('invalid_status');
+  end if;
+
+  v_expires := greatest(least(now() + make_interval(hours => v_settings.transfer_hold_hours), v_slot.starts_at), v_booking.expires_at);
+
+  insert into public.booking_events (site_id, booking_id, from_status, to_status, actor, note)
+  values (p_site, p_booking, v_booking.status, 'pending_transfer', p_actor, '');
+
+  update public.sauna_bookings b
+     set status = 'pending_transfer', expires_at = v_expires
+   where b.site_id = p_site and b.id = p_booking
+  returning * into v_booking;
+
+  return jsonb_build_object('ok', true, 'booking', to_jsonb(v_booking));
+end $$;
+revoke execute on function public.sauna_choose_transfer(text, uuid, text) from public, anon, authenticated;
+grant execute on function public.sauna_choose_transfer(text, uuid, text) to service_role;
+
+-- Sauna, phase S4: codes (docs/SAUNA.md §4). Failed attempts at a code, from the booking form or from a reservation, so nobody can guess codes by trying
+-- them one after another. Only a keyed hash of the visitor's address, never the address, and no code text. Rows older than a day are deleted as new ones arrive.
+create table if not exists public.sauna_code_attempts (
+  id uuid primary key default gen_random_uuid(),
+  site_id text not null references public.sites (id),
+  origin_hash text not null check (char_length(origin_hash) between 1 and 64),
+  created_at timestamptz not null default now()
+);
+create index if not exists sauna_code_attempts_origin on public.sauna_code_attempts (site_id, origin_hash, created_at);
+alter table public.sauna_code_attempts enable row level security;
+revoke all on public.sauna_code_attempts from anon, authenticated;
+
+-- Sauna: the Mercado Pago account each site charges into, connected from the panel with OAuth (docs/SAUNA.md §6). One per site: connecting another
+-- account replaces it. The tokens are encrypted by the server (AES-256-GCM, modules/sauna/data/mercadopago-account.ts) before they reach this table,
+-- so a copy of the database alone does not let anyone charge or read payments.
+create table if not exists public.sauna_mercadopago_accounts (
+  site_id text primary key references public.sites (id),
+  user_id text not null check (user_id ~ '^[0-9]{1,20}$'),
+  nickname text not null default '' check (char_length(nickname) <= 120),
+  access_token text not null check (char_length(access_token) between 1 and 2000),
+  refresh_token text not null check (char_length(refresh_token) between 1 and 2000),
+  expires_at timestamptz not null,
+  live_mode boolean not null default true,
+  connected_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.sauna_mercadopago_accounts enable row level security;
+revoke all on public.sauna_mercadopago_accounts from anon, authenticated;

@@ -28,14 +28,20 @@ test("cobrar de más no deja un saldo negativo", () => {
 });
 
 test("una retención vigente se puede confirmar o cancelar; una vencida no", () => {
-  assert.deepEqual(bookingActions(booking({ status: "held", expiresAt: "2026-11-10T15:10:00.000Z" }), NOW), { confirm: true, attendance: false, cancel: true });
-  assert.deepEqual(bookingActions(booking({ status: "held", expiresAt: "2026-11-10T14:00:00.000Z" }), NOW), { confirm: false, attendance: false, cancel: false });
+  assert.deepEqual(bookingActions(booking({ status: "held", expiresAt: "2026-11-10T15:10:00.000Z" }), NOW), { confirm: true, transfer: false, attendance: false, cancel: true });
+  assert.deepEqual(bookingActions(booking({ status: "held", expiresAt: "2026-11-10T14:00:00.000Z" }), NOW), { confirm: false, transfer: false, attendance: false, cancel: false });
+});
+
+test("una transferencia pendiente se confirma registrándola, aunque su retención haya vencido", () => {
+  assert.deepEqual(bookingActions(booking({ status: "pending_transfer", expiresAt: "2026-11-11T02:00:00.000Z" }), NOW), { confirm: false, transfer: true, attendance: false, cancel: true });
+  assert.deepEqual(bookingActions(booking({ status: "pending_transfer", expiresAt: "2026-11-10T14:00:00.000Z" }), NOW), { confirm: false, transfer: true, attendance: false, cancel: false });
+  assert.equal(bookingActions(booking({ status: "held", expiresAt: "2026-11-10T14:00:00.000Z" }), NOW).transfer, false);
 });
 
 test("la asistencia se marca solo cuando el turno ya empezó", () => {
   assert.equal(bookingActions(booking(), NOW).attendance, false);
   assert.equal(bookingActions(booking({ startsAt: NOW }), NOW).attendance, true);
-  assert.deepEqual(bookingActions(booking({ status: "completed", startsAt: NOW }), NOW), { confirm: false, attendance: false, cancel: false });
+  assert.deepEqual(bookingActions(booking({ status: "completed", startsAt: NOW }), NOW), { confirm: false, transfer: false, attendance: false, cancel: false });
 });
 
 test("cada vista abarca su período", () => {

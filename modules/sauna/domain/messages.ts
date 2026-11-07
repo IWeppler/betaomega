@@ -36,5 +36,9 @@ export const cancellationMessage = (booking: MessageBooking) =>
 export const contactMessage = ({ siteName, startsAt, link }: Pick<MessageBooking, "siteName" | "startsAt" | "link">) =>
   `Hola, tengo una consulta sobre mi reserva en ${siteName} del ${when(startsAt)}: ${link}`;
 
-export const cancellationRequestMessage = ({ siteName, startsAt, link }: Pick<MessageBooking, "siteName" | "startsAt" | "link">) =>
+/** The person sends the receipt of their transfer: the text names the amount so whoever attends can match it in the account. */
+export const transferProofMessage = ({ siteName, startsAt, link, amountCents }: Pick<MessageBooking, "siteName" | "startsAt" | "link"> & { amountCents: Cents }) =>
+  `Hola, te mando el comprobante de la transferencia de ${formatCents(amountCents)} para mi reserva en ${siteName} del ${when(startsAt)}: ${link}`;
+
+export const cancellationRequestMessage =({ siteName, startsAt, link }: Pick<MessageBooking, "siteName" | "startsAt" | "link">) =>
   `Hola, quiero cancelar mi reserva en ${siteName} del ${when(startsAt)}: ${link}`;

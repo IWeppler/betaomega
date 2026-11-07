@@ -71,7 +71,7 @@ test("la reserva manual confirmada no vence por falta de pago y mantiene la deud
   assert.equal(isCurrent(prepared.booking, "2026-11-09T12:00:00Z"), true);
   assert.deepEqual(moneyState(prepared.booking), { totalCents: 10000, paidCents: 0, owedCents: 10000, depositDueCents: 0 });
   assert.deepEqual(prepared.booking.movements, []);
-  assert.deepEqual(bookingActions({ ...prepared.booking, startsAt: prepared.startsAt }, now), { confirm: false, attendance: false, cancel: true });
+  assert.deepEqual(bookingActions({ ...prepared.booking, startsAt: prepared.startsAt }, now), { confirm: false, transfer: false, attendance: false, cancel: true });
 });
 
 test("individual y grupal conservan sus precios y ambas bloquean el módulo completo", () => {

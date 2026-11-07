@@ -48,3 +48,24 @@ export type PackRejection = Extract<ReserveRejection, `pack_${string}`>;
 
 export const paymentOutcomes = ["duplicate", "confirmed", "late_confirmed", "no_seat", "amount_mismatch", "unapplied"] as const;
 export type PaymentOutcome = (typeof paymentOutcomes)[number];
+
+/** What the panel says after recording a transfer. Typed over the list, so a new outcome without its message does not compile. */
+export const transferOutcomeMessages: Record<PaymentOutcome, string> = {
+  duplicate: "Esa transferencia ya estaba registrada.",
+  confirmed: "Transferencia registrada: la reserva quedó confirmada.",
+  late_confirmed: "Transferencia registrada fuera de término, pero el turno seguía libre: la reserva quedó confirmada.",
+  no_seat: "Se registró la transferencia, pero el turno ya no tiene lugar: la reserva queda vencida y el pago, para devolver.",
+  amount_mismatch: "Se registró la transferencia, pero no coincide con la seña: queda marcada para devolver.",
+  unapplied: "Se registró la transferencia, pero la reserva ya no la esperaba: queda marcada para devolver.",
+};
+
+/** Why public.sauna_choose_transfer refuses. */
+export const transferRejections = ["invalid_request", "transfer_unavailable", "not_found", "invalid_status"] as const;
+export type TransferRejection = (typeof transferRejections)[number];
+
+export const transferRejectionMessages: Record<TransferRejection, string> = {
+  invalid_request: "No pudimos procesar el pedido. Recargá la página y probá de nuevo.",
+  transfer_unavailable: "Este lugar no recibe transferencias por ahora. Pagá con Mercado Pago o escribinos por WhatsApp.",
+  not_found: "No encontramos tu reserva.",
+  invalid_status: "Tu reserva ya no está esperando un pago. Recargá la página para ver cómo quedó.",
+};

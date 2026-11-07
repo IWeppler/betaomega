@@ -69,12 +69,17 @@ export function moneyState(booking: Pick<AgendaBooking, "priceCents" | "discount
   return { totalCents, paidCents, owedCents: Math.max(totalCents - paidCents, 0), depositDueCents: Math.max(booking.depositCents - paidCents, 0) };
 }
 
-/** Actions that do not depend on money. The SQL function behind them checks the same again. */
+/**
+ * What can be done with a booking. The SQL function behind each action checks the same again.
+ * - confirm: a current hold, by hand and without money. A pending transfer is confirmed by recording it instead.
+ * - transfer: the stored status says it waits for a transfer, lapsed or not. A transfer that shows up late follows the late payment rule (docs/SAUNA.md §3).
+ */
 export function bookingActions(booking: Pick<AgendaBooking, "status" | "expiresAt" | "startsAt">, now: Instant) {
   const status = effectiveStatus(booking, now);
   const started = Date.parse(booking.startsAt) <= Date.parse(now);
   return {
-    confirm: status === "held" || status === "pending_transfer",
+    confirm: status === "held",
+    transfer: booking.status === "pending_transfer",
     attendance: status === "confirmed" && started,
     cancel: status === "held" || status === "pending_transfer" || status === "confirmed",
   };

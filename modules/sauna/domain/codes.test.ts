@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkCode, countUses, normalizeCode, type DiscountCode } from "./codes.ts";
+import { checkCode, cleanCode, countUses, describeCode, isCodeText, normalizeCode, type DiscountCode } from "./codes.ts";
+import { SetupError } from "./setup.ts";
 
 const NOW = "2026-11-10T15:00:00.000Z";
 const turn = { roomId: "sala-1", turnTypeId: "tipo-1" };
@@ -73,4 +74,50 @@ test("cuando vence la retención el uso vuelve a estar disponible", () => {
   const held = [{ status: "held", expiresAt: "2026-11-10T15:10:00.000Z", customerId: "ana" }] as const;
   assert.equal(countUses(held, "ana", NOW).total, 1);
   assert.equal(countUses(held, "ana", "2026-11-10T15:10:00.000Z").total, 0);
+});
+
+const draft = { code: " verano-10 ", type: "percent", value: 10 };
+
+test("el panel guarda el código en mayúsculas, sin espacios y con sus límites", () => {
+  const clean = cleanCode({ ...draft, maxUses: 50, maxUsesPerCustomer: 1, note: " regalo ", turnTypeId: "tipo-1" }, ["tipo-1"]);
+  assert.equal(clean.code, "VERANO-10");
+  assert.deepEqual([clean.type, clean.value, clean.maxUses, clean.maxUsesPerCustomer, clean.turnTypeId, clean.note, clean.active], ["percent", 10, 50, 1, "tipo-1", "regalo", true]);
+  assert.equal(cleanCode({ ...draft, maxUses: "" }, []).maxUses, null);
+});
+
+test("la vigencia abarca días completos de Buenos Aires, con los dos extremos", () => {
+  const clean = cleanCode({ ...draft, validFrom: "2026-12-01", validUntil: "2026-12-31" }, []);
+  assert.equal(clean.validFrom, "2026-12-01T03:00:00.000Z");
+  assert.equal(clean.validUntil, "2027-01-01T02:59:59.999Z");
+  assert.equal(checkCode(code({ validUntil: clean.validUntil }), turn, none, "2027-01-01T02:59:00.000Z"), null);
+  assert.equal(checkCode(code({ validUntil: clean.validUntil }), turn, none, "2027-01-01T03:00:00.000Z"), "code_expired");
+});
+
+test("los tipos sin valor guardan cero y el monto fijo va en centavos", () => {
+  assert.equal(cleanCode({ ...draft, type: "no_deposit", value: 99 }, []).value, 0);
+  assert.equal(cleanCode({ ...draft, type: "fixed", value: 500_000 }, []).value, 500_000);
+  assert.equal(cleanCode({ ...draft, type: "free", value: 7, maxUses: 1 }, []).value, 0);
+});
+
+test("un código mal escrito, sin valor o gratis sin límite se rechaza", () => {
+  for (const bad of [
+    { code: "ab" }, { code: "con espacio" }, { code: "AÑO" }, { code: "A_B" }, { code: "A%B" }, { type: "otro" }, { value: 0 }, { value: 101 }, { value: 12.5 },
+    { type: "fixed", value: 0 }, { type: "free", value: 0 }, { maxUses: 0 }, { maxUsesPerCustomer: -1 }, { validFrom: "2026-12-31", validUntil: "2026-12-01" },
+    { validFrom: "31/12/2026" }, { turnTypeId: "tipo-borrado" }, { note: "x".repeat(201) }, { id: "3f2a1b4c-5d6e-4f70-8a9b-0c1d2e3f4a5b" },
+  ]) {
+    assert.throws(() => cleanCode({ ...draft, ...bad }, ["tipo-1"]), SetupError, JSON.stringify(bad));
+  }
+});
+
+test("solo letras sin tilde, números y guiones forman un código", () => {
+  assert.equal(isCodeText("VERANO-10"), true);
+  assert.equal(isCodeText("verano"), false, "se normaliza antes");
+  assert.equal(isCodeText("A*"), false);
+});
+
+test("cada tipo de código se describe en pocas palabras", () => {
+  assert.equal(describeCode({ type: "percent", value: 15 }), "15 % de descuento");
+  assert.match(describeCode({ type: "fixed", value: 500_000 }), /5\.000/);
+  assert.equal(describeCode({ type: "no_deposit", value: 0 }), "Reserva sin seña");
+  assert.equal(describeCode({ type: "free", value: 0 }), "Sesión sin cargo");
 });

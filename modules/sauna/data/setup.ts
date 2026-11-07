@@ -11,6 +11,7 @@ export class SetupConflictError extends Error {
 type SettingsRow = {
   deposit_percent: number; min_lead_minutes: number; max_advance_days: number; mp_hold_minutes: number; transfer_hold_hours: number;
   contact_whatsapp: string | null; start_step_minutes: number; revision: number;
+  transfer_alias: string | null; transfer_cbu: string | null; transfer_holder: string | null;
 };
 type RoomRow = { id: string; name: string; capacity: number; active: boolean; revision: number };
 type TypeRow = { id: string; name: string; duration_minutes: number; price_cents: number | null; private_price_cents: number | null; deposit_percent: number | null; active: boolean; revision: number };
@@ -25,7 +26,8 @@ const closuresTable = (siteId: string) => siteTable<ClosureRow>("sauna_closures"
 
 const settingsFrom = (row: SettingsRow): Settings => ({
   depositPercent: row.deposit_percent, minLeadMinutes: row.min_lead_minutes, maxAdvanceDays: row.max_advance_days, mpHoldMinutes: row.mp_hold_minutes,
-  transferHoldHours: row.transfer_hold_hours, contactWhatsapp: row.contact_whatsapp, startStepMinutes: row.start_step_minutes, revision: row.revision,
+  transferHoldHours: row.transfer_hold_hours, contactWhatsapp: row.contact_whatsapp, startStepMinutes: row.start_step_minutes,
+  transferAlias: row.transfer_alias ?? null, transferCbu: row.transfer_cbu ?? null, transferHolder: row.transfer_holder ?? null, revision: row.revision,
 });
 const roomFrom = (row: RoomRow): Room => ({ id: row.id, name: row.name, capacity: row.capacity, active: row.active, revision: row.revision });
 const typeFrom = (row: TypeRow): TurnType => ({
@@ -54,7 +56,8 @@ export async function saveSettings(siteId: string, settings: Settings): Promise<
     method: "PATCH",
     body: JSON.stringify({
       deposit_percent: settings.depositPercent, min_lead_minutes: settings.minLeadMinutes, max_advance_days: settings.maxAdvanceDays, mp_hold_minutes: settings.mpHoldMinutes,
-      transfer_hold_hours: settings.transferHoldHours, contact_whatsapp: settings.contactWhatsapp, start_step_minutes: settings.startStepMinutes, revision: revision + 1,
+      transfer_hold_hours: settings.transferHoldHours, contact_whatsapp: settings.contactWhatsapp, start_step_minutes: settings.startStepMinutes,
+      transfer_alias: settings.transferAlias, transfer_cbu: settings.transferCbu, transfer_holder: settings.transferHolder, revision: revision + 1,
     }),
   });
   if (!row) throw new SetupConflictError();

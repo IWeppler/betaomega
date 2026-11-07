@@ -16,12 +16,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const site = await saunaSite(params);
   if (!site) return {};
   const { description } = await publicPage(site.id);
-  const image = { url: SITE_IMAGE, width: 1200, height: 630, alt: site.name };
+  const image = { ...SITE_IMAGE, type: "image/jpeg", alt: site.name };
   return {
     metadataBase: new URL(site.url),
     title: { default: site.name, template: `%s | ${site.name}` },
     description,
     alternates: { canonical: "/" },
+    manifest: "/manifest.webmanifest",
+    appleWebApp: { capable: true, title: site.name, statusBarStyle: "black-translucent" },
+    icons: { icon: [{ url: "/icon?size=32", sizes: "32x32", type: "image/png" }, { url: "/icon?size=192", sizes: "192x192", type: "image/png" }], apple: "/icon?size=180" },
     openGraph: { title: site.name, description, siteName: site.name, locale: "es_AR", type: "website", url: "/", images: [image] },
     twitter: { card: "summary_large_image", title: site.name, description, images: [image] },
   };

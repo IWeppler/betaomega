@@ -6,7 +6,7 @@ import { bookingKinds, bookingStatuses } from "./domain/booking.ts";
 import { packStatuses } from "./domain/pack.ts";
 import { paymentKinds, paymentMethods } from "./domain/payments.ts";
 import { codeTypes } from "./domain/pricing.ts";
-import { paymentOutcomes, reserveRejections } from "./domain/rejections.ts";
+import { paymentOutcomes, reserveRejections, transferRejections } from "./domain/rejections.ts";
 
 // There is no test database (docs/ROADMAP.md §5), so nothing here runs the SQL. These tests read supabase/schema.sql as text and guard what can
 // still drift or be forgotten: the agreements with the domain and the conventions of docs/CONVENTIONS.md §6.
@@ -41,7 +41,7 @@ const allowedIn = (tableName: string, column: string) => {
 
 test("están todas las tablas del modelo", () => {
   assert.deepEqual(tables.map(item => item.name).sort(), [
-    "booking_events", "cancellation_policies", "customers", "discount_codes", "payments", "sauna_band_types", "sauna_bookings", "sauna_closures",
+    "booking_events", "cancellation_policies", "customers", "discount_codes", "payments", "sauna_band_types", "sauna_bookings", "sauna_closures", "sauna_code_attempts", "sauna_mercadopago_accounts",
     "sauna_pack_plans", "sauna_pack_purchases", "sauna_rooms", "sauna_schedules", "sauna_settings", "sauna_slots", "sauna_time_bands", "sauna_turn_types",
   ]);
 });
@@ -131,7 +131,7 @@ test("solo el servidor puede llamar a las funciones", () => {
 test("toda función sobre datos recibe primero el sitio y filtra por él", () => {
   const scoped = functions.filter(({ params }) => /\bp_site\b/.test(params));
   assert.deepEqual(scoped.map(fn => fn.name).sort(), [
-    "sauna_anonymize_customer", "sauna_availability", "sauna_availability_core", "sauna_cancel", "sauna_confirm_payment", "sauna_is_closed", "sauna_manual_availability", "sauna_peak_seats", "sauna_record_refund", "sauna_reserve", "sauna_reserve_core", "sauna_reserve_manual", "sauna_save_week", "sauna_set_status",
+    "sauna_anonymize_customer", "sauna_availability", "sauna_availability_core", "sauna_cancel", "sauna_choose_transfer", "sauna_confirm_payment", "sauna_is_closed", "sauna_manual_availability", "sauna_peak_seats", "sauna_record_refund", "sauna_reserve", "sauna_reserve_core", "sauna_reserve_manual", "sauna_save_week", "sauna_set_status",
   ]);
   for (const { name, params, body: code } of scoped) {
     assert.match(params, /^\s*p_site text/, `${name}: primer argumento`);
@@ -226,4 +226,22 @@ test("anonimizar borra la identidad y lo que pueda identificar, y conserva los m
   assert.match(code, /update public\.booking_events/);
   assert.match(code, /note = '', raw = null/);
   assert.doesNotMatch(code, /delete from/);
+});
+
+test("elegir transferencia rechaza exactamente con los motivos del dominio", () => {
+  const reasons = new Set([...body("sauna_choose_transfer").matchAll(/sauna_reject\('(\w+)'\)/g)].map(match => match[1]));
+  assert.deepEqual([...reasons].sort(), [...transferRejections].sort());
+});
+
+test("elegir transferencia bloquea la sala antes que la reserva y nunca pasa del inicio del turno", () => {
+  const code = body("sauna_choose_transfer");
+  assert.ok(code.indexOf("public.sauna_rooms r where") < code.indexOf("public.sauna_bookings b where b.site_id = p_site and b.id = p_booking for update"));
+  assert.match(code, /least\(now\(\) \+ make_interval\(hours => v_settings\.transfer_hold_hours\), v_slot\.starts_at\)/);
+  assert.match(code, /v_booking\.status <> 'held' or v_booking\.expires_at <= now\(\)/);
+});
+
+test("los datos de transferencia de la base tienen el mismo formato que valida el panel", () => {
+  assert.match(sauna, /transfer_alias text check \(transfer_alias ~ '\^\[A-Za-z0-9\.-\]\{6,20\}\$'\)/);
+  assert.match(sauna, /transfer_cbu text check \(transfer_cbu ~ '\^\[0-9\]\{22\}\$'\)/);
+  assert.match(read("./domain/setup.ts"), /\^\[A-Za-z0-9\.-\]\{6,20\}\$/);
 });

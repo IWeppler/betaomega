@@ -59,8 +59,6 @@ export function ManualBookingForm({ siteId, turn, draft, onChange, onBack, onSav
         <div><dt className="text-sm text-muted">WhatsApp</dt><dd className="m-0">+{customer.whatsapp}</dd></div>
         <div><dt className="text-sm text-muted">Estado al confirmar</dt><dd className="m-0">{statusLabels[preparation.booking.status]}</dd></div>
       </dl>
-      <p className="m-0 text-sm text-muted">Al confirmar, el turno no vencerá por falta de pago. El total quedará pendiente de cobro; no se registrará ningún pago.</p>
-      <p id={noticeId} className="m-0 text-sm text-muted">Esta carga no registra la aceptación de condiciones del cliente. Quedará pendiente.</p>
       {error && <Notice kind="error">{error}</Notice>}
       <Button variant="primary" disabled={saving} aria-describedby={noticeId} onClick={() => void confirm()}>{saving ? "Creando reserva…" : "Confirmar reserva"}</Button>
       <Button disabled={saving} onClick={() => setReviewed(null)}>Seguir editando</Button>

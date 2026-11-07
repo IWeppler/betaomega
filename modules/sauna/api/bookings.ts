@@ -2,6 +2,7 @@ import { listBands, readSettings, listClosures, listRooms } from "../data/setup"
 import { cancelBooking, listBookingsOfRange, searchBookings, setBookingStatus } from "../data/bookings";
 import { bookingStatuses, type BookingStatus } from "../domain/booking";
 import { isDateText } from "../domain/time";
+import { recordTransfer } from "./payments";
 import { fail, failure, noStore, panelRead, panelWrite, readJson } from "./route-tools";
 
 /** The session is one shared password for now: phase P2 replaces this with the person's name. */
@@ -45,6 +46,10 @@ export const patchBooking = panelWrite<{ params: Promise<{ site: string; id: str
     const body = await readJson(request, 2_000) as { action?: unknown; note?: unknown } | null;
     const note = typeof body?.note === "string" ? body.note.trim().slice(0, 500) : "";
     const action = body?.action;
+    if (action === "transfer") {
+      const recorded = await recordTransfer(site.id, id, ACTOR);
+      return recorded.ok ? Response.json({ ok: true, outcome: recorded.outcome, message: recorded.message }) : fail(recorded.status, recorded.error);
+    }
     if (action !== "confirm" && action !== "complete" && action !== "no_show" && action !== "cancel") return fail(400, "Acción inválida.");
     const result = action === "cancel"
       ? await cancelBooking(site.id, id, note, ACTOR)

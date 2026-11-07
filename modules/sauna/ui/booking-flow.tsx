@@ -7,7 +7,7 @@ import { formatCents } from "@/platform/money";
 import type { Turn } from "../domain/agenda";
 import type { BookingKind } from "../domain/booking";
 import { describeRules, type PolicyRule } from "../domain/policy";
-import { quote } from "../domain/pricing";
+import { quote, type CodeEffect } from "../domain/pricing";
 import { addDays, businessDate, businessTime, dayLabel, shortDayLabel, type DateText } from "../domain/time";
 import { Button, Field, inputClass, Notice } from "./controls";
 import { fetchJson, sendJson } from "./fetch-json";
@@ -32,6 +32,9 @@ const choiceClass = (selected: boolean) => `rounded-field border transition-colo
 
 const groupTitle = "m-0 mb-2 p-0 text-[13px] font-semibold text-ink";
 
+/** What the code check answered. Only for the preview: the reservation sends the text and the server applies it again. */
+type AppliedCode = CodeEffect & { code: string; description: string };
+
 function Steps({ current }: { current: 1 | 2 }) {
   return <ol className="m-0 mb-4 flex list-none items-center gap-6 p-0 pr-10 text-xs" aria-label="Pasos de la reserva">
     {["Tu visita", "Tus datos"].map((label, index) => {
@@ -50,14 +53,33 @@ function BookingForm({ turn, data, onBack }: { turn: Turn; data: BookingFlowData
   const [kind, setKind] = useState<BookingKind>(offersShared(turn) ? "shared" : "private");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const preview = quote(turn, kind, 1, null);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeText, setCodeText] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [applied, setApplied] = useState<AppliedCode | null>(null);
+  const preview = quote(turn, kind, 1, applied);
+  const form = useRef<HTMLFormElement>(null);
+  const checkCode = async () => {
+    if (!codeText.trim()) { setCodeError("Escribí el código."); return; }
+    setChecking(true);
+    setCodeError("");
+    try {
+      const whatsapp = form.current ? new FormData(form.current).get("whatsapp") : null;
+      setApplied(await sendJson<AppliedCode>(`/api/sites/${data.siteId}/sauna/codes/check`, "POST", { code: codeText, roomId: turn.roomId, turnTypeId: turn.turnTypeId, whatsapp }));
+    } catch (failure) {
+      setApplied(null);
+      setCodeError((failure as Error).message);
+    } finally { setChecking(false); }
+  };
+  const removeCode = () => { setApplied(null); setCodeText(""); setCodeError(""); };
   const submit = async (form: HTMLFormElement) => {
     const values = new FormData(form);
     setBusy(true);
     setError("");
     try {
       const { token } = await sendJson<{ token: string }>(`/api/sites/${data.siteId}/sauna/reservations`, "POST", {
-        roomId: turn.roomId, turnTypeId: turn.turnTypeId, startsAt: turn.startsAt, kind, name: values.get("name"), whatsapp: values.get("whatsapp"),
+        roomId: turn.roomId, turnTypeId: turn.turnTypeId, startsAt: turn.startsAt, kind, name: values.get("name"), whatsapp: values.get("whatsapp"), code: applied?.code ?? null,
         // Pressing the button is the acceptance: the notice below it says so.
         termsAccepted: true,
       });
@@ -67,7 +89,7 @@ function BookingForm({ turn, data, onBack }: { turn: Turn; data: BookingFlowData
       setBusy(false);
     }
   };
-  return <form className="grid gap-3" onSubmit={event => { event.preventDefault(); void submit(event.currentTarget); }}>
+  return <form ref={form} className="grid gap-3" onSubmit={event => { event.preventDefault(); void submit(event.currentTarget); }}>
     <dl className="m-0 grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-x-4 rounded-field bg-surface p-3">
       <div><dt className="text-[11px] text-muted">Día</dt><dd className="m-0 text-[13px] first-letter:uppercase">{dayLabel(businessDate(turn.startsAt))}</dd></div>
       <div><dt className="text-[11px] text-muted">Horario</dt><dd className="m-0 text-[13px] tabular-nums">{businessTime(turn.startsAt)} a {businessTime(turn.endsAt)}</dd></div>
@@ -95,11 +117,32 @@ function BookingForm({ turn, data, onBack }: { turn: Turn; data: BookingFlowData
       </Field>
     </div>
 
+    {applied
+      ? <div className="flex flex-wrap items-center justify-between gap-2 rounded-field bg-surface px-3 py-2 text-[13px]" role="status">
+        <span><span className="font-semibold text-ink">{applied.code}</span> <span className="text-muted">· {applied.description}</span></span>
+        <button type="button" disabled={busy} onClick={removeCode} className="min-h-control px-2 text-accent-text hover:underline disabled:opacity-55">Quitar</button>
+      </div>
+      : codeOpen
+        ? <div className="grid gap-1">
+          <label htmlFor="booking-code" className="text-[13px] font-semibold text-ink">Código</label>
+          <div className="flex gap-2">
+            <input id="booking-code" className={`${inputClass} uppercase`} value={codeText} maxLength={40} autoComplete="off" autoCapitalize="characters" spellCheck={false}
+              onChange={event => setCodeText(event.target.value)}
+              onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); void checkCode(); } }}
+              aria-invalid={codeError ? true : undefined} aria-describedby={codeError ? "booking-code-error" : undefined} />
+            <Button disabled={checking || busy} onClick={() => void checkCode()}>{checking ? "Revisando…" : "Aplicar"}</Button>
+          </div>
+          {codeError && <p id="booking-code-error" role="alert" className="m-0 text-[13px] text-danger">{codeError}</p>}
+        </div>
+        : <button type="button" onClick={() => setCodeOpen(true)} className="justify-self-start px-0 text-[13px] text-accent-text hover:underline">¿Tenés un código de descuento?</button>}
+
     <dl className="m-0 text-[13px]">
+      {preview.discountCents > 0 && <div className="flex justify-between gap-4 border-t border-line-strong py-2"><dt className="text-muted">Descuento</dt><dd className="m-0 tabular-nums">− {formatCents(preview.discountCents)}</dd></div>}
       <div className="flex justify-between gap-4 border-t border-line-strong py-2"><dt className="text-muted">Precio</dt><dd className="m-0 tabular-nums">{formatCents(preview.totalCents)}</dd></div>
       <div className="flex justify-between gap-4 border-t border-line-strong py-2"><dt className="text-muted">Seña</dt><dd className="m-0 font-semibold text-accent-text tabular-nums">{formatCents(preview.depositCents)}</dd></div>
       <div className="flex justify-between gap-4 border-y border-line-strong py-2"><dt className="text-muted">Saldo a pagar en el lugar</dt><dd className="m-0 tabular-nums">{formatCents(preview.balanceCents)}</dd></div>
     </dl>
+    {applied && preview.confirmsAtOnce && <p className="m-0 text-[13px] text-muted">Con este código no pagás seña: la reserva queda confirmada al instante.</p>}
 
     {data.rules.length > 0 && <details className="group text-[13px]">
       <summary className="cursor-pointer text-muted">Si necesitás cancelar</summary>

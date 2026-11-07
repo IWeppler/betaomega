@@ -4,14 +4,15 @@ import { cleanTurnType, cleanWeek } from "../domain/hours";
 import { cleanPage } from "../domain/page";
 import { cleanSettings, closureFromDays, closureFromRange } from "../domain/setup";
 import { restOfBusinessDay } from "../domain/time";
+import { mercadoPagoStatus } from "./mercadopago-connect";
 import { fail, failure, noStore, panelRead, panelWrite, readJson } from "./route-tools";
 
 const BODY_LIMIT = 4_000;
 
 export const getConfig = panelRead(async (_request, site) => {
   try {
-    const [settings, rooms, types, bands, closures, page] = await Promise.all([readSettings(site.id), listRooms(site.id), listTurnTypes(site.id), listBands(site.id), listClosures(site.id), readPage(site.id)]);
-    return Response.json({ settings, rooms, types, bands, closures, page }, { headers: noStore });
+    const [settings, rooms, types, bands, closures, page, mercadopago] = await Promise.all([readSettings(site.id), listRooms(site.id), listTurnTypes(site.id), listBands(site.id), listClosures(site.id), readPage(site.id), mercadoPagoStatus(site.id)]);
+    return Response.json({ settings, rooms, types, bands, closures, page, mercadopago }, { headers: noStore });
   } catch (error) { return failure(error, "leer la configuración"); }
 });
 

@@ -61,13 +61,13 @@ export async function searchBookings(siteId: string, text: string, status: Booki
   return rows.map(agendaBooking);
 }
 
-export type ReserveRequest = { roomId: string; turnTypeId: string; startsAt: string; kind: BookingKind; seats: number; name: string; whatsapp: string; termsAccepted: boolean };
+export type ReserveRequest = { roomId: string; turnTypeId: string; startsAt: string; kind: BookingKind; seats: number; name: string; whatsapp: string; code: string | null; termsAccepted: boolean };
 type ReserveResult = { ok: true; booking: { id: string; token: string } } | { ok: false; reason: ReserveRejection };
 
 export function reserve(siteId: string, request: ReserveRequest): Promise<ReserveResult> {
   return rpc<ReserveResult>("sauna_reserve", {
     p_site: siteId, p_room: request.roomId, p_starts_at: request.startsAt, p_turn_type: request.turnTypeId, p_kind: request.kind, p_seats: request.seats, p_name: request.name, p_whatsapp: request.whatsapp,
-    p_code: null, p_pack_token: null, p_terms_accepted: request.termsAccepted,
+    p_code: request.code, p_pack_token: null, p_terms_accepted: request.termsAccepted,
   });
 }
 

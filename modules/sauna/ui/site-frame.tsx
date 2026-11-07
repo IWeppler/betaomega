@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Cinzel_Decorative } from "next/font/google";
 import { Brand, CtaLink } from "./site-parts";
 import { SiteNav } from "./site-nav";
+import { SiteMotion } from "./site-motion";
 
 // One typeface for the brand and every title; reading text stays in the system sans (docs/SAUNA.md §12).
 const display = Cinzel_Decorative({ subsets: ["latin"], weight: ["400"], display: "swap", variable: "--font-cinzel-decorative" });
@@ -10,7 +11,8 @@ const display = Cinzel_Decorative({ subsets: ["latin"], weight: ["400"], display
 export function SiteFrame({ siteName, home, termsHref, preview = false, children }: { siteName: string; home: string; termsHref: string; preview?: boolean; children: ReactNode }) {
   const root = home || "/";
   // The size and the reset on <main> repeat the public site's defaults: the preview lives inside the panel, whose CSS would otherwise make it look different.
-  return <div data-theme="sauna" className={`${display.variable} relative flex min-h-dvh flex-col bg-bg font-text text-[15px]/normal text-ink`}>
+  return <div data-theme="sauna" className={`${display.variable} relative flex min-h-dvh flex-col bg-bg font-text text-[15px]/normal text-ink antialiased selection:bg-accent selection:text-accent-ink`}>
+    <SiteMotion />
     <a href="#contenido" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-40 focus:rounded-control focus:bg-surface focus:p-3">Ir al contenido</a>
     {preview && <p role="status" className="fixed right-4 bottom-4 z-30 m-0 max-w-[calc(100%-2rem)] rounded-control border border-warn-line bg-warn-bg px-3 py-2 text-[13px] text-warn-ink shadow-lift">Vista previa: sin publicar y sin tomar reservas.</p>}
     {/* Over the hero; pages without one leave room for it with `pt-36`. */}

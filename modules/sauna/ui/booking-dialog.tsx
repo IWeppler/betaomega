@@ -19,6 +19,16 @@ export function BookingDialog({ data }: { data: BookingFlowData }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const open = useSyncExternalStore(onHashChange, () => window.location.hash === HASH, () => false);
 
+  // iOS Safari can still scroll the page behind a modal when only overflow is hidden.
+  useEffect(() => {
+    if (!open) return;
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const previous = { position: body.style.position, top: body.style.top, width: body.style.width };
+    body.style.position = "fixed"; body.style.top = `-${scrollY}px`; body.style.width = "100%";
+    return () => { Object.assign(body.style, previous); window.scrollTo({ top: scrollY, behavior: "instant" }); };
+  }, [open]);
+
   useEffect(() => {
     const element = dialog.current;
     if (!element) return;
@@ -40,7 +50,7 @@ export function BookingDialog({ data }: { data: BookingFlowData }) {
   };
 
   // m-auto: Tailwind's reset removes the margin a dialog centers itself with. 560px holds the seven days in a row; the height leaves the backdrop visible.
-  return <dialog ref={dialog} aria-labelledby="booking-title" onClose={forget} onClick={event => { if (event.target === event.currentTarget) forget(); }} className="m-auto max-h-[92svh] w-[min(560px,calc(100%-20px))] max-w-none overflow-auto rounded-card bg-bg p-0 text-ink shadow-lift backdrop:bg-sunken/80 backdrop:backdrop-blur-sm">
+  return <dialog ref={dialog} aria-labelledby="booking-title" onClose={forget} onClick={event => { if (event.target === event.currentTarget) forget(); }} className="m-auto max-h-[92svh] w-[min(560px,calc(100%-20px))] max-w-none overflow-auto overscroll-contain rounded-card bg-bg p-0 text-ink shadow-lift backdrop:bg-sunken/80 backdrop:backdrop-blur-sm [&_input]:text-base [&_select]:text-base">
     {open && <div className="relative px-5 pt-6 pb-5 sm:px-8">
       <button type="button" aria-label="Cerrar reserva" className="absolute top-3.5 right-3.5 grid size-control place-items-center rounded-full text-muted transition-colors duration-150 hover:bg-surface hover:text-ink" onClick={forget}><X size={18} strokeWidth={1.5} aria-hidden="true" /></button>
       <BookingFlow data={data} />

@@ -197,6 +197,11 @@ Fotos: bucket privado `images` de Supabase Storage, servidas por `/api/images/<n
 | `ANKORA_SELLER_CODE` | Código del equipo de Ñekurel. | Sí |
 | `PANEL_HOSTS` | Hosts del panel, separados por coma. | No (`betayomega.vercel.app,panel.localhost`) |
 | `DEFAULT_SITE` | Sitio para hosts desconocidos. | No (`nekurel`) |
+| `MERCADOPAGO_CLIENT_ID` | Número de la aplicación de Mercado Pago de la plataforma (una sola para todos los saunas). Cada sitio conecta **su cuenta** desde el panel (Configuración → Cobros) y sus tokens se guardan cifrados en `sauna_mercadopago_accounts`, no acá. | No: sin las tres, ningún sitio ofrece Mercado Pago |
+| `MERCADOPAGO_CLIENT_SECRET` | Clave secreta de esa aplicación, para canjear y renovar los tokens de las cuentas. Solo servidor. | Junto con las otras dos |
+| `MERCADOPAGO_WEBHOOK_SECRET` | Clave secreta de los webhooks de esa aplicación, con la que se verifica la firma de cada aviso. | Junto con las otras dos |
+
+`ANKORA_SESSION_SECRET` también deriva la clave que cifra los tokens de Mercado Pago: cambiarlo desconecta las cuentas, que se vuelven a conectar desde el panel.
 
 `.env.example` es la referencia; las secretas viven en `.env.local` y en Vercel. **El entorno local apunta a la base real, y no hay base de pruebas por decisión** (ver [ROADMAP](ROADMAP.md) §5 y "Probar sin tocar datos" en [CONVENTIONS.md](CONVENTIONS.md)).
 

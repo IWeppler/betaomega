@@ -4,4 +4,8 @@ import "server-only";
 export { getAgenda, getBookings, patchBooking } from "./api/bookings";
 export { getManualAvailability, postManualBooking } from "./api/manual-bookings";
 export { getAvailability, postReservation, publicHome, publicPage, publicReservation, SITE_IMAGE } from "./api/public";
+export { getIcon, getManifest } from "./api/app-icon";
+export { getCodes, postCode, postCodeCheck } from "./api/codes";
+export { disconnectMercadoPago, finishMercadoPagoConnect, startMercadoPagoConnect } from "./api/mercadopago-connect";
+export { postMercadoPagoNotice, postPayment } from "./api/payments";
 export { deleteClosure, getConfig, patchSettings, postClosure, putPage, putTypes, putWeek } from "./api/setup";

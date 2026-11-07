@@ -1,9 +1,9 @@
-import { createHmac } from "node:crypto";
 import { isAdmin, sameOrigin } from "@/platform/auth/server";
 import { getPanelSite, getSite } from "@/platform/sites/server";
 import type { Site } from "@/platform/sites";
 import { bookingByToken, bookingsFromOrigin, listTurns, markOrigin, readDefaultPolicy, reserve } from "../data/bookings";
 import { readPage } from "../data/page";
+import { resolveMapLocation } from "../data/map-location";
 import { listBands, listRooms, listTurnTypes, readSettings } from "../data/setup";
 import { bookingKinds, type BookingKind } from "../domain/booking";
 import { cleanArgentineWhatsapp, cleanName } from "../domain/customer";
@@ -11,7 +11,14 @@ import { whatsappLink } from "../domain/messages";
 import { hoursSummary } from "../domain/page";
 import { rejectionMessages } from "../domain/rejections";
 import { addDays, businessDate, isDateText } from "../domain/time";
-import { fail, failure, noStore, readJson, type SiteContext } from "./route-tools";
+import { paymentTargetByToken } from "../data/payments";
+import { ledgerOf } from "../domain/payments";
+import { transferAccount } from "../domain/setup";
+import { paymentOptionsOf, settleReturnedPayment } from "./payments";
+import { recordFailedAttempt } from "../data/codes";
+import { isCodeText, normalizeCode } from "../domain/codes";
+import { CODE_ATTEMPTS_MESSAGE, tooManyCodeAttempts } from "./codes";
+import { fail, failure, noStore, originHash, readJson, type SiteContext } from "./route-tools";
 
 // What the public site reaches. Only an active site answers, and nothing here returns another person's data.
 
@@ -38,12 +45,10 @@ export async function getAvailability(request: Request, context: SiteContext) {
   } catch (error) { return failure(error, "leer los turnos"); }
 }
 
-const originHash = (request: Request) => {
-  const address = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "local";
-  return createHmac("sha256", process.env.ANKORA_SESSION_SECRET || "").update(`sauna-origin:${address}`).digest("hex").slice(0, 32);
-};
-
-/** The browser says what it wants: which turn, which kind and who. An individual booking is always one person; the price and the seats are decided in sauna_reserve. */
+/**
+ * The browser says what it wants: which turn, which kind, who and, optionally, a code. An individual booking is always one person; the price, the discount
+ * and the seats are decided in sauna_reserve. A code it refuses counts as a failed attempt, as in the code check, so reserving is no way around that limit.
+ */
 export async function postReservation(request: Request, context: SiteContext) {
   if (!sameOrigin(request)) return fail(403, "Origen no permitido.");
   const site = await activeSauna(context);
@@ -58,19 +63,31 @@ export async function postReservation(request: Request, context: SiteContext) {
     const name = cleanName(body?.name);
     const whatsapp = cleanArgentineWhatsapp(body?.whatsapp);
 
+    const code = typeof body?.code === "string" && body.code.trim() ? normalizeCode(body.code.slice(0, 60)) : null;
+
     const origin = originHash(request);
     if (await bookingsFromOrigin(site.id, origin) >= MAX_BOOKINGS_PER_HOUR) return fail(429, "Hiciste muchas reservas seguidas. Probá de nuevo en un rato o escribinos por WhatsApp.");
+    if (code !== null) {
+      if (await tooManyCodeAttempts(site.id, origin)) return fail(429, CODE_ATTEMPTS_MESSAGE);
+      if (!isCodeText(code)) {
+        await recordFailedAttempt(site.id, origin);
+        return Response.json({ error: rejectionMessages.code_not_found, reason: "code_not_found" }, { status: 409 });
+      }
+    }
 
-    const result = await reserve(site.id, { roomId, turnTypeId, startsAt, kind, seats: 1, name, whatsapp, termsAccepted: body?.termsAccepted === true });
-    if (!result.ok) return Response.json({ error: rejectionMessages[result.reason], reason: result.reason }, { status: 409 });
+    const result = await reserve(site.id, { roomId, turnTypeId, startsAt, kind, seats: 1, name, whatsapp, code, termsAccepted: body?.termsAccepted === true });
+    if (!result.ok) {
+      if (result.reason.startsWith("code_")) await recordFailedAttempt(site.id, origin);
+      return Response.json({ error: rejectionMessages[result.reason], reason: result.reason }, { status: 409 });
+    }
     // Outside sauna_reserve on purpose: losing this mark only weakens a limit, and it must not undo a booking already taken.
     await markOrigin(site.id, result.booking.id, origin).catch((error: unknown) => console.error("[sauna] origin mark failed:", error instanceof Error ? error.name : "error"));
     return Response.json({ token: result.booking.token });
   } catch (error) { return failure(error, "hacer la reserva"); }
 }
 
-/** The image for link previews, a crop of the brand image. */
-export const SITE_IMAGE = "/fropexio-og.jpg";
+/** The image for link previews: the brand image as it is, portrait. */
+export const SITE_IMAGE = { url: "/fropexio.jpeg", width: 1024, height: 1536 };
 
 /** The home page's texts, for the pages that only need those. */
 export const publicPage = (siteId: string) => readPage(siteId);
@@ -82,6 +99,7 @@ export async function publicHome(siteId: string, { termsHref = "/terminos", prev
   return {
     booking: { siteId, today: businessDate(new Date().toISOString()), rules, maxAdvanceDays: settings.maxAdvanceDays, termsHref, preview },
     page,
+    location: await resolveMapLocation(page.mapUrl),
     types,
     depositPercent: settings.depositPercent,
     rules,
@@ -90,16 +108,22 @@ export async function publicHome(siteId: string, { termsHref = "/terminos", prev
   };
 }
 
-/** Everything the page of a booking shows, or null for a link that leads nowhere. */
-export async function publicReservation(siteId: string, token: string) {
+/**
+ * Everything the page of a booking shows, or null for a link that leads nowhere. `returnedPaymentId` is what Mercado Pago adds to the address when the
+ * person comes back from paying: that payment is checked with Mercado Pago before reading the booking, so the page already shows it confirmed.
+ */
+export async function publicReservation(siteId: string, token: string, returnedPaymentId?: unknown) {
+  const target = returnedPaymentId ? await paymentTargetByToken(siteId, token) : null;
+  if (target && ledgerOf(target.movements).depositPaidCents === 0) await settleReturnedPayment(siteId, target, returnedPaymentId);
   const booking = await bookingByToken(siteId, token);
   if (!booking) return null;
-  const [settings, rooms] = await Promise.all([readSettings(siteId), listRooms(siteId)]);
+  const [settings, rooms, options] = await Promise.all([readSettings(siteId), listRooms(siteId), paymentOptionsOf(siteId)]);
   return {
     booking,
     now: new Date().toISOString(),
     contactWhatsapp: settings?.contactWhatsapp ?? null,
     roomName: rooms.find(room => room.id === booking.roomId)?.name ?? "",
     showRoom: rooms.filter(room => room.active).length > 1,
+    payment: { ...options, transfer: settings ? transferAccount(settings) : null, returned: Boolean(returnedPaymentId) },
   };
 }
