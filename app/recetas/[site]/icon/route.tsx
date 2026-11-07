@@ -1,10 +1,10 @@
 import sharp from "sharp";
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 
 // Tab, home-screen and installed-app icon: the Comidas del cielo bowl (public/comidasdelcielo-icon*.png), resized.
 // ?size= 32, 64 (default), 180 (Apple), 192, 512. ?maskable=1 serves the full-bleed square for Android's adaptive shapes.
 export async function GET(request: Request, context: { params: Promise<{ site: string }> }) {
-  const site = findSite((await context.params).site);
+  const site = await getSite((await context.params).site);
   if (site?.kind !== "recetas") return new Response("No encontrado", { status: 404 });
   const url = new URL(request.url);
   const asked = Number(url.searchParams.get("size"));

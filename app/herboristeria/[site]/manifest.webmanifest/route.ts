@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 
 // The installed app opens on the team's finder (/equipo), as it did before the store took the home page.
 // id stays "/" (the old start_url) so tablets that already installed it keep the same app.
 export async function GET(_request: Request, { params }: { params: Promise<{ site: string }> }) {
-  const site = findSite((await params).site);
+  const site = await getSite((await params).site);
   if (!site) notFound();
   return Response.json({
     name: site.name,

@@ -1,11 +1,11 @@
 import { listPublishedProducts } from "@/lib/product-store";
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 
 // Next treats a route named like a metadata file as static; this one depends on the host and the data.
 export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, context: { params: Promise<{ site: string }> }) {
-  const site = findSite((await context.params).site);
+  const site = await getSite((await context.params).site);
   if (site?.kind !== "productos") return new Response("No encontrado", { status: 404 });
   let products;
   try { products = await listPublishedProducts(site); } catch (error) {

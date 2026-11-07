@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { isAdmin, sameOrigin } from "@/lib/auth";
 import { imageFormat, imageTypes, maxImageBytes } from "@/lib/images";
 import { optimizeImage } from "@/lib/image-optimizer";
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 import { supabase } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     if (!format || file.type !== imageTypes[format]) return Response.json({ error: "La imagen debe ser JPG, PNG o WebP." }, { status: 400 });
     // New sites keep their photos in their own folder; Ñekurel's editors send no site and keep using the root.
     const site = form.get("site");
-    const folder = typeof site === "string" && findSite(site) ? `${site}/` : "";
+    const folder = typeof site === "string" && await getSite(site) ? `${site}/` : "";
     // Everything is stored as WebP of at most 1 MB (lib/image-optimizer.ts), whatever format came in.
     const optimized = await optimizeImage(bytes);
     const name = `${folder}${randomUUID()}.webp`;

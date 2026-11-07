@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { cleanSettings, blankSettings, cleanInstagram, cleanContact, effectiveSettings, socialLinks, recipeSiteDefaults, cleanDonation } from '../lib/site-settings.ts';
 import { isScheduled, looksLikeBot, mostViewed, maxExtraImages, blankRecipe, recipeShareInfo, duplicateRecipe, parseIngredientLines, parseStepLines, canonicalCategory, categoryKey, categoryUsage, cleanRecipe, normalizeCategories, renameCategory, formatMinutes, isoDuration, matchesRecipe, recipeCategories, recipeGaps, lacksContent, recipeJsonLd, relatedRecipes, slugify, toRecipeCard, totalMinutes } from '../lib/recipes.ts';
 import { validImagePath } from '../lib/images.ts';
-import { findSite, siteForHost } from '../lib/sites.ts';
+import { findIn, siteForHostIn, seedSites } from '../lib/sites.ts';
+
+const findSite = id => findIn(seedSites, id);
+const siteForHost = host => siteForHostIn(seedSites, host);
 
 const id = '0b6f7c1e-2a3b-4c5d-8e9f-0a1b2c3d4e5f';
 const draft = (patch = {}) => ({ ...blankRecipe(), id, title: 'Empanadas salteñas', ...patch });

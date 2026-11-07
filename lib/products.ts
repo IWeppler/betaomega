@@ -56,7 +56,6 @@ export function productWords({ one, many, feminine }: { one: string; many: strin
   };
 }
 
-export const productsKey = (siteId: string) => `products:${siteId}`;
 export const blankProduct = (): Product => ({ id: crypto.randomUUID(), slug: "", name: "", description: "", keywords: [], published: true });
 
 // Routes of the site itself, so a product cannot take them.

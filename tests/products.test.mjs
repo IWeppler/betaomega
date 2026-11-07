@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cleanKeywords, cleanProductList, productApplications, productWords, searchProducts } from '../lib/products.ts';
-import { findSite, siteForHost, sites } from '../lib/sites.ts';
+import { findIn, siteForHostIn, seedSites as sites } from '../lib/sites.ts';
+
+const findSite = id => findIn(sites, id);
+const siteForHost = host => siteForHostIn(sites, host);
 
 const water = { application: true, descriptionLabel: 'Cómo se obtiene' };
 const plain = { application: false, descriptionLabel: 'Descripción' };

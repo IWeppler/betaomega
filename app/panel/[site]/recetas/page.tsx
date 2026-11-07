@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { BookOpenText, Plus, X } from "@phosphor-icons/react";
 import { normalize } from "@/lib/catalog";
 import {
@@ -12,7 +12,6 @@ import {
   type Recipe,
   type RecipeInput,
 } from "@/lib/recipes";
-import { findSite } from "@/lib/sites";
 import { EditorFrame } from "../editors";
 import {
   EmptyState,
@@ -22,7 +21,7 @@ import {
   useSelection,
 } from "../list-tools";
 import { SideSheet } from "../sheet";
-import { usePanel } from "../panel-context";
+import { usePanel, useSite } from "../panel-context";
 import { RecipeEditor } from "../recipe-editor";
 import { useRecipes } from "../recipes-context";
 import { isRecipeView, recipeViews, type RecipeView } from "../recipe-views";
@@ -32,8 +31,7 @@ import { PageHeader } from "../shell";
 const newRecipe = () => ({ ...blankRecipe(), published: true });
 
 export default function RecipesPage() {
-  const { site: siteId } = useParams<{ site: string }>();
-  const site = findSite(siteId);
+  const site = useSite();
   const { recipes } = useRecipes();
   const { busy } = usePanel();
   const { selection, setSelection, select } = useSelection<RecipeInput>();

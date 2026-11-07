@@ -1,31 +1,9 @@
 /* Betayomega panel. Scoped to .panel so the public sites keep their own look.
-   It redefines the tokens of globals.css (shared components read them) and then tightens those components for desk work.
+   Its tokens are the panel theme in globals.css. These rules tighten the shared components for desk work.
    Shape rule: controls 8px, containers 12px. Warm neutrals and one blue accent. Light only for now. */
+@layer theme, base, legacy, components, utilities;
+@layer legacy {
 .panel {
-  --font-text: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-head: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --bg: #fffefe;
-  --surface: #fbfafa;
-  --sidebar: #f2f2f1;
-  --surface-sidebar: #e7e6e2;
-  --sunken: #f2f2f1;
-  --ink: #1c1c1a;
-  --muted: #5f5e5a;
-  --line: #e8e7e4;
-  --line-strong: #d0cfca;
-  --accent: #0c8de8;
-  /* The accent is too light for small text on these backgrounds (3.4:1): text in accent colour uses this one (5.3:1). */
-  --accent-text: #0a6fb8;
-  --accent-hover: #0a78c6;
-  --accent-ink: #fffefe;
-  --accent-soft: #e7f4fd;
-  --accent-wash: #cfe8fb;
-  --radius-card: 12px;
-  --radius-field: 8px;
-  --pill: 8px;
-  --control: 36px;
-  --shadow: 0 1px 2px rgb(28 28 26 / 0.05);
-  --shadow-lift: 0 12px 32px -12px rgb(28 28 26 / 0.22);
   min-height: 100dvh;
   background: var(--bg);
   color: var(--ink);
@@ -33,12 +11,6 @@
   font-size: 14px;
   line-height: 1.5;
   font-feature-settings: "tnum" 0;
-}
-/* Fingers need room: on touch screens every control keeps 44px. */
-@media (pointer: coarse) {
-  .panel {
-    --control: 44px;
-  }
 }
 .panel h1,
 .panel h2,
@@ -1603,4 +1575,5 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
 }

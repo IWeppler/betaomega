@@ -32,5 +32,5 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 
 export default async function RecipeSiteLayout({ children, params }: Props & { children: React.ReactNode }) {
   if (!await recipeSite(params)) notFound();
-  return <div className={`recetas ${display.variable} ${text.variable}`} suppressHydrationWarning><Splash logo={brand.logo} />{children}</div>;
+  return <div data-theme="recetas" className={`recetas ${display.variable} ${text.variable}`} suppressHydrationWarning><Splash logo={brand.logo} />{children}</div>;
 }

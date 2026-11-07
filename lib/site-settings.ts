@@ -23,7 +23,6 @@ export const recipeSiteDefaults = {
 /** Mercado Pago payment link of the site's owner, used until the panel sets another one (or empties it to hide the button). */
 export const defaultDonation = "https://link.mercadopago.com.ar/betayomega";
 
-export const settingsKey = (siteId: string) => `site:${siteId}`;
 export const blankSettings = (): SiteSettings => ({
   tagline: "",
   description: "",

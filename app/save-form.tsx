@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+
+import { showToast } from "@/shared/ui/toast";
 
 type LeaveChoice = "save" | "discard" | "stay";
 
@@ -11,6 +13,7 @@ type LeaveChoice = "save" | "discard" | "stay";
 export function SaveForm({
   children,
   onSave,
+  onDiscard,
   changes,
   registerRef,
   paused,
@@ -19,6 +22,7 @@ export function SaveForm({
   /** Last save error, shown next to the status so it is visible without scrolling. */
   error?: string;
   children: ReactNode;
+  onDiscard?: () => void;
   onSave: (form: HTMLFormElement) => Promise<boolean>;
   /** Serialized state kept outside the inputs (images, rows…): a change marks the form as modified. */
   changes: string;
@@ -26,26 +30,29 @@ export function SaveForm({
   /** Called before leaving the form. Resolves true when it is fine to leave (saved, discarded or nothing changed). */
   registerRef: MutableRefObject<() => Promise<boolean>>;
 }) {
+  const titleId = useId();
+  const textId = useId();
   const form = useRef<HTMLFormElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const save = useRef(onSave);
+  const discard = useRef(onDiscard);
   const pausedRef = useRef(paused);
   const dirty = useRef(false);
   const flight = useRef<Promise<boolean> | null>(null);
   const previous = useRef(changes);
   const answer = useRef<((choice: LeaveChoice) => void) | null>(null);
-  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [status, setStatus] = useState<"idle" | "dirty" | "saving" | "saved" | "error">("idle");
-  const [confirmed, setConfirmed] = useState(false);
+  const [modified, setModified] = useState(false);
   const [asking, setAsking] = useState(false);
   useEffect(() => {
     save.current = onSave;
+    discard.current = onDiscard;
     pausedRef.current = paused;
   });
 
   const markDirty = useCallback(() => {
     dirty.current = true;
-    setConfirmed(false);
+    setModified(true);
     setStatus("dirty");
   }, []);
   const submit = useCallback(async (): Promise<boolean> => {
@@ -56,11 +63,9 @@ export function SaveForm({
     setStatus("saving");
     const success = await pending;
     flight.current = null;
-    if (success) dirty.current = false;
+    if (success) { dirty.current = false; setModified(false); }
     setStatus(success ? "saved" : "error");
-    if (confirmTimer.current) clearTimeout(confirmTimer.current);
-    setConfirmed(success);
-    if (success) confirmTimer.current = setTimeout(() => setConfirmed(false), 3000);
+    if (success) showToast("Se guardó correctamente.");
     return success;
   }, []);
   const leave = useCallback(async (): Promise<boolean> => {
@@ -74,6 +79,9 @@ export function SaveForm({
     if (choice === "stay") return false;
     if (choice === "discard") {
       dirty.current = false;
+      setModified(false);
+      setStatus("idle");
+      discard.current?.();
       return true;
     }
     return submit();
@@ -89,7 +97,6 @@ export function SaveForm({
     registerRef.current = leave;
     return () => {
       registerRef.current = async () => true;
-      if (confirmTimer.current) clearTimeout(confirmTimer.current);
     };
   }, [leave, registerRef]);
   useEffect(() => {
@@ -130,17 +137,10 @@ export function SaveForm({
         <button className="button primary" type="submit" disabled={status === "saving" || paused}>
           {status === "saving" ? "Guardando…" : "Guardar"}
         </button>
+        {onDiscard && modified && <button type="button" className="min-h-control rounded-control border border-line-strong bg-surface px-4 font-medium text-ink hover:bg-sunken" disabled={status === "saving" || paused} onClick={onDiscard}>Descartar cambios</button>}
         <div className="save-feedback">
           <p className={`autosave-status ${status}`} role="status">
-            {status === "dirty"
-              ? "Hay cambios sin guardar."
-              : status === "saving"
-                ? "Guardando…"
-                : status === "saved"
-                  ? confirmed ? "✓ Se guardó correctamente." : ""
-                  : status === "error"
-                    ? "No se guardaron los cambios."
-                    : ""}
+            {status === "error" ? "No se guardaron los cambios." : ""}
           </p>
           {status === "error" && error && (
             <p className="autosave-status error" role="alert">
@@ -152,16 +152,16 @@ export function SaveForm({
       <dialog
         ref={dialog}
         className="bulk-dialog leave-dialog"
-        aria-labelledby="leave-title"
-        aria-describedby="leave-text"
+        aria-labelledby={titleId}
+        aria-describedby={textId}
         onCancel={(event) => {
           event.preventDefault();
           choose("stay");
         }}
       >
         <div className="bulk-dialog-body">
-          <h3 id="leave-title">Hay cambios sin guardar</h3>
-          <p id="leave-text">Si salís sin guardar, se pierden los cambios que hiciste en este formulario.</p>
+          <h3 id={titleId}>Hay cambios sin guardar</h3>
+          <p id={textId}>Si salís sin guardar, se pierden los cambios que hiciste en este formulario.</p>
           <div className="leave-actions">
             <button type="button" className="button primary" onClick={() => choose("save")}>Guardar y salir</button>
             <button type="button" className="button danger" onClick={() => choose("discard")}>Salir sin guardar</button>

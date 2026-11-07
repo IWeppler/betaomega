@@ -1,9 +1,9 @@
 import { ImageResponse } from "next/og";
-import { findSite } from "@/lib/sites";
+import { getSite } from "@/lib/site-registry";
 
 // Social preview of the site, 1200 × 630. A product with a photo shares the photo instead (see [slug]/page.tsx).
 export async function GET(_request: Request, context: { params: Promise<{ site: string }> }) {
-  const site = findSite((await context.params).site);
+  const site = await getSite((await context.params).site);
   if (!site?.products) return new Response("No encontrado", { status: 404 });
   return new ImageResponse(
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: 96, background: "#f6f8f8", color: "#14211f", borderBottom: `28px solid ${site.products.accent}` }}>

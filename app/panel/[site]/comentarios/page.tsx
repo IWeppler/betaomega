@@ -3,18 +3,15 @@
 import { useState } from "react";
 import { ArrowSquareOut, Check, EyeSlash, Trash, ArrowCounterClockwise } from "@phosphor-icons/react";
 import { commentStatuses, displayName, type CommentStatus, type RecipeComment } from "@/lib/comments";
-import { findSite } from "@/lib/sites";
-import { useParams } from "next/navigation";
 import { EmptyState } from "../list-tools";
-import { usePanel } from "../panel-context";
+import { usePanel, useSite } from "../panel-context";
 import { useRecipes } from "../recipes-context";
 import { PageHeader } from "../shell";
 
 const when = (iso: string) => new Date(iso).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" });
 
 export default function CommentsPage() {
-  const { site: siteId } = useParams<{ site: string }>();
-  const site = findSite(siteId);
+  const site = useSite();
   const { recipes, comments, commentsError, moderate, removeComment } = useRecipes();
   const { busy, error } = usePanel();
   const [status, setStatus] = useState<CommentStatus>("pending");

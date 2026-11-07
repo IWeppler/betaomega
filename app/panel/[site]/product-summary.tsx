@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { ArrowRight, ArrowSquareOut, CheckCircle, Plus, WarningCircle } from "@phosphor-icons/react";
 import { productWords } from "@/lib/products";
-import { findSite } from "@/lib/sites";
+import { useSite } from "./panel-context";
 import { InstallPanelButton } from "./install-panel";
 import { QuickActions, type QuickAction } from "./list-tools";
 import { useProducts } from "./products-context";
@@ -12,8 +11,7 @@ import { PageHeader } from "./shell";
 
 export function ProductSummary() {
   const { products } = useProducts();
-  const { site: siteId } = useParams<{ site: string }>();
-  const site = findSite(siteId);
+  const site = useSite();
   if (!products || !site?.products) return null;
   const words = productWords(site.products.items);
   const published = products.filter(p => p.published);

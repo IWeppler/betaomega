@@ -1,6 +1,7 @@
 import { normalizeCategories, type Recipe, type RecipeInput } from "./recipes";
 import { recordedViews } from "./metric-store";
-import { supabase, SupabaseError } from "./supabase";
+import { SupabaseError } from "./supabase";
+import { MissingTableError, siteTable } from "./site-table";
 
 // Server-only reads and writes of the recipes table (supabase/schema.sql).
 export class RecipeConflictError extends Error {}
@@ -39,41 +40,41 @@ const toRow = (siteId: string, recipe: RecipeInput, columns: Columns) => ({
   steps: recipe.steps, notes: recipe.notes, published: recipe.published,
 });
 
-const missingTable = () => new SupabaseError("Falta la tabla recipes en Supabase. Corré supabase/schema.sql en el SQL Editor.");
-async function rows(pathname: string, init: RequestInit = {}) {
-  const headers = new Headers(init.headers);
-  headers.set("Accept", "application/json");
-  if (init.body) { headers.set("Content-Type", "application/json"); headers.set("Prefer", "return=representation"); }
-  try {
-    const response = await supabase(`/rest/v1/recipes${pathname}`, { ...init, headers });
-    if (response.status === 404) throw missingTable();
-    return response.status === 204 ? [] : await response.json() as Row[];
-  } catch (error) {
-    // 23505: unique violation. The only unique keys are the id and the slug of each site.
-    if (error instanceof SupabaseError && error.message.includes("23505")) {
-      throw new RecipeConflictError(error.message.includes("slug") ? "Ya hay otra receta con esa dirección. Cambiá la dirección o el nombre." : "Otra persona creó esta receta al mismo tiempo. Recargá la página.");
+const missingTable = "Falta la tabla recipes en Supabase. Corré supabase/schema.sql en el SQL Editor.";
+/** The recipes of one site (siteTable scopes every query to it), with unique-key errors turned into RecipeConflictError. */
+function rows(siteId: string) {
+  const table = siteTable<Row>("recipes", siteId, missingTable);
+  return async (query = "", init: RequestInit = {}) => {
+    try { return await table(query, init); } catch (error) {
+      // 23505: unique violation. The only unique keys are the id and the slug of each site.
+      if (error instanceof SupabaseError && error.message.includes("23505")) {
+        throw new RecipeConflictError(error.message.includes("slug") ? "Ya hay otra receta con esa dirección. Cambiá la dirección o el nombre." : "Otra persona creó esta receta al mismo tiempo. Recargá la página.");
+      }
+      throw error;
     }
-    throw error;
-  }
+  };
 }
 const eq = (value: string | number) => `eq.${encodeURIComponent(String(value))}`;
 
 /** The panel's list. `views` is the old counter plus what the metrics have recorded since. */
 export async function listRecipes(siteId: string) {
-  const [list, recorded] = await Promise.all([rows(`?site_id=${eq(siteId)}&select=*&order=title.asc`), recordedViews(siteId)]);
+  const [list, recorded] = await Promise.all([rows(siteId)(`select=*&order=title.asc`), recordedViews(siteId)]);
   return list.map(fromRow).map(recipe => (recorded[recipe.id] ? { ...recipe, views: (recipe.views ?? 0) + recorded[recipe.id] } : recipe));
 }
 
 /** True when the recipe is published and its date has come: the only ones that take comments, views and shares. */
 export async function isLiveRecipe(siteId: string, recipeId: string) {
   const live = `&or=(published_at.is.null,published_at.lte.${new Date().toISOString()})`;
-  const response = await supabase(`/rest/v1/recipes?id=${eq(recipeId)}&site_id=${eq(siteId)}&published=is.true${live}&select=id`, { headers: { Accept: "application/json" } });
-  return response.ok && ((await response.json()) as unknown[]).length > 0;
+  try { return (await rows(siteId)(`id=${eq(recipeId)}&published=is.true${live}&select=id`)).length > 0; } catch (error) {
+    // No table yet: nothing is live.
+    if (error instanceof MissingTableError) return false;
+    throw error;
+  }
 }
 
 /** Published recipes of a site, the most recently published first: what the public site shows. */
 export async function listPublishedRecipes(siteId: string) {
-  const query = (order: string, live = "") => rows(`?site_id=${eq(siteId)}&published=is.true${live}&select=*&order=${order}`);
+  const query = (order: string, live = "") => rows(siteId)(`published=is.true${live}&select=*&order=${order}`);
   try {
     // A recipe scheduled for a later date stays out until then.
     const live = `&or=(published_at.is.null,published_at.lte.${new Date().toISOString()})`;
@@ -88,13 +89,13 @@ export async function listPublishedRecipes(siteId: string) {
 
 /** One recipe by its address, published or not. Only for previews: the caller checks the signature. */
 export async function findRecipeBySlug(siteId: string, slug: string) {
-  const [row] = await rows(`?site_id=${eq(siteId)}&slug=${eq(slug)}&select=*&limit=1`);
+  const [row] = await rows(siteId)(`slug=${eq(slug)}&select=*&limit=1`);
   return row ? fromRow(row) : undefined;
 }
 
 /** Creates the recipe (revision 0) or updates it if nobody saved since `recipe.revision`. */
 export async function saveRecipe(siteId: string, recipe: RecipeInput) {
-  const taken = await rows(`?site_id=${eq(siteId)}&slug=${eq(recipe.slug)}&id=neq.${recipe.id}&select=id`);
+  const taken = await rows(siteId)(`slug=${eq(recipe.slug)}&id=neq.${recipe.id}&select=id`);
   if (taken.length) throw new RecipeConflictError("Ya hay otra receta con esa dirección. Cambiá la dirección o el nombre.");
   const missing = (error: unknown, ...columns: string[]) => error instanceof SupabaseError && columns.some(column => error.message.includes(column));
   const hasTaxonomy = Boolean(recipe.moments.length || recipe.cuisine || recipe.difficulty);
@@ -115,11 +116,11 @@ export async function saveRecipe(siteId: string, recipe: RecipeInput) {
 }
 async function write(siteId: string, recipe: RecipeInput, columns: Columns) {
   if (recipe.revision === 0) {
-    const [created] = await rows("", { method: "POST", body: JSON.stringify({ id: recipe.id, ...toRow(siteId, recipe, columns), revision: 1 }) });
+    const [created] = await rows(siteId)("", { method: "POST", body: JSON.stringify({ id: recipe.id, ...toRow(siteId, recipe, columns), revision: 1 }) });
     return fromRow(created);
   }
   // The revision filter and the update run in one statement, so concurrent saves cannot overwrite each other.
-  const [updated] = await rows(`?id=${eq(recipe.id)}&site_id=${eq(siteId)}&revision=${eq(recipe.revision)}`, {
+  const [updated] = await rows(siteId)(`id=${eq(recipe.id)}&revision=${eq(recipe.revision)}`, {
     method: "PATCH", body: JSON.stringify({ ...toRow(siteId, recipe, columns), revision: recipe.revision + 1, updated_at: new Date().toISOString() }),
   });
   if (!updated) throw new RecipeConflictError("Otra persona modificó o eliminó esta receta. Recargá la página antes de guardar.");
@@ -127,5 +128,5 @@ async function write(siteId: string, recipe: RecipeInput, columns: Columns) {
 }
 
 export async function deleteRecipe(siteId: string, id: string) {
-  await rows(`?id=${eq(id)}&site_id=${eq(siteId)}`, { method: "DELETE" });
+  await rows(siteId)(`id=${eq(id)}`, { method: "DELETE" });
 }

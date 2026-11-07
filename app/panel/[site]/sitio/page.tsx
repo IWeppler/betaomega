@@ -8,15 +8,14 @@ import {
   recipeSiteDefaults,
   type SiteSettings,
 } from "@/lib/site-settings";
-import { findSite } from "@/lib/sites";
-import { usePanel } from "../panel-context";
+import { usePanel, useSite } from "../panel-context";
 import { PageHeader } from "../shell";
 import { useParams } from "next/navigation";
 
 export default function SitePage() {
   const { site } = useParams<{ site: string }>();
   // Product sites only use the donation for now.
-  const onlyDonation = findSite(site)?.kind === "productos";
+  const onlyDonation = useSite().kind === "productos";
   const { busy, setBusy, error, setError, flushRef } = usePanel();
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loadError, setLoadError] = useState("");
