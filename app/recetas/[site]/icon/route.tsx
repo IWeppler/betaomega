@@ -14,8 +14,8 @@ export async function GET(request: Request, context: { params: Promise<{ site: s
   try {
     const source = await fetch(new URL(square ? "/comidasdelcielo-icon-maskable.png" : "/comidasdelcielo-icon.png", request.url), { signal: AbortSignal.timeout(5000) });
     if (!source.ok) throw new Error(`icon ${source.status}`);
-    const png = await sharp(Buffer.from(await source.arrayBuffer())).resize(size, size).png({ compressionLevel: 9 }).toBuffer();
-    return new Response(new Uint8Array(png), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" } });
+    const png = await sharp(Buffer.from(await source.arrayBuffer())).resize(size, size).png({ compressionLevel: 6 }).toBuffer();
+    return new Response(new Uint8Array(png), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400, s-maxage=86400" } });
   } catch (error) {
     console.error("[recetas/icon]", error);
     return new Response("Ícono no disponible", { status: 502 });

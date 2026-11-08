@@ -13,6 +13,10 @@ export async function proxy(request: NextRequest) {
   }
   const site = await getSiteForHost(host, process.env.DEFAULT_SITE || undefined);
   if (!site) return new NextResponse("Sitio no encontrado", { status: 404 });
+  // Preserve signed draft links while keeping their dynamic render out of public ISR.
+  if (site.kind === "recetas" && request.nextUrl.searchParams.has("vista") && /^\/[^/]+\/?$/.test(pathname)) {
+    return NextResponse.rewrite(new URL(`/recetas/${site.id}/vista-previa${pathname}${search}`, request.url));
+  }
   // The store used to live under /catalogo; shared links keep working.
   if (site.kind === "herboristeria" && (pathname === "/catalogo" || pathname.startsWith("/catalogo/"))) {
     return NextResponse.redirect(new URL(`${pathname.slice("/catalogo".length) || "/"}${search}`, request.url), 308);

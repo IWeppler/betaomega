@@ -150,6 +150,7 @@ export default function Home() {
   }, []);
   useEffect(() => {
     const refresh = () => {
+      if (document.visibilityState !== "visible") return;
       if (
         !editor &&
         !herbEditor &&

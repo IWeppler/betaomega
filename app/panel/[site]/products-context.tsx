@@ -46,7 +46,7 @@ export function ProductsProvider({ siteId, options, children }: { siteId: string
   }, [base, store]);
   useEffect(() => { void Promise.resolve().then(reload); }, [reload]);
   useEffect(() => {
-    const refresh = () => { if (!busy && !dirty) void reload(); };
+    const refresh = () => { if (document.visibilityState === "visible" && !busy && !dirty) void reload(); };
     window.addEventListener("focus", refresh);
     const timer = window.setInterval(refresh, 30000);
     return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };

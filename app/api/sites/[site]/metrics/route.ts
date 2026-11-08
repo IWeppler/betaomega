@@ -23,13 +23,15 @@ function originAllowed(request: Request) {
  */
 export async function POST(request: Request, { params }: SiteParams) {
   if (!originAllowed(request)) return Response.json({ error: "Origen no permitido." }, { status: 403 });
+  // Drop automated traffic before registry reads, parsing and session checks.
+  if (looksLikeBot(request.headers.get("user-agent")) || /prefetch|preview/i.test(request.headers.get("purpose") ?? request.headers.get("sec-purpose") ?? "")) return ignored();
   const site = await recipeSite(params);
   if (!site) return notFound();
   try {
     const text = await request.text();
     if (text.length > 1000) return Response.json({ error: "Evento inválido." }, { status: 413 });
     const event = cleanMetric(JSON.parse(text));
-    if (looksLikeBot(request.headers.get("user-agent")) || /prefetch|preview/i.test(request.headers.get("purpose") ?? request.headers.get("sec-purpose") ?? "") || await isAdmin()) return ignored();
+    if (await isAdmin()) return ignored();
     // A recipe that is not published (or not yet) has no views or shares to count.
     if (event.recipeId && !await isLiveRecipe(site.id, event.recipeId)) return ignored();
     if (event.kind === "share") await trackMetric(site.id, event.recipeId, "share", event.channel);

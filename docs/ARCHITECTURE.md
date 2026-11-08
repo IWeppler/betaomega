@@ -180,6 +180,14 @@ Fotos: bucket privado `images` de Supabase Storage, servidas por `/api/images/<n
 - **Las cookies son del host, no del dominio.** Nunca fijar `Domain=` en una cookie de sesión: con subdominios comodín, la sesión del panel quedaría visible para los sitios públicos.
 - El panel confía en `isAdmin()` en el layout para **decidir qué mostrar**, y las APIs lo vuelven a verificar en cada lectura y escritura. El layout no es una barrera de seguridad.
 
+### Caché pública y CPU de Vercel
+
+El listado y las fichas publicadas de recetas y la portada de Ñekurel usan ISR con revalidación de 60 segundos. Las lecturas públicas de sus datos y del registro se cachean explícitamente con `unstable_cache` (modelo de Next sin Cache Components); `react.cache` solo deduplica dentro de una solicitud. No se cambia el `no-store` general de Supabase: el panel, las sesiones y las operaciones del sauna conservan sus lecturas actuales. La caché pública incluye el sitio en sus argumentos cuando corresponde. Una edición o publicación programada puede esperar a la siguiente regeneración; ISR sirve la copia anterior mientras actualiza, por lo que 60 segundos no es un límite estricto de propagación.
+
+Los filtros del listado de recetas se leen en el navegador bajo Suspense; el HTML de respaldo conserva el catálogo completo. Los enlaces firmados `/<slug>?vista=…` se reescriben a una ruta dinámica independiente, `/recetas/<site>/vista-previa/<slug>`, que valida la misma firma. Los borradores no se guardan en la caché de páginas públicas.
+
+Las imágenes subidas son inmutables y llevan `s-maxage=31536000`; los íconos y las imágenes sociales generadas llevan `s-maxage=86400`, además de la caché del navegador. Así Vercel puede responder desde su CDN sin ejecutar de nuevo la función. Los errores no reciben esa política. Los PNG de íconos usan compresión 6, sin pérdida de calidad, para reducir trabajo en un fallo de caché. El panel conserva el refresco cada 30 segundos pero lo omite en pestañas ocultas. Los bots y prefetches de métricas se descartan antes de consultar el registro o comprobar la sesión.
+
 ## 8. Aplicaciones instaladas (PWA)
 
 - **BetaOmega** es la app: `app/panel/manifest.webmanifest`, `public/panel-sw.js`, íconos `betayomega-*`.

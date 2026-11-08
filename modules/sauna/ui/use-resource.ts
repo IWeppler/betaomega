@@ -28,7 +28,7 @@ export function useResource<T>(url: string, { live = false }: { live?: boolean }
   useEffect(() => { void Promise.resolve().then(reload); }, [reload]);
   useEffect(() => {
     if (!live) return;
-    const refresh = () => void reload();
+    const refresh = () => { if (document.visibilityState === "visible") void reload(); };
     window.addEventListener("focus", refresh);
     const timer = window.setInterval(refresh, 30_000);
     return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };

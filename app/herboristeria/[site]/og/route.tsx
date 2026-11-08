@@ -13,6 +13,6 @@ export async function GET() {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={`data:image/png;base64,${logo.toString("base64")}`} width={788} height={630} alt="" style={{ objectFit: "contain" }} />
     </div>,
-    { width: 1200, height: 630, headers: { "Cache-Control": "public, max-age=86400" } },
+    { width: 1200, height: 630, headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400" } },
   );
 }

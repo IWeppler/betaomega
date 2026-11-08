@@ -28,7 +28,7 @@ async function logoUri(request: Request): Promise<string | undefined> {
 export async function GET(request: Request, context: { params: Promise<{ site: string }> }) {
   const site = await getSite((await context.params).site);
   if (site?.kind !== "recetas") return new Response("No encontrado", { status: 404 });
-  const options = { width: 1200, height: 630, headers: { "Cache-Control": "public, max-age=86400" } };
+  const options = { width: 1200, height: 630, headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400" } };
   const logo = await logoUri(request);
   const slug = new URL(request.url).searchParams.get("receta");
 

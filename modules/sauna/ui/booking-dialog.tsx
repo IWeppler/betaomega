@@ -49,9 +49,11 @@ export function BookingDialog({ data }: { data: BookingFlowData }) {
     window.dispatchEvent(new HashChangeEvent("hashchange"));
   };
 
-  // m-auto: Tailwind's reset removes the margin a dialog centers itself with. 560px holds the seven days in a row; the height leaves the backdrop visible.
-  return <dialog ref={dialog} aria-labelledby="booking-title" onClose={forget} onClick={event => { if (event.target === event.currentTarget) forget(); }} className="m-auto max-h-[92svh] w-[min(560px,calc(100%-20px))] max-w-none overflow-auto overscroll-contain rounded-card bg-bg p-0 text-ink shadow-lift backdrop:bg-sunken/80 backdrop:backdrop-blur-sm [&_input]:text-base [&_select]:text-base">
-    {open && <div className="relative px-5 pt-6 pb-5 sm:px-8">
+  // On a phone the booking takes the whole screen (100dvh, so the browser's bars never hide its bottom) and the second step fits in it without
+  // scrolling. From 640px it is a centered box: m-auto, because Tailwind's reset removes the margin a dialog centers itself with; 560px holds the seven
+  // days in a row, and the height leaves the backdrop visible.
+  return <dialog ref={dialog} aria-labelledby="booking-title" onClose={forget} onClick={event => { if (event.target === event.currentTarget) forget(); }} className="m-0 h-dvh max-h-none w-full max-w-none overflow-auto overscroll-contain bg-bg p-0 text-ink backdrop:bg-sunken/80 backdrop:backdrop-blur-sm sm:m-auto sm:h-auto sm:max-h-[92svh] sm:w-[min(560px,calc(100%-20px))] sm:rounded-card sm:shadow-lift [&_input]:text-base [&_select]:text-base">
+    {open && <div className="relative flex min-h-full flex-col px-5 pt-5 sm:block sm:min-h-0 sm:px-8 sm:pt-6 sm:pb-5">
       <button type="button" aria-label="Cerrar reserva" className="absolute top-3.5 right-3.5 grid size-control place-items-center rounded-full text-muted transition-colors duration-150 hover:bg-surface hover:text-ink" onClick={forget}><X size={18} strokeWidth={1.5} aria-hidden="true" /></button>
       <BookingFlow data={data} />
     </div>}

@@ -76,48 +76,48 @@ function SessionRow({
   depositPercent: number;
 }) {
   const deposit = type.depositPercent ?? depositPercent;
+  const prices = [
+    type.priceCents !== null && { label: "Individual", cents: type.priceCents, main: true },
+    type.privatePriceCents !== null && { label: "Grupal", cents: type.privatePriceCents, main: false },
+  ].filter((price): price is { label: string; cents: number; main: boolean } => Boolean(price));
+  // A grid, not a wrapping row: on a phone the number, the name and the arrow share the first line and the prices sit under the name, side by side;
+  // from 640px the prices and the arrow move to the right of the name, as before.
   return (
     <a
       href={RESERVE}
-      className="group flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-line-strong px-1 py-8 text-inherit no-underline transition-colors duration-150 hover:bg-bg sm:flex-nowrap sm:gap-x-12"
+      className="group grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-4 gap-y-5 border-b border-line-strong py-7 text-inherit no-underline transition-colors duration-150 hover:bg-bg active:bg-bg sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-x-12 sm:px-1 sm:py-8"
     >
       <span
-        className="self-start pt-5 font-serif text-[15px] text-muted"
+        className="row-start-1 pt-0.5 font-serif text-[15px] text-muted sm:self-start sm:pt-5"
         aria-hidden="true"
       >
         {String(index + 1).padStart(2, "0")}
       </span>
-      <div className="grid min-w-0 flex-1 basis-56 gap-2">
+      <div className="row-start-1 grid min-w-0 gap-2">
         <Eyebrow>{type.durationMinutes} minutos</Eyebrow>
-        <h3 className="m-0 font-display text-[clamp(1.25rem,2vw,1.625rem)] font-normal text-ink">
+        <h3 className="m-0 font-display text-[clamp(1.375rem,2vw,1.625rem)]/snug font-normal text-ink">
           {type.name}
         </h3>
-        <p className={`${reading} text-sm`}>
+        <p className={`${reading} max-w-[46ch] text-sm leading-6`}>
           {deposit > 0
             ? `Seña del ${deposit} % para reservar. El resto se paga en el lugar.`
             : "Sin seña: se paga en el lugar."}
         </p>
       </div>
-      <dl className="m-0 grid gap-2 sm:text-right">
-        {type.priceCents !== null && (
-          <div>
-            <dd className="m-0 font-display text-2xl text-accent-text">
-              {formatCents(type.priceCents)}
-            </dd>
-            <dt className="text-xs text-muted">individual</dt>
-          </div>
-        )}
-        {type.privatePriceCents !== null && (
-          <div>
-            <dd className="m-0 font-display text-lg text-ink">
-              {formatCents(type.privatePriceCents)}
-            </dd>
-            <dt className="text-xs text-muted">grupal</dt>
-          </div>
-        )}
-      </dl>
+      {prices.length > 0 && (
+        <dl className="col-span-2 col-start-2 row-start-2 m-0 flex gap-8 sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:grid sm:gap-3 sm:text-right">
+          {prices.map((price) => (
+            <div key={price.label} className="flex flex-col-reverse gap-0.5">
+              <dt className="text-xs text-muted">{price.label}</dt>
+              <dd className={`m-0 font-display whitespace-nowrap ${price.main ? "text-2xl text-accent-text" : "text-xl text-ink sm:text-lg"}`}>
+                {formatCents(price.cents)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
       <span
-        className="ml-auto grid size-11 shrink-0 place-items-center rounded-full border border-line-strong text-ink transition-colors duration-150 group-hover:border-accent group-hover:text-accent-text"
+        className="col-start-3 row-start-1 grid size-10 place-items-center self-start rounded-full border border-line-strong text-ink transition-colors duration-150 group-hover:border-accent group-hover:text-accent-text sm:col-start-4 sm:size-11 sm:self-center"
         aria-hidden="true"
       >
         <ArrowUpRight size={20} strokeWidth={1.25} />
@@ -261,7 +261,7 @@ export function SiteHome({ data }: { data: SiteHomeData }) {
           >
             Las sesiones
           </SectionLabel>
-          <div className="my-10 flex flex-wrap items-end justify-between gap-6 md:my-14">
+          <div className="mt-8 mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3 md:my-14">
             <Title lines={["Tu pausa,"]} accent="tu manera." />
             <p className={`${reading} max-w-xs text-sm`}>
               No todos los días piden lo mismo. Elegí cómo querés vivir el tuyo.

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import "@/app/globals.css";
 import "@/app/legacy.css";
 import { RegisterServiceWorker } from "@/app/register-sw";
@@ -7,8 +8,9 @@ import { getSite } from "@/lib/site-registry";
 import { ogImage } from "./og-image";
 
 type Props = { params: Promise<{ site: string }> };
+const publicSite = unstable_cache(getSite, ["public-herb-site", process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""], { revalidate: 60 });
 const herbSite = async (params: Props["params"]) => {
-  const site = await getSite((await params).site);
+  const site = await publicSite((await params).site);
   return site?.kind === "herboristeria" ? site : undefined;
 };
 

@@ -95,7 +95,7 @@ await comments(siteId)(`recipe_id=${eq(recipeId)}&status=eq.approved&select=*`);
 **Problema.** El panel de cada tipo necesita sus datos cargados una vez y compartidos por todas sus pantallas, y los componentes cliente no pueden consultar el registro de sitios.
 
 **Solución.**
-- Cada tipo tiene un contexto (`catalog-context`, `recipes-context`, `products-context`) que carga, refresca (al volver el foco y cada 30 s, salvo que se esté editando) y guarda. Lo elige `panelKinds[kind].provider`.
+- Cada tipo tiene un contexto (`catalog-context`, `recipes-context`, `products-context`) que carga, refresca (al volver el foco y cada 30 s, solo con la pestaña visible y salvo que se esté editando) y guarda. Lo elige `panelKinds[kind].provider`.
 - El layout (servidor) arma un **resumen** del sitio (`SiteSummary`: id, nombre, tipo, url, ícono, opciones) y lo entrega al shell, que lo publica con `SiteContext` / `useSite()`. **Los componentes cliente no importan la lista de sitios.**
 - Cuando un proveedor tiene `key={site.id}`, al cambiar de sitio se descarta la lista cargada: los datos de un sitio nunca pueden guardarse en otro.
 

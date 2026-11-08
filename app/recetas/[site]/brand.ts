@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { listPublishedRecipes } from "@/lib/recipe-store";
 import { effectiveSettings, recipeSiteDefaults } from "@/lib/site-settings";
 import { readSiteSettings } from "@/lib/site-store";
@@ -24,20 +25,20 @@ export const ogImage = (name: string, tagline: string = brand.tagline, slug?: st
 });
 
 /** One read per request, shared by generateMetadata and the page. */
-export const getRecipes = cache((siteId: string) =>
-  listPublishedRecipes(siteId),
-);
+export const getRecipes = cache(unstable_cache(listPublishedRecipes, ["public-recipes", process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""], { revalidate: 60 }));
 
 /** The site's editable data (tagline, description, Instagram, contact), read once per request. If the read fails, the site keeps working with the template's text. */
-export const getSettings = cache(async (siteId: string) => {
+export const getSettings = cache(unstable_cache(async (siteId: string) => {
   try { return effectiveSettings(await readSiteSettings(siteId)); } catch (error) {
     console.warn("[recetas] no se pudieron leer los datos del sitio:", error);
     return effectiveSettings(null);
   }
-});
+}, ["public-recipe-settings", process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""], { revalidate: 60 }));
 
 /** The site of a recipe route, or undefined when the id is unknown or belongs to another kind of site. */
 export const recipeSite = async (params: Promise<{ site: string }>) => {
-  const site = await getSite((await params).site);
+  const site = await publicSite((await params).site);
   return site?.kind === "recetas" ? site : undefined;
 };
+
+const publicSite = unstable_cache(getSite, ["public-recipe-site", process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""], { revalidate: 60 });

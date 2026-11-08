@@ -10,6 +10,6 @@ export async function GET(_request: Request, context: { params: Promise<{ site: 
       <div style={{ fontSize: 132, fontWeight: 700, lineHeight: 1, textTransform: "uppercase" }}>{site.name}</div>
       <div style={{ fontSize: 40, marginTop: 28, color: "#4d5c5a" }}>Buscá {site.products.items.many} por nombre o para qué sirve.</div>
     </div>,
-    { width: 1200, height: 630, headers: { "Cache-Control": "public, max-age=86400" } },
+    { width: 1200, height: 630, headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400" } },
   );
 }

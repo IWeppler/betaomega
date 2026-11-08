@@ -1,18 +1,20 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { CookingPot } from "@phosphor-icons/react/dist/ssr";
-import { filterParams, isRecipeOrder, noFilters, recipeCategories, recipeCuisines, recipeDifficulties, recipeMoments, recipeTimes, toRecipeCard, type RecipeFilters } from "@/lib/recipes";
-import { getRecipes, getSettings, recipeSite } from "./brand";
+import { noFilters, recipeCategories, recipeCuisines, toRecipeCard } from "@/lib/recipes";
+import { getRecipes, recipeSite } from "./brand";
 import { PageView } from "./page-view";
+import { RecipeBrowserFromUrl } from "./recipe-browser-from-url";
 import { RecipeBrowser } from "./recipe-browser";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 
-export const dynamic = "force-dynamic";
+export function generateStaticParams() { return []; }
+export const revalidate = 60;
 type Props = {
   params: Promise<{ site: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function RecipesHome({ params, searchParams }: Props) {
+export default async function RecipesHome({ params }: Props) {
   const site = await recipeSite(params);
   if (!site) notFound();
   let recipes;
@@ -30,37 +32,16 @@ export default async function RecipesHome({ params, searchParams }: Props) {
     );
   }
   const cards = recipes.map(toRecipeCard);
-  const { tagline, description } = await getSettings(site.id);
   const types = recipeCategories(recipes).map((c) => c.label);
   const cuisines = recipeCuisines(recipes);
-  // Filters from the address; unknown values are ignored. ?categoria= is the old name of ?tipo= (links already shared).
-  const asked = await searchParams;
-  const param = (name: string) => (typeof asked[name] === "string" ? (asked[name] as string) : "");
-  const known: Record<keyof RecipeFilters, string[]> = {
-    moment: recipeMoments.map((m) => m.id),
-    type: types,
-    cuisine: cuisines,
-    difficulty: recipeDifficulties.map((d) => d.id),
-    time: recipeTimes.map((t) => t.id),
-  };
-  const initialFilters = { ...noFilters };
-  for (const axis of Object.keys(known) as (keyof RecipeFilters)[]) {
-    const value = param(filterParams[axis]) || (axis === "type" ? param("categoria") : "");
-    if (known[axis].includes(value)) initialFilters[axis] = value;
-  }
-  const order = param("orden");
   return (
     <>
       <SiteHeader name={site.name} siteId={site.id} />
       <main className="r-page">
         {cards.length ? (
-          <RecipeBrowser
-            recipes={cards}
-            types={types}
-            cuisines={cuisines}
-            initialFilters={initialFilters}
-            initialOrder={isRecipeOrder(order) ? order : "recientes"}
-          />
+          <Suspense fallback={<RecipeBrowser recipes={cards} types={types} cuisines={cuisines} initialFilters={noFilters} initialOrder="recientes" />}>
+            <RecipeBrowserFromUrl recipes={cards} types={types} cuisines={cuisines} />
+          </Suspense>
         ) : (
           <div className="r-empty is-soon">
             <CookingPot size={56} weight="duotone" aria-hidden="true" />

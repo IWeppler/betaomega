@@ -26,8 +26,8 @@ export async function getIcon(request: Request, context: SiteContext) {
     // Read through HTTP, not the file system: a serverless function does not carry public/ with it.
     const source = await fetch(new URL(square ? ICON.maskable : ICON.any, request.url), { signal: AbortSignal.timeout(5000) });
     if (!source.ok) throw new Error(`icon ${source.status}`);
-    const png = await sharp(Buffer.from(await source.arrayBuffer())).resize(size, size).png({ compressionLevel: 9 }).toBuffer();
-    return new Response(new Uint8Array(png), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" } });
+    const png = await sharp(Buffer.from(await source.arrayBuffer())).resize(size, size).png({ compressionLevel: 6 }).toBuffer();
+    return new Response(new Uint8Array(png), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400, s-maxage=86400" } });
   } catch (error) {
     console.error("[sauna/icon]", error instanceof Error ? error.message : "error");
     return new Response("Ícono no disponible", { status: 502 });

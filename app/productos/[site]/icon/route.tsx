@@ -10,7 +10,7 @@ export async function GET(request: Request, context: { params: Promise<{ site: s
   const url = new URL(request.url);
   const asked = Number(url.searchParams.get("size"));
   const size = [32, 64, 180, 192, 512].includes(asked) ? asked : 64;
-  const headers = { "Cache-Control": "public, max-age=86400" };
+  const headers = { "Cache-Control": "public, max-age=86400, s-maxage=86400" };
   const { accent, icon } = site.products;
   if (!icon) {
     return new ImageResponse(
@@ -23,7 +23,7 @@ export async function GET(request: Request, context: { params: Promise<{ site: s
   try {
     const source = await fetch(new URL(square ? icon.maskable : icon.any, request.url), { signal: AbortSignal.timeout(5000) });
     if (!source.ok) throw new Error(`icon ${source.status}`);
-    const png = await sharp(Buffer.from(await source.arrayBuffer())).resize(size, size).png({ compressionLevel: 9 }).toBuffer();
+    const png = await sharp(Buffer.from(await source.arrayBuffer())).resize(size, size).png({ compressionLevel: 6 }).toBuffer();
     return new Response(new Uint8Array(png), { headers: { "Content-Type": "image/png", ...headers } });
   } catch (error) {
     console.error("[productos/icon]", error);

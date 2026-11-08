@@ -36,7 +36,7 @@ const groupTitle = "m-0 mb-2 p-0 text-[13px] font-semibold text-ink";
 type AppliedCode = CodeEffect & { code: string; description: string };
 
 function Steps({ current }: { current: 1 | 2 }) {
-  return <ol className="m-0 mb-4 flex list-none items-center gap-6 p-0 pr-10 text-xs" aria-label="Pasos de la reserva">
+  return <ol className="m-0 mb-3 flex sm:mb-4 list-none items-center gap-6 p-0 pr-10 text-xs" aria-label="Pasos de la reserva">
     {["Tu visita", "Tus datos"].map((label, index) => {
       const active = index + 1 === current;
       return <li key={label} aria-current={active ? "step" : undefined} className={`flex items-center gap-2 ${active ? "text-ink" : "text-muted"}`}>
@@ -89,20 +89,24 @@ function BookingForm({ turn, data, onBack }: { turn: Turn; data: BookingFlowData
       setBusy(false);
     }
   };
-  return <form ref={form} className="grid gap-3" onSubmit={event => { event.preventDefault(); void submit(event.currentTarget); }}>
-    <dl className="m-0 grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-x-4 rounded-field bg-surface p-3">
-      <div><dt className="text-[11px] text-muted">Día</dt><dd className="m-0 text-[13px] first-letter:uppercase">{dayLabel(businessDate(turn.startsAt))}</dd></div>
-      <div><dt className="text-[11px] text-muted">Horario</dt><dd className="m-0 text-[13px] tabular-nums">{businessTime(turn.startsAt)} a {businessTime(turn.endsAt)}</dd></div>
-      <div><dt className="text-[11px] text-muted">Sesión</dt><dd className="m-0 text-[13px]">{turn.typeName}</dd></div>
-    </dl>
+  // Sized so the whole step fits a phone's screen (about 390 × 660 with the browser's bars): the turn and its "Cambiar" share one box, the amounts one
+  // row, the code and the cancellation one line, and the button with the terms stays pinned to the bottom if a long name or an open policy pushes past it.
+  return <form ref={form} className="flex flex-1 flex-col gap-3 sm:grid" onSubmit={event => { event.preventDefault(); void submit(event.currentTarget); }}>
+    <div className="flex items-center justify-between gap-3 rounded-field bg-surface py-2.5 pr-1.5 pl-3">
+      <p className="m-0 min-w-0 text-[13px] leading-5">
+        <span className="block text-ink first-letter:uppercase">{dayLabel(businessDate(turn.startsAt))}</span>
+        <span className="block text-muted"><span className="tabular-nums">{businessTime(turn.startsAt)} a {businessTime(turn.endsAt)}</span>, {turn.typeName}</span>
+      </p>
+      <button type="button" disabled={busy} onClick={onBack} className="min-h-control shrink-0 px-2.5 text-[13px] text-accent-text hover:underline disabled:opacity-55">Cambiar</button>
+    </div>
 
     {offersShared(turn) && offersPrivate(turn) && <fieldset className="m-0 min-w-0 border-0 p-0">
       <legend className="m-0 mb-1 p-0 text-[13px] font-semibold text-ink">Modalidad</legend>
       <div className="grid grid-cols-2 gap-2">
-        {([["shared", "Individual", turn.priceCents], ["private", "Grupal", turn.privatePriceCents]] as const).map(([value, label, cents]) => <label key={value} className={`${choiceClass(kind === value)} grid min-h-control cursor-pointer place-items-center px-2 py-2 text-center text-[13px] has-focus-visible:outline-3 has-focus-visible:outline-offset-3 has-focus-visible:outline-focus`}>
+        {([["shared", "Individual", turn.priceCents], ["private", "Grupal", turn.privatePriceCents]] as const).map(([value, label, cents]) => <label key={value} className={`${choiceClass(kind === value)} flex min-h-control cursor-pointer items-center justify-between gap-2 px-3 text-[13px] active:scale-[0.98] has-focus-visible:outline-3 has-focus-visible:outline-offset-3 has-focus-visible:outline-focus`}>
           <input className="sr-only" type="radio" name="kind" checked={kind === value} onChange={() => setKind(value)} />
           <span>{label}</span>
-          <span className="text-xs tabular-nums">{formatCents(cents ?? 0)}</span>
+          <span className="tabular-nums">{formatCents(cents ?? 0)}</span>
         </label>)}
       </div>
     </fieldset>}
@@ -134,29 +138,33 @@ function BookingForm({ turn, data, onBack }: { turn: Turn; data: BookingFlowData
           </div>
           {codeError && <p id="booking-code-error" role="alert" className="m-0 text-[13px] text-danger">{codeError}</p>}
         </div>
-        : <button type="button" onClick={() => setCodeOpen(true)} className="justify-self-start px-0 text-[13px] text-accent-text hover:underline">¿Tenés un código de descuento?</button>}
+        : null}
 
-    <dl className="m-0 text-[13px]">
-      {preview.discountCents > 0 && <div className="flex justify-between gap-4 border-t border-line-strong py-2"><dt className="text-muted">Descuento</dt><dd className="m-0 tabular-nums">− {formatCents(preview.discountCents)}</dd></div>}
-      <div className="flex justify-between gap-4 border-t border-line-strong py-2"><dt className="text-muted">Precio</dt><dd className="m-0 tabular-nums">{formatCents(preview.totalCents)}</dd></div>
-      <div className="flex justify-between gap-4 border-t border-line-strong py-2"><dt className="text-muted">Seña</dt><dd className="m-0 font-semibold text-accent-text tabular-nums">{formatCents(preview.depositCents)}</dd></div>
-      <div className="flex justify-between gap-4 border-y border-line-strong py-2"><dt className="text-muted">Saldo a pagar en el lugar</dt><dd className="m-0 tabular-nums">{formatCents(preview.balanceCents)}</dd></div>
+    {/* The code's link and the cancellation share a line; each opens below it. */}
+    {(!applied && !codeOpen) || data.rules.length > 0 ? <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 text-[13px]">
+      {!applied && !codeOpen && <button type="button" onClick={() => setCodeOpen(true)} className="min-h-8 px-0 text-accent-text hover:underline">¿Tenés un código?</button>}
+      {data.rules.length > 0 && <details className="group ml-auto open:basis-full">
+        <summary className="flex min-h-8 cursor-pointer list-none items-center justify-end text-muted underline-offset-4 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">Si necesitás cancelar</summary>
+        <ul className="m-0 mt-1 grid list-disc gap-1 pl-5 text-left text-muted">{describeRules(data.rules).map(line => <li key={line}>{line}</li>)}</ul>
+      </details>}
+    </div> : null}
+
+    {/* One row instead of four: what it costs, what is paid now, what is left for the visit. */}
+    <dl className="m-0 grid grid-cols-3 border-y border-line-strong py-2.5 text-[13px]">
+      <div><dt className="text-[11px] text-muted">Precio</dt><dd className="m-0 tabular-nums">{formatCents(preview.totalCents)}</dd></div>
+      <div className="border-x border-line-strong px-3"><dt className="text-[11px] text-muted">Seña ahora</dt><dd className="m-0 font-semibold text-accent-text tabular-nums">{formatCents(preview.depositCents)}</dd></div>
+      <div className="pl-3"><dt className="text-[11px] text-muted">En el lugar</dt><dd className="m-0 tabular-nums">{formatCents(preview.balanceCents)}</dd></div>
     </dl>
+    {preview.discountCents > 0 && <p className="m-0 text-xs text-muted">El precio ya tiene el descuento de {formatCents(preview.discountCents)}.</p>}
     {applied && preview.confirmsAtOnce && <p className="m-0 text-[13px] text-muted">Con este código no pagás seña: la reserva queda confirmada al instante.</p>}
-
-    {data.rules.length > 0 && <details className="group text-[13px]">
-      <summary className="cursor-pointer text-muted">Si necesitás cancelar</summary>
-      <ul className="m-0 mt-2 grid list-disc gap-1 pl-5 text-muted">{describeRules(data.rules).map(line => <li key={line}>{line}</li>)}</ul>
-    </details>}
 
     {error && <Notice kind="error">{error}</Notice>}
     {data.preview && <Notice>Es una vista previa: desde acá no se toman reservas.</Notice>}
-    <div className="grid gap-1">
-      <button type="submit" disabled={busy || data.preview} className="flex min-h-control w-full items-center justify-between rounded-control bg-accent px-4 py-3.5 text-sm text-accent-ink transition-colors duration-150 enabled:hover:bg-accent-hover disabled:opacity-55">
+    <div className="sticky bottom-0 -mx-5 mt-auto grid gap-1.5 border-t border-line bg-bg px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:p-0">
+      <button type="submit" disabled={busy || data.preview} className="flex min-h-control w-full items-center justify-between rounded-control bg-accent px-4 py-3.5 text-sm text-accent-ink transition-[background-color,transform] duration-150 enabled:hover:bg-accent-hover enabled:active:scale-[0.98] disabled:opacity-55">
         {busy ? "Reservando…" : "Reservar"}<ArrowUpRight size={18} strokeWidth={1.5} aria-hidden="true" />
       </button>
       <p className="m-0 text-center text-xs text-muted">Al reservar aceptás los <a className="text-accent-text underline underline-offset-2" href={data.termsHref} target="_blank" rel="noopener">términos</a> y declarás tener 18 años o más.</p>
-      <button type="button" disabled={busy} onClick={onBack} className="mx-auto min-h-control px-2 text-[13px] text-accent-text hover:underline disabled:opacity-55">Elegir otro turno</button>
     </div>
   </form>;
 }
@@ -202,7 +210,7 @@ export function BookingFlow({ data }: { data: BookingFlowData }) {
   const arrow = "grid size-control place-items-center rounded-full border border-line-strong text-ink transition-colors duration-150 enabled:hover:bg-surface disabled:opacity-40";
   return <>
     {title}
-    <div className="grid content-start gap-4">
+    <div className="grid content-start gap-4 pb-6 sm:pb-0">
       <div className="min-w-0">
         <div className="mb-2 flex items-center justify-between gap-3">
           <h3 className={`${groupTitle} mb-0 font-text`}>¿Qué día querés venir?</h3>

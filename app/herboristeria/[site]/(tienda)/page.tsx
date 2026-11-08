@@ -7,7 +7,8 @@ import { StoreInfo } from "./store-info";
 import { getShop, pricesDate } from "./get-shop";
 import { ogImage } from "../og-image";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
+export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Catálogo | Ñekurel",
   description: "Hierbas y preparados de Ñekurel con sus precios.",

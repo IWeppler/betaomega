@@ -3,6 +3,7 @@ import { Cinzel_Decorative } from "next/font/google";
 import { Brand, CtaLink } from "./site-parts";
 import { SiteNav } from "./site-nav";
 import { SiteMotion } from "./site-motion";
+import { InstallApp } from "./install-app";
 
 // One typeface for the brand and every title; reading text stays in the system sans (docs/SAUNA.md §12).
 const display = Cinzel_Decorative({ subsets: ["latin"], weight: ["400"], display: "swap", variable: "--font-cinzel-decorative" });
@@ -17,7 +18,8 @@ export function SiteFrame({ siteName, home, termsHref, preview = false, children
     {preview && <p role="status" className="fixed right-4 bottom-4 z-30 m-0 max-w-[calc(100%-2rem)] rounded-control border border-warn-line bg-warn-bg px-3 py-2 text-[13px] text-warn-ink shadow-lift">Vista previa: sin publicar y sin tomar reservas.</p>}
     {/* Over the hero; pages without one leave room for it with `pt-36`. */}
     <header className="absolute inset-x-0 top-0 z-20 flex h-24 items-center justify-between gap-4 border-b border-ink/20 px-[6%] text-ink lg:h-28 lg:px-[5%]">
-      <Brand name={siteName} href={root} />
+      {/* Above the phone menu's sheet (z-30), which opens under the header row. */}
+      <div className="relative z-40"><Brand name={siteName} href={root} /></div>
       <div className="flex items-center gap-2 md:contents">
         <SiteNav home={home} />
         {/* On a phone the hero's button is right below, and both would not fit next to the brand. */}
@@ -30,6 +32,7 @@ export function SiteFrame({ siteName, home, termsHref, preview = false, children
       <p className="m-0 font-serif text-[15px] text-muted italic">Un espacio para volver a vos.</p>
       <div className="flex w-full flex-wrap gap-x-5 gap-y-1 text-xs text-muted sm:w-auto">
         <a className="text-muted underline underline-offset-4 hover:text-ink" href={termsHref}>Términos y condiciones</a>
+        <InstallApp className="inline-flex items-center gap-1.5 text-muted underline underline-offset-4 hover:text-ink" helpClassName="m-0 w-full text-xs text-muted" />
         <span>© {new Date().getFullYear()} {siteName}</span>
       </div>
     </footer>
