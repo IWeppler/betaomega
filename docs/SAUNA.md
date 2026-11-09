@@ -11,7 +11,8 @@ El orden de construcción está en [ROADMAP.md](ROADMAP.md) (fases S1 a S7). Est
 | Modalidades | **Individual o grupal.** El módulo es para dos personas y no se junta a desconocidos en un espacio tan chico: **una reserva, de cualquier modalidad, ocupa la sala** en todo su horario. En el código, `shared` es individual y `private` es grupal. |
 | Pago de la seña | **Mercado Pago** (confirmación automática por webhook) **y transferencia manual** (alguien marca la reserva como pagada en el panel). El cliente final elige. |
 | Códigos | Descuento en porcentaje, descuento de monto fijo, **reserva sin pagar seña**, y **pase gratis / cortesía**. |
-| Packs | Varias sesiones compradas juntas, a menor precio que sueltas, con vencimiento y máximo semanal. Ver §11. |
+| Planes | Varios turnos a un precio fijo, elegidos todos juntos antes de pagar, uno por día y dentro de una ventana de días. Seña sobre el total. Reemplazan a los packs. Ver §11. |
+| Apertura | El sitio toma reservas desde una fecha configurable (Configuración → Reservas, "Reservas desde"). Antes de esa fecha los turnos se muestran pero no se pueden reservar (`not_open_yet`); el panel sí puede cargar reservas manuales. |
 | Quién reserva | **Invitado:** nombre y WhatsApp, sin cuenta. Se identifica por un enlace secreto de su reserva. La tabla de clientes queda lista para sumar cuentas después sin migrar. |
 | Avisos | **WhatsApp con enlace precargado** (`wa.me`): el panel arma el mensaje y quien atiende lo envía con un toque. No hay envío automático. |
 | Cancelación | **Políticas configurables desde el panel**, por sitio. Cancela siempre quien atiende, y puede **reintegrar una parte** de lo cobrado y no necesariamente todo. Ver §7. |
@@ -29,14 +30,14 @@ El orden de construcción está en [ROADMAP.md](ROADMAP.md) (fases S1 a S7). Est
 6. Paga la seña con Mercado Pago, o elige transferencia y recibe el alias y las instrucciones.
 7. Queda en una página de su reserva (`/reserva/<token>`) con el estado y los botones de WhatsApp para consultar o pedir la cancelación.
 
-Quien compra un pack sigue el camino de §11.
+Quien reserva un plan sigue el camino de §11.
 
 **Quien atiende (panel).**
 - **Agenda:** vistas de día, semana y mes, con quién viene y qué falta pagar. La semana es una grilla de horarios; al elegir un horario o un día aparece un panel lateral (debajo en celular) para marcarlo como **ocupado** o liberar su cierre completo. Distingue días ocupados enteros o en parte. Las reservas ya hechas no se cancelan. Al elegir hoy permite **no habilitar más turnos por hoy**, con confirmación; los horarios pasados son de solo lectura.
 - **Reservas:** búsqueda y detalle; confirmar transferencia; cancelar con reintegro total, parcial o ninguno; ver pagos sin cupo; botones de WhatsApp (confirmación, recordatorio, cancelación).
 - **Reservas manuales (S2d, puntos 1–4):** desde un horario futuro y libre de Semana, o desde el día seleccionado en Día/Mes, **Crear reserva** consulta los turnos disponibles y permite elegir uno con su inicio, fin y tipo. Es la acción principal; ocupar queda como secundaria. La disponibilidad se comprueba para la duración completa del turno. **Cargar datos** abre en el mismo panel lateral el formulario de modalidad, nombre y WhatsApp argentino, con duración, precio y saldo sin pagos. **Revisar reserva** valida y normaliza los datos; se puede seguir editando o cambiar de turno sin perderlos. El borrador queda solo en memoria y salir o descartarlo pregunta antes de perder datos. **Confirmar reserva** llama a la operación atómica del panel: reserva confirmada, total pendiente y aceptación del cliente pendiente, sin pagos. Se bloquean envíos y navegación durante el pedido; los errores conservan los datos. La migración está preparada sin aplicar; falta el resultado completo y la verificación del punto 5 en [el plan de S2d](tareas-reservas-manuales.md).
 - **Horarios y precios:** una sola página, primero tipos de turno (duración, precios individual y grupal, seña propia y general) y después horarios (días abiertos, franjas, tipos ofrecidos, personas en el módulo e intervalo de inicio). Cada parte tiene su propio Guardar y Descartar; guardar una conserva la edición de la otra y salir pregunta por ambas en orden. Un tipo nuevo se puede elegir en las franjas después de guardarlo. Para cobrar distinto según día o franja se crea otro tipo. El ejemplo de inicios se actualiza con el intervalo y avisa si los turnos se superponen. Los cierres se cargan desde la Agenda, por un horario o un día por clic; se pueden ver y liberar completos los cierres de varios días existentes.
-- **Packs:** crear planes y ver las compras con sus sesiones restantes.
+- **Planes:** crear y editar los planes de varios turnos (§11).
 - **Códigos:** crear y editar (texto, tipo, valor, máximo de usos total y por persona, vigencia por días, restricción a un tipo de turno, nota, activo), ver cuántas veces se usa (reservas vigentes, como cuenta `sauna_reserve`) y si está vigente, vencido o agotado. No se borran: se desactivan. La restricción a sala existe en el modelo pero el panel no la ofrece, porque hay una sola sala.
 - **Políticas de cancelación.**
 - **Pagos:** movimientos de cada reserva o pack (señas, reintegros).
@@ -249,34 +250,26 @@ Registradas el 2026-11-05. No quedan preguntas abiertas. Los puntos marcados com
   - Correr `schema.sql` dos veces no falla ni cambia datos.
   - Una función con el sitio equivocado no lee ni toca filas de otro sitio.
 
-## 11. Packs
+## 11. Planes (reemplazan a los packs)
 
-Un pack son varias sesiones compradas juntas a menor precio que sueltas, por ejemplo 10 sesiones con un máximo de 4 por semana. **El descuento por volumen es el precio del pack:** no hay otra regla de descuento a largo plazo. Los planes se crean en la sección `packs` del panel.
+**Decidido el 2026-11-09, a pedido del cliente:** el plan reemplaza al pack de sesiones que se compraban y se reservaban después. Las tablas `sauna_pack_plans` y `sauna_pack_purchases`, y el camino de `p_pack_token` en `sauna_reserve_core`, quedan en la base sin uso; no se borran para no perder nada.
 
-**Comprar.**
-1. La persona elige un plan, deja nombre y WhatsApp, y acepta los términos.
-2. **Paga el total al comprar**, por Mercado Pago o transferencia, con las mismas retenciones de §6. No hay seña.
-3. Al confirmarse el pago, el pack queda activo y recibe su enlace secreto (`/pack/<token>`). Un pago tardío sobre una compra vencida activa el pack: no depende de un cupo.
+Un plan es **un precio fijo por una cantidad de turnos que la persona elige todos juntos antes de pagar**. Ejemplo: "Plan Vitalidad", 4 turnos por un precio, dentro de 30 días. Se crea y se edita en la sección **Planes** del panel (`planes`): nombre, descripción opcional, cantidad de turnos (2 a 12), precio total y días para usarlo. Un plan se desactiva, nunca se borra.
 
-Estados de una compra: `held`, `pending_transfer`, `active`, `expired`, `cancelled`. `expired` indica una compra sin pagar a tiempo. El vencimiento del pack ya pagado se decide por `valid_until`, sin cambiar de estado.
+**Reservar.**
+1. En el diálogo de reserva, la persona elige "Un turno" o uno de los planes activos.
+2. Con un plan, cada turno que toca se suma a una lista ("Tus turnos: 2 de 4"). Cada turno va en un **día distinto**, y entre el primero y el último no pueden pasar más días que los del plan (contando el primero). Solo se ofrecen turnos con modalidad individual.
+3. Con todos los turnos elegidos, deja nombre y WhatsApp y reserva. `sauna_reserve_plan` reserva **todos los turnos o ninguno**: cada uno pasa por `sauna_reserve_core` con las mismas comprobaciones y bloqueos que una reserva suelta.
+4. **Seña sobre el total:** el porcentaje de seña del sitio sobre el precio del plan. Precio y seña se reparten entre las reservas del plan en centavos enteros (el resto va al primer turno). Todas comparten la misma retención, que vence como mucho al empezar el primer turno.
+5. Un solo pago (Mercado Pago, con `external_reference = plan:<id>`, o transferencia) paga la seña completa. `sauna_confirm_plan_payment` registra la parte de cada turno con su propia referencia (`<ref>:<reserva>`) a través de `sauna_confirm_payment`, así cada turno sigue la regla del pago tardío. Un monto distinto del total se registra entero en el primer turno, que queda marcado para devolver.
+6. La persona llega a la página del plan (`/plan/<token>`), con todos sus turnos, lo que falta pagar y el botón para reservar otro turno.
 
-**Usar.** Desde su enlace, la persona ve las sesiones restantes y reserva turnos. Cada sesión es una reserva `confirmed`, sin cobro y sin seña.
-
-| Regla | Detalle |
-|---|---|
-| Vencimiento | Cada plan define sus días de validez, que corren desde la confirmación del pago. El turno tiene que empezar antes de `valid_until`. |
-| Máximo semanal | Cuenta turnos de lunes a domingo en hora de Buenos Aires, según la fecha del turno y no la del día en que se reserva. |
-| Saldo | Se calcula: sesiones del pack menos reservas que las consumen. Un ausente (`no_show`) consume la sesión. |
-| Concurrencia | `sauna_reserve` bloquea la compra, así dos reservas simultáneas no pueden usar la última sesión. |
-
-**Cancelar una sesión** sigue la política guardada al comprar. El panel propone devolver la sesión solo si el tramo reintegra el 100 %; quien atiende puede decidir otra cosa y queda registrado.
-
-**Cancelar el pack entero** no tiene propuesta automática: quien atiende fija el reintegro manual, hasta lo cobrado.
+En el panel, cada reserva de un plan muestra el nombre del plan. Registrar la transferencia de una reserva de un plan registra la del plan entero. Cancelar se hace turno por turno, con la política vigente al reservar.
 
 **Decisiones de alcance, que se pueden revisar:**
-- Un pack sirve para un lugar en un turno compartido, no para la sala completa.
-- Un código no se aplica a la compra de un pack ni a sus sesiones.
-- Un pack es personal: el enlace identifica a quien lo compró.
+- Un código no se aplica a un plan.
+- Un plan reserva un lugar individual en cada turno, no la sala en modo grupal.
+- No hay máximo por semana: alcanza con un turno por día y la ventana de días.
 
 ## 12. Sitio público e identidad
 

@@ -11,7 +11,8 @@ type Method = "mercadopago" | "transfer";
  * How the person pays the deposit of a held booking. The server checks the booking again and decides the amount: this only says which booking and how.
  * Mercado Pago leaves the page for its checkout; a transfer reloads it with the account's details.
  */
-export function PaymentChoice({ siteId, token, mercadopago, transfer }: { siteId: string; token: string; mercadopago: boolean; transfer: boolean }) {
+/** `plan` pays every turn of a plan at once: then `token` is the plan purchase's. */
+export function PaymentChoice({ siteId, token, mercadopago, transfer, plan = false }: { siteId: string; token: string; mercadopago: boolean; transfer: boolean; plan?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState<Method | null>(null);
   const [error, setError] = useState("");
@@ -19,7 +20,7 @@ export function PaymentChoice({ siteId, token, mercadopago, transfer }: { siteId
     setBusy(method);
     setError("");
     try {
-      const answer = await sendJson<{ url?: string }>(`/api/sites/${siteId}/sauna/reservations/payment`, "POST", { token, method });
+      const answer = await sendJson<{ url?: string }>(`/api/sites/${siteId}/sauna/${plan ? "plan-reservations" : "reservations"}/payment`, "POST", { token, method });
       if (method === "mercadopago" && answer?.url) {
         window.location.assign(answer.url);
         return; // stays busy while the browser leaves

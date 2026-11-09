@@ -8,8 +8,9 @@ import type { Movement } from "../domain/payments";
 import { describeRules, type PolicyRule } from "../domain/policy";
 import type { TransferAccount } from "../domain/setup";
 import { businessDate, businessTime, dayLabel } from "../domain/time";
-import { buttonClass, Card, Tag } from "./controls";
+import { buttonClass, Card } from "./controls";
 import { PaymentChoice } from "./payment-choice";
+import { BookAnother, ProgressSteps, ResultHero, stageOf } from "./result-parts";
 
 export type ReservationViewData = {
   booking: {
@@ -24,14 +25,15 @@ export type ReservationViewData = {
   payment: { mercadopago: boolean; transfer: TransferAccount | null; returned: boolean };
 };
 
-const statusText: Record<BookingStatus, { title: string; tone: "accent" | "warn" | "plain" }> = {
-  held: { title: "Lugar retenido", tone: "warn" },
-  pending_transfer: { title: "Esperando tu transferencia", tone: "warn" },
-  confirmed: { title: "Reserva confirmada", tone: "accent" },
-  cancelled: { title: "Reserva cancelada", tone: "plain" },
-  expired: { title: "La reserva venció", tone: "plain" },
-  completed: { title: "Turno realizado", tone: "plain" },
-  no_show: { title: "Turno sin asistencia", tone: "plain" },
+/** The short line above the title, and the title itself: what happened, in the words of whoever booked. */
+const statusText: Record<BookingStatus, { eyebrow: string; title: (name: string) => string }> = {
+  held: { eyebrow: "Lugar guardado", title: () => "Falta un paso: pagá la seña para confirmar" },
+  pending_transfer: { eyebrow: "Esperando tu transferencia", title: () => "Cuando llegue la transferencia, confirmamos tu turno" },
+  confirmed: { eyebrow: "Reserva confirmada", title: name => `¡Listo${name ? `, ${name.split(" ")[0]}` : ""}! Te esperamos` },
+  cancelled: { eyebrow: "Reserva cancelada", title: () => "Esta reserva se canceló" },
+  expired: { eyebrow: "La reserva venció", title: () => "El lugar se liberó" },
+  completed: { eyebrow: "Turno realizado", title: () => "Gracias por venir" },
+  no_show: { eyebrow: "Turno sin asistencia", title: () => "Este turno pasó sin asistencia" },
 };
 
 const until = (instant: string) => `${dayLabel(businessDate(instant))} a las ${businessTime(instant)}`;
@@ -48,22 +50,28 @@ export function ReservationView({ data, siteId, token, link, siteName }: { data:
   const open = status === "held" || status === "pending_transfer" || status === "confirmed";
   const about = { siteName, startsAt: booking.startsAt, link };
   const canPay = payment.mercadopago || payment.transfer !== null;
-  return <div className="grid gap-4">
-    <div className="grid justify-items-start gap-2">
-      <Tag tone={statusText[status].tone}>{statusText[status].title}</Tag>
-      <h1 className="m-0 font-display text-3xl/snug font-normal text-ink first-letter:uppercase">{dayLabel(businessDate(booking.startsAt))}, {businessTime(booking.startsAt)}</h1>
-      <p className="m-0 text-muted">
-        {booking.customerName && `${booking.customerName} · `}
+  const stage = stageOf(status);
+  return <div className="grid gap-5">
+    {stage !== "closed" && <ProgressSteps stage={stage} />}
+    <ResultHero stage={stage} eyebrow={statusText[status].eyebrow} title={statusText[status].title(booking.customerName)} />
+
+    {/* The turn itself, the thing to remember: day and time large, the rest below. */}
+    <Card className={`grid gap-1 ${stage === "done" ? "border-accent" : ""}`}>
+      <span className="text-xs text-muted">Tu turno</span>
+      <strong className="font-display text-2xl/snug font-normal text-ink first-letter:uppercase">{dayLabel(businessDate(booking.startsAt))}</strong>
+      <span className="text-lg text-ink tabular-nums">{businessTime(booking.startsAt)} a {businessTime(booking.endsAt)}</span>
+      <span className="text-muted">
         {booking.typeName && `${booking.typeName} · `}
         {booking.kind === "private" ? "Grupal" : "Individual"}
         {showRoom && roomName && ` · ${roomName}`}
-      </p>
-    </div>
+      </span>
+    </Card>
+    {stage === "done" && <p className="m-0 text-muted">Guardá esta página: desde este enlace ves tu reserva cuando quieras.</p>}
 
     {status === "held" && booking.expiresAt && <div className="grid gap-3">
       {payment.returned && money.paidCents === 0 && <p className="m-0 text-ink">Todavía no nos llegó la confirmación de Mercado Pago. Si ya pagaste, recargá la página en un minuto. Si el pago no se completó, podés intentarlo de nuevo.</p>}
       <p className="m-0 text-ink">
-        Guardamos tu lugar hasta las {businessTime(booking.expiresAt)}.{" "}
+        Guardamos tu lugar hasta las <strong className="font-semibold">{businessTime(booking.expiresAt)}</strong>.{" "}
         {canPay ? `Para confirmar la reserva, pagá la seña de ${formatCents(money.depositDueCents)}.` : "Escribinos por WhatsApp para confirmar la reserva."}
       </p>
       {canPay && <PaymentChoice siteId={siteId} token={token} mercadopago={payment.mercadopago} transfer={payment.transfer !== null} />}
@@ -101,10 +109,11 @@ export function ReservationView({ data, siteId, token, link, siteName }: { data:
         <dt className="text-muted">A pagar en el lugar</dt><dd className="m-0 text-right text-ink tabular-nums">{formatCents(money.owedCents - money.depositDueCents)}</dd>
       </dl>
     </Card>}
-    {contactWhatsapp && <div className="flex flex-wrap gap-2">
-      <a className={buttonClass(status === "pending_transfer" ? "quiet" : "primary")} href={whatsappLink(contactWhatsapp, contactMessage(about))} target="_blank" rel="noopener noreferrer"><FaWhatsapp size={16} aria-hidden="true" />Consultar por WhatsApp</a>
-      {open && <a className={buttonClass()} href={whatsappLink(contactWhatsapp, cancellationRequestMessage(about))} target="_blank" rel="noopener noreferrer">Pedir la cancelación</a>}
-    </div>}
+    <div className="flex flex-wrap gap-2">
+      <BookAnother primary={stage === "done" || stage === "closed"} />
+      {contactWhatsapp && <a className={buttonClass()} href={whatsappLink(contactWhatsapp, contactMessage(about))} target="_blank" rel="noopener noreferrer"><FaWhatsapp size={16} aria-hidden="true" />Consultar por WhatsApp</a>}
+      {contactWhatsapp && open && <a className={buttonClass()} href={whatsappLink(contactWhatsapp, cancellationRequestMessage(about))} target="_blank" rel="noopener noreferrer">Pedir la cancelación</a>}
+    </div>
     {open && booking.rules.length > 0 && <Card className="grid gap-2">
       <h2 className="m-0 font-display text-lg font-normal text-ink">Si necesitás cancelar</h2>
       <ul className="m-0 grid list-disc gap-1 pl-5 text-muted">{describeRules(booking.rules).map(line => <li key={line}>{line}</li>)}</ul>

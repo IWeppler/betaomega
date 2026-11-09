@@ -20,16 +20,22 @@ type BookingRow = {
   customers: { name: string; whatsapp: string | null };
   sauna_slots: { room_id: string; starts_at: string; ends_at: string; sauna_turn_types: { name: string } | null };
   payments: { kind: Movement["kind"]; amount_cents: number }[];
+  pack_purchase_id: string | null;
+  discount_codes: { code: string } | null;
+  sauna_plan_purchases: { name: string } | null;
 };
 
-const fullBooking = "select=id,token,status,kind,seats,price_cents,discount_cents,deposit_cents,expires_at,needs_refund,created_at,policy_snapshot,customers!inner(name,whatsapp),sauna_slots!inner(room_id,starts_at,ends_at,sauna_turn_types(name)),payments(kind,amount_cents)";
+export const fullBooking = "select=id,token,status,kind,seats,price_cents,discount_cents,deposit_cents,expires_at,needs_refund,created_at,policy_snapshot,customers!inner(name,whatsapp),sauna_slots!inner(room_id,starts_at,ends_at,sauna_turn_types(name)),payments(kind,amount_cents),pack_purchase_id,discount_codes(code),sauna_plan_purchases(name)";
 const bookings = (siteId: string) => siteTable<BookingRow>("sauna_bookings", siteId, missing);
 
-const agendaBooking = (row: BookingRow): AgendaBooking => ({
+export type { BookingRow };
+
+export const agendaBooking = (row: BookingRow): AgendaBooking => ({
   id: row.id, token: row.token, status: row.status, kind: row.kind, seats: row.seats, priceCents: row.price_cents, discountCents: row.discount_cents, depositCents: row.deposit_cents,
   expiresAt: row.expires_at, needsRefund: row.needs_refund, createdAt: row.created_at, customerName: row.customers.name, customerWhatsapp: row.customers.whatsapp,
   roomId: row.sauna_slots.room_id, startsAt: row.sauna_slots.starts_at, endsAt: row.sauna_slots.ends_at, typeName: row.sauna_slots.sauna_turn_types?.name ?? "",
   movements: row.payments.map(payment => ({ kind: payment.kind, amountCents: payment.amount_cents })),
+  code: row.discount_codes?.code ?? null, fromPack: row.pack_purchase_id !== null, planName: row.sauna_plan_purchases?.name ?? null,
 });
 
 /** Turns of a range of Buenos Aires days, from the template and the turns that already exist. */

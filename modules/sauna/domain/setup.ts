@@ -19,6 +19,8 @@ export type Settings = {
   transferAlias: string | null;
   transferCbu: string | null;
   transferHolder: string | null;
+  /** The first Buenos Aires day the public site takes bookings, or null for today. The panel's manual bookings ignore it. */
+  opensOn: DateText | null;
   revision: number;
 };
 
@@ -56,9 +58,19 @@ export function cleanSettings(input: unknown): Settings {
     contactWhatsapp,
     startStepMinutes: whole(value.startStepMinutes, 5, 240, "El inicio de los turnos"),
     ...cleanTransfer(value),
+    opensOn: cleanOpensOn(value.opensOn),
     revision: revisionOf(value.revision),
   };
 }
+
+function cleanOpensOn(value: unknown): DateText | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (!isDateText(value)) throw new SetupError("La fecha de apertura no es válida.");
+  return value;
+}
+
+/** The first day the public booking shows: today, or the opening day if it has not come yet. */
+export const firstBookableDay = (today: DateText, opensOn: DateText | null): DateText => (opensOn && opensOn > today ? opensOn : today);
 
 const optionalText = (value: unknown) => (typeof value === "string" ? value.trim() : value === null || value === undefined ? "" : null);
 

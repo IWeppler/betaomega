@@ -13,7 +13,8 @@ import { rejectionMessages } from "../domain/rejections";
 import { addDays, businessDate, isDateText } from "../domain/time";
 import { paymentTargetByToken } from "../data/payments";
 import { ledgerOf } from "../domain/payments";
-import { transferAccount } from "../domain/setup";
+import { firstBookableDay, transferAccount } from "../domain/setup";
+import { publicPlans } from "./plans";
 import { paymentOptionsOf, settleReturnedPayment } from "./payments";
 import { recordFailedAttempt } from "../data/codes";
 import { isCodeText, normalizeCode } from "../domain/codes";
@@ -94,10 +95,16 @@ export const publicPage = (siteId: string) => readPage(siteId);
 
 /** What the home page needs before the first turn is asked for. Null when the site has no sauna configuration yet. */
 export async function publicHome(siteId: string, { termsHref = "/terminos", preview = false }: { termsHref?: string; preview?: boolean } = {}) {
-  const [settings, types, bands, rules, page] = await Promise.all([readSettings(siteId), listTurnTypes(siteId), listBands(siteId), readDefaultPolicy(siteId), readPage(siteId)]);
+  // Plans degrade to none (pattern 3): the home page must not depend on them, for instance before schema.sql runs again.
+  const [settings, types, bands, rules, page, plans] = await Promise.all([readSettings(siteId), listTurnTypes(siteId), listBands(siteId), readDefaultPolicy(siteId), readPage(siteId),
+    publicPlans(siteId).catch((error: unknown) => { console.error("[sauna] plans unavailable:", error instanceof Error ? error.message.slice(0, 120) : "error"); return []; })]);
   if (!settings) return null;
+  const today = businessDate(new Date().toISOString());
   return {
-    booking: { siteId, today: businessDate(new Date().toISOString()), rules, maxAdvanceDays: settings.maxAdvanceDays, termsHref, preview },
+    booking: {
+      siteId, today, firstDay: firstBookableDay(today, settings.opensOn), rules, maxAdvanceDays: settings.maxAdvanceDays, termsHref, preview,
+      plans, depositPercent: settings.depositPercent,
+    },
     page,
     location: await resolveMapLocation(page.mapUrl),
     types,

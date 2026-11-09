@@ -6,7 +6,7 @@ import { bookingKinds, bookingStatuses } from "./domain/booking.ts";
 import { packStatuses } from "./domain/pack.ts";
 import { paymentKinds, paymentMethods } from "./domain/payments.ts";
 import { codeTypes } from "./domain/pricing.ts";
-import { paymentOutcomes, reserveRejections, transferRejections } from "./domain/rejections.ts";
+import { paymentOutcomes, planRejections, reserveRejections, transferRejections } from "./domain/rejections.ts";
 
 // There is no test database (docs/ROADMAP.md §5), so nothing here runs the SQL. These tests read supabase/schema.sql as text and guard what can
 // still drift or be forgotten: the agreements with the domain and the conventions of docs/CONVENTIONS.md §6.
@@ -42,7 +42,7 @@ const allowedIn = (tableName: string, column: string) => {
 test("están todas las tablas del modelo", () => {
   assert.deepEqual(tables.map(item => item.name).sort(), [
     "booking_events", "cancellation_policies", "customers", "discount_codes", "payments", "sauna_band_types", "sauna_bookings", "sauna_closures", "sauna_code_attempts", "sauna_mercadopago_accounts",
-    "sauna_pack_plans", "sauna_pack_purchases", "sauna_rooms", "sauna_schedules", "sauna_settings", "sauna_slots", "sauna_time_bands", "sauna_turn_types",
+    "sauna_pack_plans", "sauna_pack_purchases", "sauna_plan_purchases", "sauna_plans", "sauna_rooms", "sauna_schedules", "sauna_settings", "sauna_slots", "sauna_time_bands", "sauna_turn_types",
   ]);
 });
 
@@ -90,6 +90,17 @@ test("sauna_reserve rechaza exactamente con los motivos del dominio", () => {
   assert.deepEqual([...reasons].sort(), [...reserveRejections].sort());
 });
 
+test("un plan rechaza con sus motivos propios o con los de cada turno", () => {
+  const reasons = new Set([...body("sauna_reserve_plan").matchAll(/sauna_reject\('(\w+)'\)/g)].map(match => match[1]));
+  assert.deepEqual([...reasons].sort(), ["invalid_request", "not_configured", ...planRejections].sort());
+  assert.match(body("sauna_reserve_plan"), /sauna_reserve_core\(p_site, [^;]*'shared', 1, p_name, p_whatsapp, null, null, p_terms_accepted, false, null, null\)/);
+});
+
+test("el sitio no toma reservas antes de su día de apertura, el panel sí", () => {
+  assert.match(body("sauna_reserve_core"), /not p_manual and v_settings\.opens_on is not null and v_local::date < v_settings\.opens_on/);
+  assert.match(body("sauna_availability_core"), /p_manual or c\.opens_on is null/);
+});
+
 test("sauna_confirm_payment devuelve exactamente los resultados del dominio", () => {
   const code = body("sauna_confirm_payment");
   const found = new Set([...code.matchAll(/v_outcome := '(\w+)'/g)].map(match => match[1]));
@@ -131,7 +142,7 @@ test("solo el servidor puede llamar a las funciones", () => {
 test("toda función sobre datos recibe primero el sitio y filtra por él", () => {
   const scoped = functions.filter(({ params }) => /\bp_site\b/.test(params));
   assert.deepEqual(scoped.map(fn => fn.name).sort(), [
-    "sauna_anonymize_customer", "sauna_availability", "sauna_availability_core", "sauna_cancel", "sauna_choose_transfer", "sauna_confirm_payment", "sauna_is_closed", "sauna_manual_availability", "sauna_peak_seats", "sauna_record_refund", "sauna_reserve", "sauna_reserve_core", "sauna_reserve_manual", "sauna_save_week", "sauna_set_status",
+    "sauna_anonymize_customer", "sauna_availability", "sauna_availability_core", "sauna_cancel", "sauna_choose_transfer", "sauna_confirm_payment", "sauna_confirm_plan_payment", "sauna_is_closed", "sauna_manual_availability", "sauna_peak_seats", "sauna_plan_choose_transfer", "sauna_record_refund", "sauna_reserve", "sauna_reserve_core", "sauna_reserve_manual", "sauna_reserve_plan", "sauna_save_week", "sauna_set_status",
   ]);
   for (const { name, params, body: code } of scoped) {
     assert.match(params, /^\s*p_site text/, `${name}: primer argumento`);

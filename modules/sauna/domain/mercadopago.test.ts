@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  amountToCents, approvedPayment, argentineDate, bookingOfReference, bookingReference, centsToAmount, cleanPaymentId, isSigned, paymentRef, parseSignature,
+  amountToCents, approvedPayment, approvedPlanPayment, planOfReference, planReference, argentineDate, bookingOfReference, bookingReference, centsToAmount, cleanPaymentId, isSigned, paymentRef, parseSignature,
   preferenceBody, signatureManifest, authorizationUrl, tokensFrom, needsRefresh, readOauthCookie, oauthCookieValue, oauthRedirect, OAUTH_CALLBACK_PATH,
   ARGENTINA, profileFrom,
 } from "./mercadopago.ts";
@@ -36,6 +36,9 @@ test("la referencia de un pago lleva la reserva y solo acepta un identificador v
   assert.equal(bookingOfReference("booking:no-es-un-id"), null);
   assert.equal(bookingOfReference("pack:" + BOOKING), null);
   assert.equal(bookingOfReference(null), null);
+  assert.equal(planOfReference(planReference(BOOKING)), BOOKING);
+  assert.equal(planOfReference(bookingReference(BOOKING)), null);
+  assert.equal(bookingOfReference(planReference(BOOKING)), null);
 });
 
 test("la preferencia cobra la seña exacta, vence con la retención y no acepta pagos en efectivo", () => {
@@ -87,6 +90,9 @@ test("solo un pago aprobado en pesos para una reserva mueve algo", () => {
   assert.equal(approvedPayment({ ...paid, external_reference: "pedido-42" }), null);
   assert.equal(approvedPayment({ ...paid, transaction_amount: "6000" }), null);
   assert.equal(approvedPayment({ ...paid, id: "1; drop" }), null);
+  assert.equal(approvedPlanPayment(paid), null, "un pago de una reserva no es de un plan");
+  assert.deepEqual(approvedPlanPayment({ ...paid, external_reference: planReference(BOOKING) }), { purchaseId: BOOKING, ref: paymentRef("987654321"), amountCents: 600_000 });
+  assert.equal(approvedPayment({ ...paid, external_reference: planReference(BOOKING) }), null);
 });
 
 test("un identificador de pago es solo dígitos", () => {

@@ -3,7 +3,7 @@
 
 export const reserveRejections = [
   "not_configured", "invalid_request", "terms_not_accepted", "invalid_customer", "no_policy",
-  "too_soon", "too_far", "no_slot", "closed",
+  "too_soon", "too_far", "not_open_yet", "no_slot", "closed",
   "kind_not_offered", "invalid_seats", "full", "not_empty",
   "code_not_found", "code_inactive", "code_not_started", "code_expired", "code_wrong_slot", "code_exhausted", "code_customer_limit",
   "pack_not_found", "pack_not_active", "pack_with_code", "pack_shared_only", "pack_expired", "pack_no_sessions", "pack_week_limit",
@@ -19,6 +19,7 @@ export const rejectionMessages: Record<ReserveRejection, string> = {
   no_policy: "Las reservas todavía no están disponibles.",
   too_soon: "Ese turno ya no se puede reservar: falta muy poco para que empiece.",
   too_far: "Ese turno todavía no se puede reservar.",
+  not_open_yet: "Todavía no tomamos reservas para ese día. Elegí uno a partir de la apertura.",
   no_slot: "Ese turno ya no está disponible. Elegí otro.",
   closed: "Ese turno está cerrado. Elegí otro.",
   kind_not_offered: "Ese turno no ofrece esa modalidad. Elegí otra.",
@@ -39,6 +40,17 @@ export const rejectionMessages: Record<ReserveRejection, string> = {
   pack_expired: "Ese turno es posterior al vencimiento de tu pack.",
   pack_no_sessions: "Tu pack no tiene más sesiones.",
   pack_week_limit: "Ya llegaste al máximo de sesiones de esa semana.",
+};
+
+/** Why public.sauna_reserve_plan refuses a plan as a whole. Each of its turns can also be refused for any ReserveRejection. */
+export const planRejections = ["plan_not_found", "plan_turn_count", "plan_same_day", "plan_window"] as const;
+export type PlanRejection = (typeof planRejections)[number];
+
+export const planRejectionMessages: Record<PlanRejection, string> = {
+  plan_not_found: "Ese plan ya no está disponible. Recargá la página.",
+  plan_turn_count: "Elegí la cantidad de turnos que incluye el plan.",
+  plan_same_day: "Elegí cada turno en un día distinto.",
+  plan_window: "Los turnos del plan tienen que estar más cerca entre sí.",
 };
 
 export type WindowRejection = Extract<ReserveRejection, "too_soon" | "too_far">;

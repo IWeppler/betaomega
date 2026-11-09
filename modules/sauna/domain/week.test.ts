@@ -11,7 +11,7 @@ const ROWS = ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30"];
 const booking = (over: Partial<AgendaBooking> = {}): AgendaBooking => ({
   id: "b", token: "t", status: "confirmed", kind: "shared", seats: 1, priceCents: 1000000, discountCents: 0, depositCents: 300000, expiresAt: null, needsRefund: false,
   createdAt: NOW, customerName: "Ana", customerWhatsapp: "5491123456789", roomId: "sala", typeName: "Turno 60",
-  startsAt: "2026-11-11T13:00:00.000Z", endsAt: "2026-11-11T14:00:00.000Z", movements: [], ...over,
+  startsAt: "2026-11-11T13:00:00.000Z", endsAt: "2026-11-11T14:00:00.000Z", movements: [], code: null, fromPack: false, planName: null, ...over,
 });
 const closure = (over: Partial<ClosureEntry> = {}): ClosureEntry => ({ id: "c", roomId: null, startsAt: "2026-11-12T14:00:00.000Z", endsAt: "2026-11-12T15:00:00.000Z", reason: "", ...over });
 const layout = (bookings: AgendaBooking[], closures: ClosureEntry[] = []) => weekBlocks({ from: FROM, rows: ROWS, stepMinutes: 30, bookings, closures, now: NOW });

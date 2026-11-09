@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { TicketPercent } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { formatCents } from "@/platform/money";
 import { useSite } from "@/platform/panel";
 import { bookingActions, moneyState, statusLabels, type AgendaBooking } from "../domain/agenda";
-import { effectiveStatus } from "../domain/booking";
+import { effectiveStatus, type BookingStatus } from "../domain/booking";
 import { showToast } from "@/shared/ui/toast";
 import { cancellationMessage, confirmationMessage, reminderMessage, whatsappLink, type MessageBooking } from "../domain/messages";
 import { businessDate, businessTime, dayLabel } from "../domain/time";
@@ -23,6 +24,18 @@ export const messageOf = (booking: AgendaBooking, site: { name: string; url: str
 /** The link only opens WhatsApp with the text written: the panel cannot know whether it was sent, so the notice says what it did. */
 export const announceWhatsapp = (what: string, booking: AgendaBooking) =>
   showToast(`Se abrió WhatsApp con el mensaje de ${what} para ${booking.customerName || "la persona"}. Falta tocar Enviar.`, 5000);
+
+/** The color of a status tag: settled in the accent, waiting in amber, the rest plain. */
+export const statusTone = (status: BookingStatus) => (status === "confirmed" || status === "completed" ? "accent" : status === "held" || status === "pending_transfer" ? "warn" : "plain");
+
+/** What the booking used to get its price: a discount code or a pack session. */
+export function BookingTags({ booking }: { booking: Pick<AgendaBooking, "code" | "fromPack" | "planName"> }) {
+  return <>
+    {booking.planName && <Tag tone="accent">{booking.planName}</Tag>}
+    {booking.code && <Tag><TicketPercent size={14} aria-hidden="true" className="mr-1" />Código {booking.code}</Tag>}
+    {booking.fromPack && <Tag>Pack</Tag>}
+  </>;
+}
 
 /** A booking with what is left to collect and what can be done with it. `showTurn` is for lists that are not already grouped by turn. */
 export function BookingCard({ booking, now, roomName, showTurn = false, onChanged }: { booking: AgendaBooking; now: string; roomName?: string; showTurn?: boolean; onChanged: () => Promise<void> }) {
@@ -52,7 +65,8 @@ export function BookingCard({ booking, now, roomName, showTurn = false, onChange
     <div className="flex flex-wrap items-center gap-2">
       <strong className="text-ink">{booking.customerName || "Persona anonimizada"}</strong>
       <span className="text-muted">{booking.kind === "private" ? "Grupal" : "Individual"}</span>
-      <Tag tone={status === "confirmed" || status === "completed" ? "accent" : status === "held" || status === "pending_transfer" ? "warn" : "plain"}>{statusLabels[status]}</Tag>
+      <Tag tone={statusTone(status)}>{statusLabels[status]}</Tag>
+      <BookingTags booking={booking} />
       {booking.status === "pending_transfer" && status === "expired" && <Tag>Esperaba transferencia</Tag>}
       {booking.needsRefund && <Tag tone="warn">Pago para devolver</Tag>}
     </div>

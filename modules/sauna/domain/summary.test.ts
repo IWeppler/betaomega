@@ -9,7 +9,7 @@ let next = 0;
 const booking = (patch: Partial<AgendaBooking>): AgendaBooking => ({
   id: String(++next), token: "t", status: "confirmed", kind: "shared", seats: 1, priceCents: 10_000, discountCents: 0, depositCents: 0,
   expiresAt: null, needsRefund: false, createdAt: now, customerName: "Ana", customerWhatsapp: null, roomId: "r", typeName: "Turno",
-  startsAt: "2026-11-07T20:00:00Z", endsAt: "2026-11-07T21:00:00Z", movements: [], ...patch,
+  startsAt: "2026-11-07T20:00:00Z", endsAt: "2026-11-07T21:00:00Z", movements: [], code: null, fromPack: false, planName: null, ...patch,
 });
 
 test("el día de hoy suma personas, reservas y lo que falta cobrar", () => {

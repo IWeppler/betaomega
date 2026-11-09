@@ -3,17 +3,23 @@ import type { Instant } from "./booking.ts";
 
 // Mercado Pago, Checkout Pro (docs/SAUNA.md §6). Pure rules only: building a preference, checking a notification's signature and reading a payment.
 
-/** What a payment's external_reference says it pays. Packs (phase S4b) will use their own prefix. */
+/** What a payment's external_reference says it pays: one booking, or every turn of a plan. */
 const BOOKING_PREFIX = "booking:";
+const PLAN_PREFIX = "plan:";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const bookingReference = (bookingId: string) => `${BOOKING_PREFIX}${bookingId}`;
 
-export function bookingOfReference(reference: unknown): string | null {
-  if (typeof reference !== "string" || !reference.startsWith(BOOKING_PREFIX)) return null;
-  const id = reference.slice(BOOKING_PREFIX.length);
+export const planReference = (purchaseId: string) => `${PLAN_PREFIX}${purchaseId}`;
+
+const idOf = (reference: unknown, prefix: string) => {
+  if (typeof reference !== "string" || !reference.startsWith(prefix)) return null;
+  const id = reference.slice(prefix.length);
   return UUID.test(id) ? id.toLowerCase() : null;
-}
+};
+
+export const bookingOfReference = (reference: unknown) => idOf(reference, BOOKING_PREFIX);
+export const planOfReference = (reference: unknown) => idOf(reference, PLAN_PREFIX);
 
 /** The ledger's idempotency key (docs/PATTERNS.md, pattern 12): the same payment notified twice is one row. */
 export const paymentRef = (paymentId: string) => `mp:${paymentId}`;
@@ -30,6 +36,8 @@ export function argentineDate(instant: Instant): string {
 
 export type PreferenceInput = {
   bookingId: string;
+  /** Set when the payment is for a whole plan: then bookingId is the purchase's id. */
+  plan?: boolean;
   title: string;
   depositCents: Cents;
   /** The hold's end: the preference stops accepting payments with it, so a late payment is rare. */
@@ -48,7 +56,7 @@ export function preferenceBody(input: PreferenceInput) {
   const secure = input.returnUrl.startsWith("https://");
   return {
     items: [{ id: input.bookingId, title: input.title.slice(0, 120), quantity: 1, unit_price: centsToAmount(input.depositCents), currency_id: "ARS" }],
-    external_reference: bookingReference(input.bookingId),
+    external_reference: input.plan ? planReference(input.bookingId) : bookingReference(input.bookingId),
     notification_url: input.notificationUrl,
     back_urls: { success: input.returnUrl, pending: input.returnUrl, failure: input.returnUrl },
     // Mercado Pago refuses auto_return with a return address that is not https, as on a local server.
@@ -98,6 +106,13 @@ export const ledgerRaw = ({ id, status, status_detail, payment_method_id, paymen
   ({ id, status, status_detail, payment_method_id, payment_type_id, date_approved, transaction_amount, currency_id });
 
 export type ApprovedPayment = { bookingId: string; ref: string; amountCents: Cents };
+export type ApprovedPlanPayment = { purchaseId: string; ref: string; amountCents: Cents };
+
+/** The same rules as approvedPayment, for a payment that names a plan. */
+export function approvedPlanPayment(payment: ProviderPayment): ApprovedPlanPayment | null {
+  const approved = approvedPayment({ ...payment, external_reference: typeof payment.external_reference === "string" ? payment.external_reference.replace(PLAN_PREFIX, BOOKING_PREFIX) : null });
+  return approved && planOfReference(payment.external_reference) ? { purchaseId: approved.bookingId, ref: approved.ref, amountCents: approved.amountCents } : null;
+}
 
 /** Only an approved payment in pesos for a booking moves anything. Everything else (pending, rejected, another app's payment) is ignored. */
 export function approvedPayment(payment: ProviderPayment): ApprovedPayment | null {

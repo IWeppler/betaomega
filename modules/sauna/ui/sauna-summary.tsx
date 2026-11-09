@@ -7,13 +7,15 @@ import { FaWhatsapp } from "react-icons/fa";
 import { formatCents } from "@/platform/money";
 import { PageHeader, useSite } from "@/platform/panel";
 import { showToast } from "@/shared/ui/toast";
-import { moneyState, statusLabels, type AgendaBooking, type AgendaTurn } from "../domain/agenda";
+import { bookingActions, moneyState, statusLabels, type AgendaBooking, type AgendaTurn } from "../domain/agenda";
 import { effectiveStatus } from "../domain/booking";
 import { reminderMessage, whatsappLink } from "../domain/messages";
 import { newBookings, summaryOf, type DayLoad, type PendingReason } from "../domain/summary";
 import { addDays, businessDate, businessTime, dayLabel, shortDayLabel } from "../domain/time";
-import { announceWhatsapp, BookingCard, messageOf } from "./booking-card";
+import { announceWhatsapp, BookingCard, BookingTags, messageOf, statusTone } from "./booking-card";
+import { CancelBookingDialog, SwipeRow } from "./cancel-booking";
 import { Button, buttonClass, Card, Notice, Tag } from "./controls";
+import { PreferredDays } from "./preferred-days";
 import { useResource } from "./use-resource";
 
 type Agenda = { now: string; bookings: AgendaBooking[]; rooms: Record<string, string> };
@@ -37,7 +39,7 @@ function SectionTitle({ id, children, action }: { id: string; children: ReactNod
   </div>;
 }
 
-function TodayTurn({ turn, now, roomName, next }: { turn: AgendaTurn; now: string; roomName?: string; next: boolean }) {
+function TodayTurn({ turn, now, roomName, next, onCancel }: { turn: AgendaTurn; now: string; roomName?: string; next: boolean; onCancel: (booking: AgendaBooking) => void }) {
   const site = useSite();
   const past = Date.parse(turn.endsAt) <= Date.parse(now);
   const people = turn.bookings.reduce((sum, booking) => sum + booking.seats, 0);
@@ -58,16 +60,20 @@ function TodayTurn({ turn, now, roomName, next }: { turn: AgendaTurn; now: strin
           const status = effectiveStatus(booking, now);
           const owed = moneyState(booking).owedCents;
           const remind = !past && booking.customerWhatsapp && (status === "confirmed" || status === "held" || status === "pending_transfer");
-          return <li key={booking.id} className="flex items-center gap-2 text-sm">
+          const name = booking.customerName || "Persona anonimizada";
+          return <li key={booking.id} className="text-sm">
+            <SwipeRow label={`Cancelar la reserva de ${name}`} onDelete={bookingActions(booking, now).cancel ? () => onCancel(booking) : undefined}>
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="text-ink">{booking.customerName || "Persona anonimizada"}{booking.seats > 1 ? ` (${booking.seats})` : ""}</span>
-              {status !== "confirmed" && <Tag tone={status === "held" || status === "pending_transfer" ? "warn" : "plain"}>{statusLabels[status]}</Tag>}
+              <span className="text-ink">{name}{booking.seats > 1 ? ` (${booking.seats})` : ""}</span>
+              <Tag tone={statusTone(status)}>{statusLabels[status]}</Tag>
+              <BookingTags booking={booking} />
               {owed > 0 && status !== "no_show" && <span className="text-muted">Cobrar {formatCents(owed)}</span>}
             </div>
             {remind && booking.customerWhatsapp && <a className={`${buttonClass()} shrink-0`} href={whatsappLink(booking.customerWhatsapp, reminderMessage(messageOf(booking, site)))} target="_blank" rel="noopener noreferrer"
               aria-label={`Enviar recordatorio por WhatsApp a ${booking.customerName || "la persona"}`} onClick={() => announceWhatsapp("recordatorio", booking)}>
               <FaWhatsapp size={16} aria-hidden="true" /><span className="hidden sm:inline">Recordatorio</span>
             </a>}
+            </SwipeRow>
           </li>;
         })}
       </ul>
@@ -107,6 +113,7 @@ export function SaunaSummary() {
       ? `Nueva reserva: ${first.customerName || "una persona"}, ${dayLabel(businessDate(first.startsAt))} a las ${businessTime(first.startsAt)}.`
       : `Llegaron ${fresh.length} reservas nuevas.`, 8000);
   }, [data]);
+  const [cancelling, setCancelling] = useState<AgendaBooking | null>(null);
   const weekPeople = summary?.week.reduce((sum, day) => sum + day.people, 0) ?? 0;
   const agenda = `/${site.id}/agenda`;
   return <>
@@ -126,12 +133,12 @@ export function SaunaSummary() {
           <section aria-labelledby="today-title">
             <SectionTitle id="today-title" action={<Link className="text-sm font-semibold text-accent-text" href={agenda}>Abrir el día</Link>}>Turnos de hoy</SectionTitle>
             {summary.today.length
-              ? <ol className="grid gap-2">{summary.today.map(turn => <TodayTurn key={turn.key} turn={turn} now={data.now} roomName={data.rooms[turn.roomId]} next={turn.key === summary.nextTurnKey} />)}</ol>
+              ? <ol className="grid gap-2">{summary.today.map(turn => <TodayTurn key={turn.key} turn={turn} now={data.now} roomName={data.rooms[turn.roomId]} next={turn.key === summary.nextTurnKey} onCancel={setCancelling} />)}</ol>
               : <div className="grid gap-3">
                 <p className="m-0 text-muted">Hoy no hay turnos reservados.</p>
                 {summary.nextDay && <>
                   <h3 className="m-0 text-sm font-semibold text-ink first-letter:uppercase">El próximo: {dayLabel(summary.nextDay.day)}</h3>
-                  <ol className="grid gap-2">{summary.nextDay.turns.map(turn => <TodayTurn key={turn.key} turn={turn} now={data.now} roomName={data.rooms[turn.roomId]} next={false} />)}</ol>
+                  <ol className="grid gap-2">{summary.nextDay.turns.map(turn => <TodayTurn key={turn.key} turn={turn} now={data.now} roomName={data.rooms[turn.roomId]} next={false} onCancel={setCancelling} />)}</ol>
                 </>}
               </div>}
           </section>
@@ -156,8 +163,10 @@ export function SaunaSummary() {
               <Week days={summary.week} today={today} />
             </section>
           </Card>
+          <PreferredDays />
         </div>
       </div>
+      <CancelBookingDialog booking={cancelling} onClose={() => setCancelling(null)} onChanged={reload} />
     </div>}
   </>;
 }

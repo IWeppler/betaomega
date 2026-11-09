@@ -5,7 +5,7 @@ import { agendaByDay, agendaRange, bookingActions, isDayClosed, moneyState, move
 const NOW = "2026-11-10T15:00:00.000Z";
 const booking = (over: Partial<AgendaBooking> = {}): AgendaBooking => ({
   id: "b", token: "t", status: "confirmed", kind: "shared", seats: 2, priceCents: 2000000, discountCents: 0, depositCents: 600000, expiresAt: null, needsRefund: false,
-  createdAt: NOW, customerName: "Ana", customerWhatsapp: "5491123456789", roomId: "sala", typeName: "Turno 60", startsAt: "2026-11-10T23:00:00.000Z", endsAt: "2026-11-11T00:00:00.000Z", movements: [], ...over,
+  createdAt: NOW, customerName: "Ana", customerWhatsapp: "5491123456789", roomId: "sala", typeName: "Turno 60", startsAt: "2026-11-10T23:00:00.000Z", endsAt: "2026-11-11T00:00:00.000Z", movements: [], code: null, fromPack: false, planName: null, ...over,
 });
 
 test("sin pagos se debe todo y falta la seña", () => {

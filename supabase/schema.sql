@@ -1495,6 +1495,10 @@ grant execute on function public.sauna_confirm_payment(text, uuid, text, bigint,
 grant execute on function public.sauna_availability(text, date, date) to service_role;
 
 
+-- The first Buenos Aires day the public site takes bookings (docs/SAUNA.md §1). Null: from today. The panel's manual bookings ignore it.
+-- Before the functions below, because sauna_availability_core is plain SQL and checks its columns when it is created.
+alter table public.sauna_settings add column if not exists opens_on date;
+
 -- S2d: manual booking. No customer acceptance is inferred from an operator's action.
 alter table public.sauna_bookings add column if not exists origin text not null default 'public';
 alter table public.sauna_bookings add column if not exists manual_request_id uuid;
@@ -1607,6 +1611,7 @@ begin
 
   if (p_manual and p_starts_at <= now()) or (not p_manual and p_starts_at < now() + make_interval(mins => v_settings.min_lead_minutes)) then return public.sauna_reject('too_soon'); end if;
   if p_starts_at > now() + make_interval(hours => v_settings.max_advance_days * 24) then return public.sauna_reject('too_far'); end if;
+  if not p_manual and v_settings.opens_on is not null and v_local::date < v_settings.opens_on then return public.sauna_reject('not_open_yet'); end if;
 
   -- Turns of different types overlap, so the lock that serializes who gets a seat is the room's.
   select * into v_room from public.sauna_rooms r where r.site_id = p_site and r.id = p_room and r.active for update;
@@ -1796,7 +1801,7 @@ security invoker
 set search_path = ''
 as $$
   with config as (
-    select st.deposit_percent, st.min_lead_minutes, st.max_advance_days, st.start_step_minutes, least(p_to, p_from + 92) as last_day
+    select st.deposit_percent, st.min_lead_minutes, st.max_advance_days, st.start_step_minutes, st.opens_on, least(p_to, p_from + 92) as last_day
       from public.sauna_settings st where st.site_id = p_site
   ),
   turns as (
@@ -1825,7 +1830,8 @@ as $$
          n.price_cents, n.private_price_cents, n.deposit_percent, n.closed,
          not n.closed and n.free_seats > 0
            and ((p_manual and n.starts_at > now()) or (not p_manual and n.starts_at >= now() + make_interval(mins => c.min_lead_minutes)))
-           and n.starts_at <= now() + make_interval(hours => c.max_advance_days * 24) as bookable
+           and n.starts_at <= now() + make_interval(hours => c.max_advance_days * 24)
+           and (p_manual or c.opens_on is null or (n.starts_at at time zone 'America/Argentina/Buenos_Aires')::date >= c.opens_on) as bookable
     from counted n, config c
    order by n.starts_at, n.duration_minutes;
 $$;
@@ -1967,3 +1973,223 @@ create table if not exists public.sauna_mercadopago_accounts (
 );
 alter table public.sauna_mercadopago_accounts enable row level security;
 revoke all on public.sauna_mercadopago_accounts from anon, authenticated;
+
+-- Sauna: plans (docs/SAUNA.md §11). They replace the packs of the first design, whose tables stay unused. A plan is a fixed price for a number of turns
+-- that the person chooses at once, one per day and all within a window of days. Booking one creates a booking per turn, linked to the purchase; the
+-- deposit is the site's percent of the plan's price, split across those bookings, and one payment pays all of it.
+create table if not exists public.sauna_plans (
+  id uuid primary key default gen_random_uuid(),
+  site_id text not null references public.sites (id),
+  name text not null check (char_length(name) between 1 and 80),
+  description text not null default '' check (char_length(description) <= 300),
+  turns integer not null check (turns between 2 and 12),
+  price_cents bigint not null check (price_cents >= 100),
+  window_days integer not null check (window_days between 1 and 365),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (site_id, id),
+  check (price_cents >= turns * 100)
+);
+alter table public.sauna_plans enable row level security;
+revoke all on public.sauna_plans from anon, authenticated;
+
+-- A purchase keeps its own copy of the plan's name, turns and amounts: changing the plan later does not change what someone already booked.
+create table if not exists public.sauna_plan_purchases (
+  id uuid primary key default gen_random_uuid(),
+  site_id text not null references public.sites (id),
+  plan_id uuid not null,
+  customer_id uuid not null,
+  name text not null check (char_length(name) between 1 and 80),
+  turns integer not null check (turns >= 2),
+  price_cents bigint not null check (price_cents >= 0),
+  deposit_cents bigint not null check (deposit_cents >= 0),
+  token text not null unique default public.sauna_new_token(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (site_id, id),
+  foreign key (site_id, plan_id) references public.sauna_plans (site_id, id),
+  foreign key (site_id, customer_id) references public.customers (site_id, id)
+);
+alter table public.sauna_plan_purchases enable row level security;
+revoke all on public.sauna_plan_purchases from anon, authenticated;
+
+drop trigger if exists sauna_plans_updated_at on public.sauna_plans;
+create trigger sauna_plans_updated_at before update on public.sauna_plans for each row execute function public.sauna_touch_updated_at();
+drop trigger if exists sauna_plan_purchases_updated_at on public.sauna_plan_purchases;
+create trigger sauna_plan_purchases_updated_at before update on public.sauna_plan_purchases for each row execute function public.sauna_touch_updated_at();
+
+alter table public.sauna_bookings add column if not exists plan_purchase_id uuid;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public.sauna_bookings'::regclass and conname = 'sauna_bookings_plan_purchase') then
+    alter table public.sauna_bookings add constraint sauna_bookings_plan_purchase
+      foreign key (site_id, plan_purchase_id) references public.sauna_plan_purchases (site_id, id);
+  end if;
+end $$;
+create index if not exists sauna_bookings_plan on public.sauna_bookings (site_id, plan_purchase_id) where plan_purchase_id is not null;
+
+-- Books every turn of a plan or none. Each turn goes through sauna_reserve_core, so each one is checked and locked as a single booking would be; a
+-- refusal undoes the turns already taken. p_turns is [{room_id, turn_type_id, starts_at}]. Returns { ok: true, token } or { ok: false, reason }.
+create or replace function public.sauna_reserve_plan(
+  p_site text,
+  p_plan uuid,
+  p_turns jsonb,
+  p_name text,
+  p_whatsapp text,
+  p_terms_accepted boolean
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_tz constant text := 'America/Argentina/Buenos_Aires';
+  v_settings public.sauna_settings;
+  v_plan public.sauna_plans;
+  v_purchase public.sauna_plan_purchases;
+  v_turn record;
+  v_result jsonb;
+  v_ids uuid[] := '{}';
+  v_customer uuid;
+  v_deposit bigint;
+  v_status text;
+  v_first timestamptz;
+  v_count integer;
+  v_days integer;
+  v_span integer;
+begin
+  if p_turns is null or jsonb_typeof(p_turns) <> 'array' then return public.sauna_reject('invalid_request'); end if;
+  select * into v_settings from public.sauna_settings s where s.site_id = p_site;
+  if not found then return public.sauna_reject('not_configured'); end if;
+  select * into v_plan from public.sauna_plans p where p.site_id = p_site and p.id = p_plan and p.active;
+  if not found then return public.sauna_reject('plan_not_found'); end if;
+  if jsonb_array_length(p_turns) <> v_plan.turns then return public.sauna_reject('plan_turn_count'); end if;
+
+  -- One turn per day and all within the window, in Buenos Aires days.
+  select count(*), count(distinct (t.starts_at at time zone v_tz)::date),
+         max((t.starts_at at time zone v_tz)::date) - min((t.starts_at at time zone v_tz)::date), min(t.starts_at)
+    into v_count, v_days, v_span, v_first
+    from jsonb_to_recordset(p_turns) as t(room_id uuid, turn_type_id uuid, starts_at timestamptz);
+  if v_days <> v_count then return public.sauna_reject('plan_same_day'); end if;
+  if v_span >= v_plan.window_days then return public.sauna_reject('plan_window'); end if;
+
+  begin
+    -- In room order, as every other path takes the room locks.
+    for v_turn in select t.* from jsonb_to_recordset(p_turns) as t(room_id uuid, turn_type_id uuid, starts_at timestamptz) order by t.room_id, t.starts_at loop
+      v_result := public.sauna_reserve_core(p_site, v_turn.room_id, v_turn.starts_at, v_turn.turn_type_id, 'shared', 1, p_name, p_whatsapp, null, null, p_terms_accepted, false, null, null);
+      if not coalesce((v_result ->> 'ok')::boolean, false) then
+        raise exception using errcode = 'SP001', message = coalesce(v_result ->> 'reason', 'invalid_request');
+      end if;
+      v_ids := v_ids || (v_result -> 'booking' ->> 'id')::uuid;
+    end loop;
+  exception when sqlstate 'SP001' then
+    return public.sauna_reject(sqlerrm);
+  end;
+
+  select b.customer_id into v_customer from public.sauna_bookings b where b.site_id = p_site and b.id = v_ids[1];
+  v_deposit := public.sauna_percent_of(v_plan.price_cents, v_settings.deposit_percent);
+  v_status := case when v_deposit = 0 then 'confirmed' else 'held' end;
+  insert into public.sauna_plan_purchases (site_id, plan_id, customer_id, name, turns, price_cents, deposit_cents)
+  values (p_site, v_plan.id, v_customer, v_plan.name, v_plan.turns, v_plan.price_cents, v_deposit)
+  returning * into v_purchase;
+
+  insert into public.booking_events (site_id, booking_id, from_status, to_status, actor, note)
+  select p_site, b.id, b.status, v_status, 'sitio', 'plan'
+    from public.sauna_bookings b where b.site_id = p_site and b.id = any (v_ids) and b.status <> v_status;
+
+  -- The plan's price and deposit, split across its turns in whole cents: the first one takes what does not divide. Every turn shares one hold, which
+  -- ends when the earliest turn starts at the latest.
+  update public.sauna_bookings b
+     set plan_purchase_id = v_purchase.id,
+         price_cents = v_plan.price_cents / v_plan.turns + case when x.n = 1 then v_plan.price_cents % v_plan.turns else 0 end,
+         discount_cents = 0,
+         deposit_cents = v_deposit / v_plan.turns + case when x.n = 1 then v_deposit % v_plan.turns else 0 end,
+         status = v_status,
+         expires_at = case when v_deposit = 0 then null else least(now() + make_interval(mins => v_settings.mp_hold_minutes), v_first) end
+    from unnest(v_ids) with ordinality as x(id, n)
+   where b.site_id = p_site and b.id = x.id;
+
+  return jsonb_build_object('ok', true, 'token', v_purchase.token);
+end $$;
+revoke execute on function public.sauna_reserve_plan(text, uuid, jsonb, text, text, boolean) from public, anon, authenticated;
+grant execute on function public.sauna_reserve_plan(text, uuid, jsonb, text, text, boolean) to service_role;
+
+-- The person chose to pay a plan by transfer: every turn waits for it, or none does.
+create or replace function public.sauna_plan_choose_transfer(p_site text, p_purchase uuid, p_actor text)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_booking record;
+  v_result jsonb;
+begin
+  if not exists (select 1 from public.sauna_bookings b where b.site_id = p_site and b.plan_purchase_id = p_purchase) then
+    return public.sauna_reject('not_found');
+  end if;
+  begin
+    for v_booking in select b.id from public.sauna_bookings b join public.sauna_slots s on s.site_id = b.site_id and s.id = b.slot_id
+                      where b.site_id = p_site and b.plan_purchase_id = p_purchase order by s.room_id, s.starts_at loop
+      v_result := public.sauna_choose_transfer(p_site, v_booking.id, p_actor);
+      if not coalesce((v_result ->> 'ok')::boolean, false) then
+        raise exception using errcode = 'SP001', message = coalesce(v_result ->> 'reason', 'invalid_request');
+      end if;
+    end loop;
+  exception when sqlstate 'SP001' then
+    return public.sauna_reject(sqlerrm);
+  end;
+  return jsonb_build_object('ok', true);
+end $$;
+revoke execute on function public.sauna_plan_choose_transfer(text, uuid, text) from public, anon, authenticated;
+grant execute on function public.sauna_plan_choose_transfer(text, uuid, text) to service_role;
+
+-- One payment for a whole plan. With the exact total, each turn records its own share under its own reference through sauna_confirm_payment, so each
+-- one follows the rules of a single payment, the late payment rule included. Any other amount is recorded whole on the first turn, which flags it for
+-- a refund. Returns { ok: true, outcome }: the first outcome that is not a plain confirmation, if there is one.
+create or replace function public.sauna_confirm_plan_payment(
+  p_site text,
+  p_purchase uuid,
+  p_provider_ref text,
+  p_amount_cents bigint,
+  p_method text,
+  p_actor text,
+  p_raw jsonb default null
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_total bigint;
+  v_first uuid;
+  v_booking record;
+  v_result jsonb;
+  v_each text;
+  v_outcome text;
+begin
+  if p_provider_ref is null or p_provider_ref = '' then return public.sauna_reject('invalid_request'); end if;
+  select b.id into v_first from public.sauna_bookings b join public.sauna_slots s on s.site_id = b.site_id and s.id = b.slot_id
+   where b.site_id = p_site and b.plan_purchase_id = p_purchase order by s.room_id, s.starts_at limit 1;
+  if v_first is null then return public.sauna_reject('not_found'); end if;
+  select sum(b.deposit_cents) into v_total from public.sauna_bookings b where b.site_id = p_site and b.plan_purchase_id = p_purchase;
+  if p_amount_cents is distinct from v_total then
+    return public.sauna_confirm_payment(p_site, v_first, p_provider_ref, p_amount_cents, p_method, p_actor, p_raw);
+  end if;
+
+  for v_booking in select b.id, b.deposit_cents from public.sauna_bookings b join public.sauna_slots s on s.site_id = b.site_id and s.id = b.slot_id
+                    where b.site_id = p_site and b.plan_purchase_id = p_purchase order by s.room_id, s.starts_at loop
+    v_result := public.sauna_confirm_payment(p_site, v_booking.id, p_provider_ref || ':' || v_booking.id::text, v_booking.deposit_cents, p_method, p_actor, p_raw);
+    if not coalesce((v_result ->> 'ok')::boolean, false) then
+      -- Undoes the shares already recorded: the payment is applied whole or not at all, and the caller retries.
+      raise exception 'sauna_confirm_plan_payment: %', coalesce(v_result ->> 'reason', 'unknown');
+    end if;
+    v_each := v_result ->> 'outcome';
+    if v_outcome is null or (v_outcome in ('confirmed', 'duplicate') and v_each not in ('confirmed', 'duplicate')) then v_outcome := v_each; end if;
+  end loop;
+  return jsonb_build_object('ok', true, 'outcome', v_outcome);
+end $$;
+revoke execute on function public.sauna_confirm_plan_payment(text, uuid, text, bigint, text, text, jsonb) from public, anon, authenticated;
+grant execute on function public.sauna_confirm_plan_payment(text, uuid, text, bigint, text, text, jsonb) to service_role;

@@ -3,5 +3,6 @@ export { AgendaScreen } from "./agenda-screen";
 export { AjustesScreen } from "./ajustes-screen";
 export { CodigosScreen } from "./codigos-screen";
 export { HorariosPreciosScreen } from "./horarios-precios-screen";
+export { PlanesScreen } from "./planes-screen";
 export { ReservasScreen } from "./reservas-screen";
 export { SaunaSummary } from "./sauna-summary";

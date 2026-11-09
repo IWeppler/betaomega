@@ -355,6 +355,7 @@ function SiteForm({
         ...settings,
         minLeadMinutes: Number(values.get("minLeadMinutes")),
         maxAdvanceDays: Number(values.get("maxAdvanceDays")),
+        opensOn: text("opensOn"),
         mpHoldMinutes: Number(values.get("mpHoldMinutes")),
         transferHoldHours: Number(values.get("transferHoldHours")),
         contactWhatsapp: values.get("contactWhatsapp"),
@@ -528,6 +529,17 @@ function SiteForm({
 
             <TabPanel id="reservas" current={tab}>
               <Section title="Cuándo se puede reservar" columns>
+                <Field
+                  label="Reservas desde"
+                  hint="El primer día que se puede reservar desde el sitio. Vacío: desde hoy. Desde el panel se puede cargar antes."
+                >
+                  <input
+                    className={inputClass}
+                    name="opensOn"
+                    type="date"
+                    defaultValue={settings.opensOn ?? ""}
+                  />
+                </Field>
                 <Field
                   label="Anticipación mínima, en minutos"
                   hint="Hasta cuánto antes del turno se puede reservar."

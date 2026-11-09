@@ -42,6 +42,12 @@ export type AgendaBooking = {
   startsAt: Instant;
   endsAt: Instant;
   movements: Movement[];
+  /** The discount code used, as written today, or null. */
+  code: string | null;
+  /** Whether the session came out of a pack. */
+  fromPack: boolean;
+  /** The plan this turn belongs to, by the name it had when it was booked, or null. */
+  planName: string | null;
 };
 
 export const statusLabels: Record<BookingStatus, string> = {

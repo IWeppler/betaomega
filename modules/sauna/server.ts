@@ -7,5 +7,6 @@ export { getAvailability, postReservation, publicHome, publicPage, publicReserva
 export { getIcon, getManifest } from "./api/app-icon";
 export { getCodes, postCode, postCodeCheck } from "./api/codes";
 export { disconnectMercadoPago, finishMercadoPagoConnect, startMercadoPagoConnect } from "./api/mercadopago-connect";
-export { postMercadoPagoNotice, postPayment } from "./api/payments";
+export { postMercadoPagoNotice, postPayment, postPlanPayment } from "./api/payments";
+export { getPlans, postPlan, postPlanReservation, publicPlan } from "./api/plans";
 export { deleteClosure, getConfig, patchSettings, postClosure, putPage, putTypes, putWeek } from "./api/setup";
