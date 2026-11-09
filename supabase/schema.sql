@@ -343,6 +343,53 @@ end $$;
 
 
 -- ---------------------------------------------------------------------------------------------------------------------
+-- Panel notices (docs/tareas-notificaciones.md, platform/notifications/). Where to tell what happens in the sites: phones subscribed to push and
+-- linked Telegram chats. They belong to the panel, not to a site, so they carry the sites they want instead of a site_id (empty: every site).
+-- Only the server reaches them. Each destination is removed when its channel says it no longer exists.
+
+create table if not exists public.panel_push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  endpoint text not null unique check (char_length(endpoint) between 1 and 1000 and endpoint like 'https://%'),
+  p256dh text not null check (char_length(p256dh) between 1 and 200),
+  auth text not null check (char_length(auth) between 1 and 100),
+  label text not null default '' check (char_length(label) <= 60),
+  site_ids text[] not null default '{}',
+  failures integer not null default 0 check (failures >= 0),
+  last_sent_at timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table public.panel_push_subscriptions enable row level security;
+revoke all on public.panel_push_subscriptions from anon, authenticated;
+
+create table if not exists public.panel_telegram_chats (
+  id uuid primary key default gen_random_uuid(),
+  chat_id bigint not null unique,
+  label text not null default '' check (char_length(label) <= 60),
+  site_ids text[] not null default '{}',
+  failures integer not null default 0 check (failures >= 0),
+  last_sent_at timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table public.panel_telegram_chats enable row level security;
+revoke all on public.panel_telegram_chats from anon, authenticated;
+
+-- A code to link a chat: only its SHA-256, so a copy of the table cannot link anything. It lasts 10 minutes and works once; the label and the sites
+-- chosen in the panel pass to the chat it links. Rows older than a day are deleted as new ones are created.
+create table if not exists public.panel_telegram_links (
+  id uuid primary key default gen_random_uuid(),
+  code_hash text not null unique check (code_hash ~ '^[0-9a-f]{64}$'),
+  label text not null default '' check (char_length(label) <= 60),
+  site_ids text[] not null default '{}',
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists panel_telegram_links_created on public.panel_telegram_links (created_at);
+alter table public.panel_telegram_links enable row level security;
+revoke all on public.panel_telegram_links from anon, authenticated;
+
+
+-- ---------------------------------------------------------------------------------------------------------------------
 -- Sauna (docs/SAUNA.md §5, modules/sauna/). Reservations with seats, deposits, codes and packs for sites of kind "sauna".
 --
 -- - Foreign keys between these tables include site_id, so a row can never point at another site's row, whatever the code does.

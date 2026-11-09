@@ -19,6 +19,7 @@ import { paymentOptionsOf, settleReturnedPayment } from "./payments";
 import { recordFailedAttempt } from "../data/codes";
 import { isCodeText, normalizeCode } from "../domain/codes";
 import { CODE_ATTEMPTS_MESSAGE, tooManyCodeAttempts } from "./codes";
+import { notify } from "@/platform/notifications/server";
 import { fail, failure, noStore, originHash, readJson, type SiteContext } from "./route-tools";
 
 // What the public site reaches. Only an active site answers, and nothing here returns another person's data.
@@ -83,6 +84,7 @@ export async function postReservation(request: Request, context: SiteContext) {
     }
     // Outside sauna_reserve on purpose: losing this mark only weakens a limit, and it must not undo a booking already taken.
     await markOrigin(site.id, result.booking.id, origin).catch((error: unknown) => console.error("[sauna] origin mark failed:", error instanceof Error ? error.name : "error"));
+    notify({ siteId: site.id, event: "sauna.booking_new", customerName: name, startsAt, depositDueCents: Number(result.booking.deposit_cents) || 0, plan: null });
     return Response.json({ token: result.booking.token });
   } catch (error) { return failure(error, "hacer la reserva"); }
 }

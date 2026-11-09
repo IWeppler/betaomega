@@ -1,8 +1,9 @@
 import { sameOrigin } from "@/lib/auth";
 import { addComment, hashAddress, recentBodies } from "@/lib/comment-store";
 import { cleanComment, maxCommentsPerHour, sentTooFast } from "@/lib/comments";
-import { isLiveRecipe } from "@/lib/recipe-store";
+import { liveRecipeTitle } from "@/lib/recipe-store";
 import { isRecipeId } from "@/lib/recipes";
+import { notify } from "@/platform/notifications/server";
 import { failure, notFound, recipeSite } from "../../helpers";
 
 export const runtime = "nodejs";
@@ -27,7 +28,8 @@ export async function POST(request: Request, { params }: Params) {
     if (typeof extra.website === "string" && extra.website.trim()) return thanks();
     if (sentTooFast(extra.startedAt)) return refuse("Esperá un instante antes de enviar el comentario.", 429);
     const comment = cleanComment(data);
-    if (!await isLiveRecipe(site.id, id)) return notFound();
+    const recipeTitle = await liveRecipeTitle(site.id, id);
+    if (recipeTitle === null) return notFound();
     const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
     const ipHash = hashAddress(forwarded || request.headers.get("x-real-ip") || "local");
     const recent = await recentBodies(site.id, ipHash);
@@ -35,6 +37,7 @@ export async function POST(request: Request, { params }: Params) {
     if (recent.includes(comment.body)) return thanks();
     if (recent.length >= maxCommentsPerHour) return refuse("Ya enviaste varios comentarios. Probá de nuevo en un rato.", 429);
     await addComment(site.id, id, comment, ipHash);
+    notify({ siteId: site.id, event: "recetas.comment_new", recipeTitle });
     return thanks();
   } catch (error) {
     if (error instanceof Error && "code" in error) {

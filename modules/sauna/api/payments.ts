@@ -7,9 +7,25 @@ import { chooseTransfer, confirmPayment, paymentTargetById, paymentTargetByToken
 import { choosePlanTransfer, confirmPlanPayment, planPurchaseById, planPurchaseByToken, type PlanPurchase } from "../data/plans";
 import { effectiveStatus } from "../domain/booking";
 import { approvedPayment, approvedPlanPayment, cleanPaymentId, isSigned, ledgerRaw, preferenceBody } from "../domain/mercadopago";
-import { transferOutcomeMessages, transferRejectionMessages } from "../domain/rejections";
+import { transferOutcomeMessages, transferRejectionMessages, type PaymentOutcome } from "../domain/rejections";
 import { businessDate, businessTime, dayLabel } from "../domain/time";
+import { after } from "next/server";
+import { notify, sendNotice } from "@/platform/notifications/server";
 import { fail, failure, readJson, type SiteContext } from "./route-tools";
+
+/** Tells the panel how a payment from Mercado Pago ended. A repeated payment says nothing: it was told the first time. Runs after the response. */
+async function notifyPayment(siteId: string, outcome: PaymentOutcome, paid: { bookingId?: string; purchaseId?: string }) {
+  if (outcome === "duplicate") return;
+  const about = paid.purchaseId
+    ? await planPurchaseById(siteId, paid.purchaseId).then(purchase => purchase?.bookings[0] && { customerName: purchase.bookings[0].customerName, startsAt: purchase.bookings[0].startsAt })
+    : paid.bookingId ? await paymentTargetById(siteId, paid.bookingId) : null;
+  if (!about) return;
+  if (outcome === "confirmed" || outcome === "late_confirmed") {
+    await sendNotice({ siteId, event: "sauna.payment_confirmed", customerName: about.customerName, startsAt: about.startsAt, late: outcome === "late_confirmed" });
+  } else {
+    await sendNotice({ siteId, event: "sauna.payment_problem", customerName: about.customerName, outcome });
+  }
+}
 
 // Paying the deposit (docs/SAUNA.md §6). The browser only says which booking and how; the amount is the deposit stored in the booking.
 
@@ -42,7 +58,10 @@ export async function postPayment(request: Request, context: SiteContext) {
 
     if (method === "transfer") {
       const result = await chooseTransfer(site.id, target.id, PUBLIC_ACTOR);
-      return result.ok ? Response.json({ ok: true }) : fail(409, transferRejectionMessages[result.reason] ?? transferRejectionMessages.invalid_request);
+      if (!result.ok) return fail(409, transferRejectionMessages[result.reason] ?? transferRejectionMessages.invalid_request);
+      // Only the first choice is news: choosing again keeps the same hold.
+      if (target.status === "held") notify({ siteId: site.id, event: "sauna.transfer_chosen", customerName: target.customerName, startsAt: target.startsAt, amountCents: target.depositCents });
+      return Response.json({ ok: true });
     }
 
     const accessToken = await accessTokenFor(site.id);
@@ -95,7 +114,11 @@ export async function postPlanPayment(request: Request, context: SiteContext) {
 
     if (method === "transfer") {
       const result = await choosePlanTransfer(site.id, purchase.id, PUBLIC_ACTOR);
-      return result.ok ? Response.json({ ok: true }) : fail(409, transferRejectionMessages[result.reason] ?? transferRejectionMessages.invalid_request);
+      if (!result.ok) return fail(409, transferRejectionMessages[result.reason] ?? transferRejectionMessages.invalid_request);
+      if (!due.transfer) {
+        notify({ siteId: site.id, event: "sauna.transfer_chosen", customerName: purchase.bookings[0].customerName, startsAt: purchase.bookings[0].startsAt, amountCents: due.depositCents });
+      }
+      return Response.json({ ok: true });
     }
 
     const accessToken = await accessTokenFor(site.id);
@@ -135,6 +158,11 @@ async function settle(siteId: string, accessToken: string, paymentId: string, on
     ? await confirmPayment(siteId, { ...approved, method: "mercadopago", actor: PROVIDER_ACTOR, raw: ledgerRaw(payment) })
     : forPlan ? await confirmPlanPayment(siteId, { ...forPlan, method: "mercadopago", actor: PROVIDER_ACTOR, raw: ledgerRaw(payment) }) : null;
   if (!result) return null;
+  if (result.ok) {
+    const outcome = result.outcome;
+    const paid = approved ? { bookingId: approved.bookingId } : { purchaseId: forPlan?.purchaseId };
+    after(() => notifyPayment(siteId, outcome, paid).catch(() => undefined));
+  }
   if (!result.ok) {
     // not_found: a payment of the same account for something else. Nothing to apply, and retrying would not change it.
     console.error("[sauna mercadopago] payment not applied:", result.reason);

@@ -5,6 +5,7 @@ import * as Select from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
 import { productWords } from "@/lib/products";
 import type { ProductSiteOptions, SiteKind } from "@/lib/sites";
+import type { SiteNotice } from "./site-notices";
 
 /** What the panel's client side knows of a site. The server fills it from the registry: client code must not import the site list. */
 export type SiteSummary = {
@@ -53,13 +54,19 @@ function SiteMark({ site }: { site: SiteSummary }) {
   );
 }
 
-function SiteRow({ site }: { site: SiteSummary }) {
+/** The number of things waiting in a site, on its mark. */
+function Count({ notice }: { notice?: SiteNotice }) {
+  if (!notice) return null;
+  return <span className="absolute -top-1.5 -right-1.5 grid h-4.5 min-w-4.5 place-items-center rounded-full border-2 border-sidebar bg-danger px-1 text-[10px] leading-none font-semibold text-bg tabular-nums" aria-hidden="true">{notice.count >= 100 ? "99+" : notice.count}</span>;
+}
+
+function SiteRow({ site, notice }: { site: SiteSummary; notice?: SiteNotice }) {
   return (
     <span className="flex min-w-0 flex-1 flex-row items-center gap-2.5">
-      <SiteMark site={site} />
+      <span className="relative flex-none"><SiteMark site={site} /><Count notice={notice} /></span>
       <span className="grid min-w-0 leading-tight">
         <strong className="truncate font-semibold text-ink">{site.name}</strong>
-        <small className="truncate text-xs text-muted">{siteLabel(site)}</small>
+        <small className="truncate text-xs text-muted">{notice ? `${notice.count >= 100 ? "99+" : notice.count} ${notice.label}` : siteLabel(site)}</small>
       </span>
     </span>
   );
@@ -71,12 +78,16 @@ function SiteRow({ site }: { site: SiteSummary }) {
 export function SiteSwitcher({
   site,
   sites,
+  notices = {},
   onChange,
 }: {
   site: SiteSummary;
   sites: SiteSummary[];
+  /** What is waiting in the other sites: their count goes on their mark, and a dot on the closed list says there is something. */
+  notices?: Record<string, SiteNotice>;
   onChange: (id: string) => void;
 }) {
+  const waiting = Object.values(notices).reduce((sum, notice) => sum + notice.count, 0);
   return (
     <Select.Root
       value={site.id}
@@ -84,12 +95,13 @@ export function SiteSwitcher({
       onValueChange={onChange}
     >
       <Select.Trigger
-        aria-label={`Sitio: ${site.name}. Cambiar de sitio`}
+        aria-label={`Sitio: ${site.name}. Cambiar de sitio${waiting ? `. ${waiting} avisos en otros sitios` : ""}`}
         className="group flex w-full items-center gap-2.5 rounded-lg border border-transparent bg-surface-sidebar p-2 text-left text-ink enabled:hover:border-line-strong data-[state=open]:border-line-strong disabled:cursor-default disabled:opacity-100"
       >
         <Select.Value className="flex min-w-0 flex-1 items-center gap-2.5">
           <SiteRow site={site} />
         </Select.Value>
+        {waiting > 0 && <span className="size-2.5 flex-none rounded-full bg-danger" aria-hidden="true" />}
         <Select.Icon asChild>
           <ChevronDown
             size={16}
@@ -120,7 +132,7 @@ export function SiteSwitcher({
                 className="flex cursor-pointer items-center gap-2 rounded-lg p-1.5 outline-none data-highlighted:bg-sunken data-[state=checked]:bg-accent-soft data-highlighted:data-[state=checked]:bg-accent-wash"
               >
                 <Select.ItemText className="flex min-w-0 flex-1 items-center gap-2.5">
-                  <SiteRow site={s} />
+                  <SiteRow site={s} notice={notices[s.id]} />
                 </Select.ItemText>
                 <Select.ItemIndicator className="flex-none text-ink">
                   <Check size={16} strokeWidth={1.75} aria-hidden="true" />

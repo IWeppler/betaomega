@@ -6,13 +6,15 @@ Por ahora casi todo es una **fachada**: reexporta el código legado sin moverlo,
 
 | Importar desde | Entorno | Qué trae |
 |---|---|---|
-| `@/platform/db` | Servidor | `siteTable`, `siteDocument`, `rpc` y sus errores. El cliente `supabase` crudo queda afuera a propósito. |
+| `@/platform/db` | Servidor | `siteTable`, `siteDocument`, `rpc` y sus errores, y `panelTable` solo para las tablas `panel_*`, que no son de un sitio. El cliente `supabase` crudo queda afuera a propósito. |
 | `@/platform/sites` | Cliente y servidor | `siteKinds` y los tipos de sitio. |
 | `@/platform/sites/server` | Servidor | `getSite`, `listSites` (solo sitios activos: lo público) y `getPanelSite` (también los inactivos: solo detrás de una sesión). |
 | `@/platform/auth` | Cliente y servidor | `canOpen`, `visibleSections`. |
 | `@/platform/auth/server` | Servidor | `isAdmin`, `sameOrigin`, `equal`. |
 | `@/platform/panel` | Pantallas del panel | `SaveForm`, `PageHeader`, `PanelContext`, `useSite`, `usePanel`, herramientas de lista y los tipos del registro del panel. |
 | `@/platform/money` | Cliente y servidor | Centavos, `percentOf` (el redondeo único), `formatCents` y la lectura de precios escritos por una persona (`centsFromPesos`, `pesosFromCents`). No es fachada: es código propio y puro. Desde `domain/` se importa por ruta relativa con extensión `.ts`. |
+
+| `platform/notifications` | Cliente y servidor | Avisos del panel ([tareas-notificaciones.md](../docs/tareas-notificaciones.md)): eventos, textos y enlaces, filtro por sitio y códigos para vincular Telegram. Código propio y puro, como `money`. `@/platform/notifications/server` (servidor): `notify()` para avisar después de responder y `sendNotice()` para mandar ya. |
 
 Se agrega a una fachada lo que un módulo necesite cuando lo necesite.
 

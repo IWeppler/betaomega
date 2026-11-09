@@ -41,6 +41,25 @@ export function scopeBody(siteId: string, body: string) {
 }
 
 /**
+ * A table of the panel itself, not of a site (the notices' destinations). Only for tables whose rows belong to no site: everything else goes
+ * through siteTable. `query` holds the filters; a string body is sent as JSON and the written rows come back.
+ */
+export function panelTable<Row>(table: `panel_${string}`, missing: string) {
+  return async (query = "", init: RequestInit = {}): Promise<Row[]> => {
+    const headers = new Headers(init.headers);
+    headers.set("Accept", "application/json");
+    if (typeof init.body === "string") {
+      headers.set("Content-Type", "application/json");
+      if (!headers.has("Prefer")) headers.set("Prefer", "return=representation");
+    }
+    const rest = query.replace(/^\?/, "");
+    const response = await supabase(`/rest/v1/${table}${rest ? `?${rest}` : ""}`, { ...init, headers });
+    if (response.status === 404) throw new MissingTableError(missing);
+    return response.status === 204 ? [] : await response.json() as Row[];
+  };
+}
+
+/**
  * Reads and writes the rows of `table` that belong to `siteId`. `query` holds only the caller's own filters (`id=eq.…&select=*`).
  * `missing` words the error for a table that does not exist yet, which in this project means schema.sql was not run.
  */

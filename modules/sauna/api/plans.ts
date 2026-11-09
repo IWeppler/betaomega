@@ -9,6 +9,7 @@ import { cleanPlan, PLAN_TURNS } from "../domain/plans";
 import { planRejectionMessages, rejectionMessages, type PlanRejection, type ReserveRejection } from "../domain/rejections";
 import { transferAccount } from "../domain/setup";
 import { paymentOptionsOf, settleReturnedPlanPayment } from "./payments";
+import { notify } from "@/platform/notifications/server";
 import { fail, failure, noStore, originHash, panelRead, panelWrite, readJson, type SiteContext } from "./route-tools";
 
 // Plans (docs/SAUNA.md §11): their management in the panel, booking one from the public site and the page of a purchase.
@@ -66,6 +67,12 @@ export async function postPlanReservation(request: Request, context: SiteContext
     const purchase = await planPurchaseByToken(site.id, result.token);
     await Promise.all((purchase?.bookings ?? []).map(booking => markOrigin(site.id, booking.id, origin)))
       .catch((error: unknown) => console.error("[sauna] origin mark failed:", error instanceof Error ? error.name : "error"));
+    if (purchase?.bookings.length) {
+      notify({
+        siteId: site.id, event: "sauna.booking_new", customerName: name, startsAt: purchase.bookings[0].startsAt,
+        depositDueCents: purchase.bookings.reduce((sum, booking) => sum + booking.depositCents, 0), plan: { name: purchase.name, turns: purchase.turns },
+      });
+    }
     return Response.json({ token: result.token });
   } catch (error) { return failure(error, "reservar el plan"); }
 }

@@ -46,3 +46,8 @@ export async function addComment(siteId: string, recipeId: string, comment: { na
   const [created] = await comments(siteId)("", { method: "POST", body: JSON.stringify({ recipe_id: recipeId, name: comment.name, body: comment.body, ip_hash: ipHash, status: "pending" }) });
   return fromRow(created);
 }
+
+/** Comments waiting for approval, for the panel's notices. Capped: past 99 the number only needs to say "many". */
+export async function countPendingComments(siteId: string) {
+  return (await comments(siteId)("status=eq.pending&select=id&limit=100")).length;
+}

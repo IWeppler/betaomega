@@ -1,5 +1,5 @@
 import { listBands, readSettings, listClosures, listRooms } from "../data/setup";
-import { cancelBooking, listBookingsOfRange, searchBookings, setBookingStatus } from "../data/bookings";
+import { cancelBooking, countPublicBookingsSince, listBookingsOfRange, searchBookings, setBookingStatus } from "../data/bookings";
 import { bookingStatuses, type BookingStatus } from "../domain/booking";
 import { isDateText } from "../domain/time";
 import { recordTransfer } from "./payments";
@@ -58,3 +58,9 @@ export const patchBooking = panelWrite<{ params: Promise<{ site: string; id: str
     return Response.json({ ok: true });
   } catch (error) { return failure(error, "cambiar la reserva"); }
 });
+
+/** What the panel's notices say about a sauna: bookings that came in from the site since the person last opened its panel. */
+export async function saunaNotice(siteId: string, since: string) {
+  const count = await countPublicBookingsSince(siteId, since);
+  return { count, label: count === 1 ? "reserva nueva" : "reservas nuevas" };
+}

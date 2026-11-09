@@ -63,6 +63,15 @@ export async function listRecipes(siteId: string) {
 }
 
 /** True when the recipe is published and its date has come: the only ones that take comments, views and shares. */
+/** The title of a live recipe, or null when it is not live (or the table is missing). For the panel notices. */
+export async function liveRecipeTitle(siteId: string, recipeId: string): Promise<string | null> {
+  const live = `&or=(published_at.is.null,published_at.lte.${new Date().toISOString()})`;
+  try { return (await rows(siteId)(`id=${eq(recipeId)}&published=is.true${live}&select=title`))[0]?.title ?? null; } catch (error) {
+    if (error instanceof MissingTableError) return null;
+    throw error;
+  }
+}
+
 export async function isLiveRecipe(siteId: string, recipeId: string) {
   const live = `&or=(published_at.is.null,published_at.lte.${new Date().toISOString()})`;
   try { return (await rows(siteId)(`id=${eq(recipeId)}&published=is.true${live}&select=id`)).length > 0; } catch (error) {

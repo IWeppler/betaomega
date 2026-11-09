@@ -18,19 +18,23 @@ export type PaymentTarget = {
   movements: Movement[];
   /** The plan purchase this booking belongs to: then it is paid together with the plan's other turns. */
   planPurchaseId: string | null;
+  /** For the panel's notices only: they say whose booking it is. */
+  customerName: string;
 };
 
 type TargetRow = {
   id: string; token: string; status: BookingStatus; deposit_cents: number; expires_at: string | null; plan_purchase_id: string | null;
   sauna_slots: { starts_at: string; sauna_turn_types: { name: string } | null };
+  customers: { name: string } | null;
   payments: { kind: Movement["kind"]; amount_cents: number }[];
 };
 
-const select = "select=id,token,status,deposit_cents,expires_at,plan_purchase_id,sauna_slots!inner(starts_at,sauna_turn_types(name)),payments(kind,amount_cents)";
+const select = "select=id,token,status,deposit_cents,expires_at,plan_purchase_id,sauna_slots!inner(starts_at,sauna_turn_types(name)),customers(name),payments(kind,amount_cents)";
 const targetFrom = (row: TargetRow): PaymentTarget => ({
   id: row.id, token: row.token, status: row.status, depositCents: row.deposit_cents, expiresAt: row.expires_at, startsAt: row.sauna_slots.starts_at,
   typeName: row.sauna_slots.sauna_turn_types?.name ?? "", movements: row.payments.map(payment => ({ kind: payment.kind, amountCents: payment.amount_cents })),
   planPurchaseId: row.plan_purchase_id,
+  customerName: row.customers?.name ?? "",
 });
 const bookings = (siteId: string) => siteTable<TargetRow>("sauna_bookings", siteId, missing);
 

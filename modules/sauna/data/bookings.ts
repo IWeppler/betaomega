@@ -68,7 +68,7 @@ export async function searchBookings(siteId: string, text: string, status: Booki
 }
 
 export type ReserveRequest = { roomId: string; turnTypeId: string; startsAt: string; kind: BookingKind; seats: number; name: string; whatsapp: string; code: string | null; termsAccepted: boolean };
-type ReserveResult = { ok: true; booking: { id: string; token: string } } | { ok: false; reason: ReserveRejection };
+type ReserveResult = { ok: true; booking: { id: string; token: string; deposit_cents: number } } | { ok: false; reason: ReserveRejection };
 
 export function reserve(siteId: string, request: ReserveRequest): Promise<ReserveResult> {
   return rpc<ReserveResult>("sauna_reserve", {
@@ -130,4 +130,10 @@ export async function bookingByToken(siteId: string, token: string): Promise<Pub
 export async function readDefaultPolicy(siteId: string): Promise<PolicyRule[]> {
   const [row] = await siteTable<{ rules: PolicyRule[] }>("cancellation_policies", siteId, missing)("is_default=is.true&active=is.true&select=rules");
   return row?.rules ?? [];
+}
+
+/** Bookings made from the public site after an instant that still hold their turn, for the panel's notices. Capped at 100. */
+export async function countPublicBookingsSince(siteId: string, since: string): Promise<number> {
+  const rows = await bookings(siteId)(`origin=eq.public&created_at=gt.${encodeURIComponent(since)}&status=in.(held,pending_transfer,confirmed)&select=id&limit=100`);
+  return rows.length;
 }
