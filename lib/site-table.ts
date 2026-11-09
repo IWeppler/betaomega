@@ -55,7 +55,9 @@ export function panelTable<Row>(table: `panel_${string}`, missing: string) {
     const rest = query.replace(/^\?/, "");
     const response = await supabase(`/rest/v1/${table}${rest ? `?${rest}` : ""}`, { ...init, headers });
     if (response.status === 404) throw new MissingTableError(missing);
-    return response.status === 204 ? [] : await response.json() as Row[];
+    // "Prefer: return=minimal" answers 201 with an empty body, not 204: only a body with text is read.
+    const text = await response.text();
+    return text ? JSON.parse(text) as Row[] : [];
   };
 }
 
