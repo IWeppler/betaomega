@@ -22,10 +22,11 @@ type BookingRow = {
   payments: { kind: Movement["kind"]; amount_cents: number }[];
   pack_purchase_id: string | null;
   discount_codes: { code: string } | null;
-  sauna_plan_purchases: { name: string } | null;
+  plan_purchase_id: string | null;
+  sauna_plan_purchases: { name: string; turns: number } | null;
 };
 
-export const fullBooking = "select=id,token,status,kind,seats,price_cents,discount_cents,deposit_cents,expires_at,needs_refund,created_at,policy_snapshot,customers!inner(name,whatsapp),sauna_slots!inner(room_id,starts_at,ends_at,sauna_turn_types(name)),payments(kind,amount_cents),pack_purchase_id,discount_codes(code),sauna_plan_purchases(name)";
+export const fullBooking = "select=id,token,status,kind,seats,price_cents,discount_cents,deposit_cents,expires_at,needs_refund,created_at,policy_snapshot,customers!inner(name,whatsapp),sauna_slots!inner(room_id,starts_at,ends_at,sauna_turn_types(name)),payments(kind,amount_cents),pack_purchase_id,discount_codes(code),plan_purchase_id,sauna_plan_purchases(name,turns)";
 const bookings = (siteId: string) => siteTable<BookingRow>("sauna_bookings", siteId, missing);
 
 export type { BookingRow };
@@ -36,6 +37,7 @@ export const agendaBooking = (row: BookingRow): AgendaBooking => ({
   roomId: row.sauna_slots.room_id, startsAt: row.sauna_slots.starts_at, endsAt: row.sauna_slots.ends_at, typeName: row.sauna_slots.sauna_turn_types?.name ?? "",
   movements: row.payments.map(payment => ({ kind: payment.kind, amountCents: payment.amount_cents })),
   code: row.discount_codes?.code ?? null, fromPack: row.pack_purchase_id !== null, planName: row.sauna_plan_purchases?.name ?? null,
+  planPurchaseId: row.plan_purchase_id ?? null, planTurns: row.sauna_plan_purchases?.turns ?? null,
 });
 
 /** Turns of a range of Buenos Aires days, from the template and the turns that already exist. */
@@ -55,15 +57,19 @@ export async function listBookingsOfRange(siteId: string, from: DateText, to: Da
   return rows.map(agendaBooking);
 }
 
-/** The panel's search, newest first. Digits look in the number, anything else in the name. */
-export async function searchBookings(siteId: string, text: string, status: BookingStatus | null): Promise<AgendaBooking[]> {
+/** How many bookings the panel's list reads at most. Older ones are reached by searching. */
+export const SEARCH_LIMIT = 1000;
+
+/** The panel's search, newest first. Digits look in the number, anything else in the name. `kind` keeps single bookings or the turns of plans. */
+export async function searchBookings(siteId: string, text: string, status: BookingStatus | null, kind: "single" | "plan" | null = null): Promise<AgendaBooking[]> {
   // PostgREST reads `*` as the wildcard and these characters as syntax, so they cannot come from the person.
   const clean = text.replace(/[*,()"\\%]/g, " ").trim();
   const digits = clean.replace(/\D/g, "");
   const filter = !clean ? "" : digits.length >= 3 && !/\p{L}/u.test(clean)
     ? `&customers.whatsapp=ilike.*${digits}*`
     : `&customers.name=ilike.*${encodeURIComponent(clean)}*`;
-  const rows = await bookings(siteId)(`${fullBooking}${filter}${status ? `&status=eq.${status}` : ""}&order=created_at.desc&limit=100`);
+  const only = kind === "single" ? "&plan_purchase_id=is.null" : kind === "plan" ? "&plan_purchase_id=not.is.null" : "";
+  const rows = await bookings(siteId)(`${fullBooking}${filter}${status ? `&status=eq.${status}` : ""}${only}&order=created_at.desc,id.desc&limit=${SEARCH_LIMIT}`);
   return rows.map(agendaBooking);
 }
 

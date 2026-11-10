@@ -48,6 +48,9 @@ export type AgendaBooking = {
   fromPack: boolean;
   /** The plan this turn belongs to, by the name it had when it was booked, or null. */
   planName: string | null;
+  /** The purchase of that plan, which groups its turns, and how many turns it bought. Null for a single booking. */
+  planPurchaseId: string | null;
+  planTurns: number | null;
 };
 
 export const statusLabels: Record<BookingStatus, string> = {
