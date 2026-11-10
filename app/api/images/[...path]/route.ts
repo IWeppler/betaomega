@@ -1,5 +1,6 @@
 import { imageTypes, validImagePath } from "@/lib/images";
 import { supabase } from "@/lib/supabase";
+// Fallback only: with NEXT_PUBLIC_SUPABASE_URL set at build time, next.config.ts rewrites these paths to the public bucket before reaching here.
 export const runtime = "nodejs";
 export async function GET(_request: Request, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
