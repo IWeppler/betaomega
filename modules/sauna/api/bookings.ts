@@ -1,6 +1,6 @@
 import { listBands, readSettings, listClosures, listRooms } from "../data/setup";
-import { cancelBooking, countPublicBookingsSince, listBookingsOfRange, searchBookings, setBookingStatus } from "../data/bookings";
-import { bookingStatuses, type BookingStatus } from "../domain/booking";
+import { cancelBooking, countPublicBookingsSince, listBookingsOfRange, SEARCH_LIMIT, searchBookings, setBookingStatus } from "../data/bookings";
+import { bookingViews, groupBookings, pageOf, rowsOf, viewCounts, type BookingView } from "../domain/booking-groups";
 import { isDateText } from "../domain/time";
 import { recordTransfer } from "./payments";
 import { fail, failure, noStore, panelRead, panelWrite, readJson } from "./route-tools";
@@ -22,14 +22,23 @@ export const getAgenda = panelRead(async (request, site) => {
   } catch (error) { return failure(error, "leer la agenda"); }
 });
 
+/**
+ * GET ?q=&view=&kind=single|plan&page=: one page of a tab of the list, a plan as one row with its turns, and how many rows every tab holds. The tabs
+ * go by each booking's state as it is now (a lapsed hold is lapsed), which the database's status column cannot filter, so they are applied here.
+ */
 export const getBookings = panelRead(async (request, site) => {
   const params = new URL(request.url).searchParams;
-  const status = params.get("status");
+  const view = (params.get("view") || "all") as BookingView;
+  const kind = params.get("kind") || null;
   const text = (params.get("q") ?? "").slice(0, 80);
-  if (status && !bookingStatuses.includes(status as BookingStatus)) return fail(400, "Estado inválido.");
+  if (!bookingViews.includes(view)) return fail(400, "Vista inválida.");
+  if (kind !== null && kind !== "single" && kind !== "plan") return fail(400, "Tipo inválido.");
   try {
-    const [bookings, rooms] = await Promise.all([searchBookings(site.id, text, (status as BookingStatus) || null), roomNames(site.id)]);
-    return Response.json({ now: new Date().toISOString(), bookings, rooms }, { headers: noStore });
+    const [bookings, rooms] = await Promise.all([searchBookings(site.id, text, null, kind), roomNames(site.id)]);
+    const now = new Date().toISOString();
+    const groups = groupBookings(bookings);
+    const { items, page, pages, total } = pageOf(rowsOf(groups, view, now), Number(params.get("page") ?? 1));
+    return Response.json({ now, view, groups: items, page, pages, total, counts: viewCounts(groups, now), capped: bookings.length >= SEARCH_LIMIT, rooms }, { headers: noStore });
   } catch (error) { return failure(error, "buscar las reservas"); }
 });
 

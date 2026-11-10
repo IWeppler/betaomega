@@ -43,6 +43,7 @@ Tokens **semánticos**: nombran el rol, no el color. Un componente usa `bg-accen
 | `accent-text` | `--color-*` | `text-accent-text` | Acento oscurecido para **texto** chico sobre fondo claro (contraste 4,5:1). |
 | `focus` | `--color-focus` | Regla base | Anillo de foco. |
 | `warn-bg` · `warn-line` · `warn-ink` · `danger` | `--color-*` | `bg-warn-bg` | Advertencias (ámbar) y errores. Reservados para eso. |
+| `success` · `success-soft` | `--color-*` | `bg-success-soft` | Éxito (verde): una reserva confirmada. Aparte del acento, que en el panel es azul. Reservado para eso. |
 | `card` · `field` · `control` | `--radius-*` | `rounded-card` | Radio de contenedores, de campos y de botones. |
 | `control` | `--spacing-control` | `min-h-control` | Alto mínimo de un control táctil (§6). |
 | `card` · `lift` | `--shadow-*`, valor en `--elevation-*` | `shadow-lift` | Sombra de tarjetas y de lo que flota. **Un tema redefine `--elevation-*`:** Tailwind copia el valor de `--shadow-*` al compilar, así que redefinirlo en un tema no tendría efecto. |

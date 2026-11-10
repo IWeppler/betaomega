@@ -2,7 +2,8 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 // The visual pieces of this module. They use tokens only, so they work on the panel's theme and on the public site's. Free of @/platform/panel: the public site loads this file.
 
-const base = "inline-flex min-h-control items-center justify-center gap-1.5 rounded-control px-3.5 font-semibold no-underline transition-colors duration-150 disabled:opacity-55";
+// Pressing shrinks it a little, so it answers the finger at once; without motion when the person asks for less of it.
+const base = "inline-flex min-h-control items-center justify-center gap-1.5 rounded-control px-3.5 font-semibold no-underline transition-[background-color,border-color,color,transform] duration-150 ease-out not-disabled:active:scale-[0.97] motion-reduce:not-disabled:active:scale-100 disabled:opacity-55";
 const variants = {
   primary: "bg-accent text-accent-ink hover:bg-accent-hover",
   quiet: "border border-line-strong bg-surface text-ink hover:bg-sunken",
@@ -42,8 +43,23 @@ export function Notice({ kind = "warn", children }: { kind?: "warn" | "error"; c
     : <p className="rounded-field border border-warn-line bg-warn-bg px-3 py-2 text-warn-ink">{children}</p>;
 }
 
-/** A short state label next to an item. */
-export function Tag({ children, tone = "plain" }: { children: ReactNode; tone?: "plain" | "accent" | "warn" }) {
-  const tones = { plain: "bg-sunken text-muted", accent: "bg-accent-soft text-accent-text", warn: "bg-warn-bg text-warn-ink" };
-  return <span className={`inline-flex items-center rounded-control px-2 py-0.5 text-sm font-semibold ${tones[tone]}`}>{children}</span>;
+export type TagTone = "plain" | "accent" | "success" | "warn" | "danger" | "faded" | "outline";
+
+/**
+ * A short label next to an item: a pill of one height for every tone, with an optional icon first, so a column of them lines up. The tones follow
+ * the panel's rule: green confirmed, blue paid, amber waiting, red fell through, gray over.
+ */
+export function Tag({ children, tone = "plain" }: { children: ReactNode; tone?: TagTone }) {
+  const tones: Record<TagTone, string> = {
+    plain: "border-line bg-sunken text-muted",
+    accent: "border-transparent bg-accent-soft text-accent-text",
+    success: "border-success/25 bg-success-soft text-success",
+    warn: "border-warn-line/50 bg-warn-bg text-warn-ink",
+    danger: "border-danger/30 bg-danger/10 text-danger",
+    // What simply lapsed: nobody did anything, so it looks the faintest.
+    faded: "border-dashed border-line-strong bg-transparent text-muted",
+    // What a thing is, not how it is going (a plan, a code): no color of a state.
+    outline: "border-line-strong bg-surface text-ink",
+  };
+  return <span className={`inline-flex h-6 items-center gap-1 rounded-full border px-2.5 text-[13px] leading-none font-semibold whitespace-nowrap [&>svg]:shrink-0 ${tones[tone]}`}>{children}</span>;
 }

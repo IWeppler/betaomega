@@ -9,7 +9,7 @@ let next = 0;
 const booking = (startsAt: string, patch: Partial<AgendaBooking> = {}): AgendaBooking => ({
   id: String(++next), token: "t", status: "confirmed", kind: "shared", seats: 1, priceCents: 10_000, discountCents: 0, depositCents: 0,
   expiresAt: null, needsRefund: false, createdAt: now, customerName: "Ana", customerWhatsapp: null, roomId: "r", typeName: "Turno",
-  startsAt, endsAt: startsAt, movements: [], code: null, fromPack: false, planName: null, ...patch,
+  startsAt, endsAt: startsAt, movements: [], code: null, fromPack: false, planName: null, planPurchaseId: null, planTurns: null, ...patch,
 });
 
 const cell = (result: ReturnType<typeof preferencesOf>, weekday: number, hour: number) =>

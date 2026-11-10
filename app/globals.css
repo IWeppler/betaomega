@@ -27,6 +27,9 @@
   --color-warn-line: #d9942a;
   --color-warn-ink: #4d3200;
   --color-danger: #a3301f;
+  /* Success: a confirmed booking. Apart from the accent, which is blue in the panel. Text on its soft background 5.1:1. */
+  --color-success: #1b7340;
+  --color-success-soft: #e3f3e9;
 
   --radius-card: 28px;
   --radius-field: 16px;
@@ -97,6 +100,8 @@
     --color-warn-line: #8a6a1f;
     --color-warn-ink: #f3dca6;
     --color-danger: #f08a75;
+    --color-success: #9ad3a6;
+    --color-success-soft: #1b2a1c;
     --radius-card: 6px;
     --radius-field: 3px;
     --radius-control: 3px;

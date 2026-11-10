@@ -7,12 +7,12 @@ import { FaWhatsapp } from "react-icons/fa";
 import { formatCents } from "@/platform/money";
 import { PageHeader, useSite } from "@/platform/panel";
 import { showToast } from "@/shared/ui/toast";
-import { bookingActions, moneyState, statusLabels, type AgendaBooking, type AgendaTurn } from "../domain/agenda";
+import { bookingActions, moneyState, type AgendaBooking, type AgendaTurn } from "../domain/agenda";
 import { effectiveStatus } from "../domain/booking";
 import { reminderMessage, whatsappLink } from "../domain/messages";
 import { newBookings, summaryOf, type DayLoad, type PendingReason } from "../domain/summary";
 import { addDays, businessDate, businessTime, dayLabel, shortDayLabel } from "../domain/time";
-import { announceWhatsapp, BookingCard, BookingTags, messageOf, statusTone } from "./booking-card";
+import { announceWhatsapp, BookingCard, BookingTags, messageOf, StatusTag } from "./booking-card";
 import { CancelBookingDialog, SwipeRow } from "./cancel-booking";
 import { Button, buttonClass, Card, Notice, Tag } from "./controls";
 import { PreferredDays } from "./preferred-days";
@@ -65,7 +65,7 @@ function TodayTurn({ turn, now, roomName, next, onCancel }: { turn: AgendaTurn; 
             <SwipeRow label={`Cancelar la reserva de ${name}`} onDelete={bookingActions(booking, now).cancel ? () => onCancel(booking) : undefined}>
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
               <span className="text-ink">{name}{booking.seats > 1 ? ` (${booking.seats})` : ""}</span>
-              <Tag tone={statusTone(status)}>{statusLabels[status]}</Tag>
+              <StatusTag status={status} />
               <BookingTags booking={booking} />
               {owed > 0 && status !== "no_show" && <span className="text-muted">Cobrar {formatCents(owed)}</span>}
             </div>
