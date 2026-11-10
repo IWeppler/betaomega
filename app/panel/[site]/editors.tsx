@@ -140,10 +140,10 @@ export function DeleteConfirm({ item, onCancel, onDeleted }: { item: Plant | Pre
     const blocker = deleteBlocker(current, item);
     if (blocker) { setError(blocker); return; }
     const next = "ingredients" in item ? { ...current, preparations: current.preparations.filter(p => p.id !== item.id) } : { ...current, plants: current.plants.filter(p => p.id !== item.id) };
-    if (await save(next)) onDeleted();
+    if (await save(next, `Se eliminó ${item.name}.`)) onDeleted();
   };
   return <EditorFrame title={`Eliminar ${item.name}`} onClose={onCancel}>
-    <p className="panel-muted">La ficha se elimina del catálogo y de la tienda. No se puede deshacer.</p>
+    <p className="panel-muted">La ficha se elimina del catálogo y de la tienda. Podés deshacerlo desde el aviso que aparece abajo.</p>
     {error && <div className="alert error" role="alert">{error}</div>}
     <div className="form-actions">
       <button className="button" disabled={busy} onClick={onCancel}>Cancelar</button>

@@ -10,7 +10,8 @@ import type { Settings } from "../domain/setup";
 import { weekdayName } from "../domain/time";
 import { weekOrder, type Config } from "./config";
 import { Button, Card, Field, FormArea, inputClass, Notice } from "./controls";
-import { sendJson } from "./fetch-json";
+import { offerUndo } from "@/shared/ui/undo";
+import { fetchJson, sendJson } from "./fetch-json";
 
 const steps = [15, 30, 45, 60];
 
@@ -75,6 +76,14 @@ export function WeekForm({ config, settings, onSaved, onDiscard, flushRef }: { c
         bands: bands.filter(band => !closedDays.includes(band.weekday)), capacity: Number(values.get("capacity")), stepMinutes: step, revision: settings.revision,
       });
       await onSaved();
+      // The week as it was, over the revision it has now.
+      offerUndo("Se guardaron los horarios.", async () => {
+        const now = await fetchJson<Config>(`/api/sites/${site.id}/sauna/config`);
+        await sendJson(`/api/sites/${site.id}/sauna/week`, "PUT", {
+          bands: config.bands, capacity: config.rooms.find(room => room.active)?.capacity ?? 2, stepMinutes: settings.startStepMinutes, revision: now.settings?.revision ?? settings.revision,
+        });
+        await onSaved();
+      });
       return true;
     } catch (failure) {
       setError((failure as Error).message);

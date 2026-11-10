@@ -84,7 +84,7 @@ export function AgendaScreen() {
         {view === "month" && <MonthAgenda date={date} days={days} closureState={day => dayClosureState(day, data.closures)} today={today} selected={selected} onOpen={select} />}
       </div>
       <aside ref={aside} className="min-w-0 scroll-mt-4 lg:sticky lg:top-4 lg:self-start" aria-label="Detalle de la selección">
-        <AgendaAside key={selected} selection={selection} siteId={site.id} closures={data.closures} bookings={bookings} now={data.now} onChanged={reload} onOpenDay={day => navigate("day", day)} editor={{ draft: manual.draft, onDraftChange: next => { setCreated(false); manual.update(next); }, onDiscard: manual.discard, saving: manual.busy, onSavingChange: manual.setSaving, onCreated: async () => { manual.clear(); setCreated(true); await reload(); } }} />
+        <AgendaAside key={selected} selection={selection} siteId={site.id} closures={data.closures} bookings={bookings} now={data.now} onChanged={reload} onOpenDay={day => navigate("day", day)} editor={{ draft: manual.draft, onDraftChange: next => { setCreated(false); manual.update(next); }, onDiscard: manual.discard, saving: manual.busy, onSavingChange: manual.setSaving, onCreated: async () => { manual.clear(); setCreated(true); await reload(); }, onUndone: async () => { setCreated(false); await reload(); } }} />
       </aside>
     </div>}
     {manual.dialog}

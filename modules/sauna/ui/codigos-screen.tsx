@@ -7,6 +7,7 @@ import { codeTypes, type CodeType } from "../domain/pricing";
 import { businessDate, dayLabel } from "../domain/time";
 import { Button, Card, Field, inputClass, Notice, Tag } from "./controls";
 import { sendJson } from "./fetch-json";
+import { offerRowUndo } from "./undo-row";
 import { useResource } from "./use-resource";
 
 type PanelCode = {
@@ -38,7 +39,14 @@ function stateOf(code: PanelCode, now: number) {
   return null;
 }
 
-function CodeForm({ code, types, onDone }: { code: PanelCode | null; types: Result["types"]; onDone: (saved: boolean) => Promise<void> | void }) {
+/** What the form sends for a stored code: its dates as the days the form shows, its amount as the server keeps it. */
+const bodyOf = (code: PanelCode) => ({
+  code: code.code, type: code.type, value: code.value, maxUses: code.maxUses, maxUsesPerCustomer: code.maxUsesPerCustomer,
+  validFrom: code.validFrom ? businessDate(code.validFrom) : "", validUntil: code.validUntil ? businessDate(code.validUntil) : "",
+  turnTypeId: code.turnTypeId ?? "", note: code.note, active: code.active,
+});
+
+function CodeForm({ code, types, onDone, reload }: { code: PanelCode | null; types: Result["types"]; onDone: (saved: boolean) => Promise<void> | void; reload: () => Promise<void> }) {
   const site = useSite();
   const [type, setType] = useState<CodeType>(code?.type ?? "percent");
   const [busy, setBusy] = useState(false);
@@ -50,7 +58,8 @@ function CodeForm({ code, types, onDone }: { code: PanelCode | null; types: Resu
     setBusy(true);
     setError("");
     try {
-      await sendJson(`/api/sites/${site.id}/sauna/codes`, "POST", {
+      const url = `/api/sites/${site.id}/sauna/codes`;
+      const { id } = await sendJson<{ id: string }>(url, "POST", {
         id: code?.id ?? null,
         updatedAt: code?.updatedAt ?? null,
         code: text("code"),
@@ -66,6 +75,9 @@ function CodeForm({ code, types, onDone }: { code: PanelCode | null; types: Resu
         active: values.get("active") === "on",
       });
       await onDone(true);
+      offerRowUndo<PanelCode, Result>({
+        message: code ? "Se guardó el código." : "Se creó el código.", url, previous: code, savedId: id, rowsOf: data => data.codes, bodyOf, reload,
+      });
     } catch (failure) {
       setError((failure as Error).message);
       setBusy(false);
@@ -139,7 +151,7 @@ export function CodigosScreen() {
       actions={!editing && <Button variant="primary" onClick={() => setEditing("new")}>Nuevo código</Button>}
     />
     {error && <div className="mb-3 grid justify-items-start gap-2"><Notice kind="error">{error}</Notice><Button onClick={() => void reload()}>Reintentar</Button></div>}
-    {editing && data && <CodeForm key={editing === "new" ? "new" : editing.id} code={editing === "new" ? null : editing} types={data.types} onDone={done} />}
+    {editing && data && <CodeForm key={editing === "new" ? "new" : editing.id} code={editing === "new" ? null : editing} types={data.types} onDone={done} reload={reload} />}
     {loading && !data && <p className="text-muted" aria-busy="true">Cargando…</p>}
     {data && (data.codes.length === 0
       ? !editing && <EmptyState title="Todavía no hay códigos" text="Creá uno para ofrecer un descuento, una reserva sin seña o una sesión de regalo." />

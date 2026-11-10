@@ -3,14 +3,23 @@
 import { useState } from "react";
 import { formatCents } from "@/platform/money";
 import { EmptyState, PageHeader, useSite } from "@/platform/panel";
-import { PLAN_TURNS, planQuote, planSummary, type Plan } from "../domain/plans";
+import { durationText, PLAN_TURNS, planQuote, planSummary, type Plan } from "../domain/plans";
 import { Button, Card, Field, inputClass, Notice, Tag } from "./controls";
 import { sendJson } from "./fetch-json";
+import { offerRowUndo } from "./undo-row";
 import { useResource } from "./use-resource";
 
-type Result = { plans: Plan[]; depositPercent: number };
+/** `durations`: how long the active turn types last, shortest first. */
+type Result = { plans: Plan[]; depositPercent: number; durations: number[] };
 
-function PlanForm({ plan, depositPercent, onDone }: { plan: Plan | null; depositPercent: number; onDone: (saved: boolean) => Promise<void> | void }) {
+const bodyOf = (plan: Plan) => ({
+  name: plan.name, description: plan.description, turns: plan.turns, priceCents: plan.priceCents, windowDays: plan.windowDays, durationMinutes: plan.durationMinutes,
+  allowsCodes: plan.allowsCodes, active: plan.active,
+});
+
+function PlanForm({ plan, depositPercent, durations, onDone, reload }: {
+  plan: Plan | null; depositPercent: number; durations: number[]; onDone: (saved: boolean) => Promise<void> | void; reload: () => Promise<void>;
+}) {
   const site = useSite();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -24,7 +33,8 @@ function PlanForm({ plan, depositPercent, onDone }: { plan: Plan | null; deposit
     setBusy(true);
     setError("");
     try {
-      await sendJson(`/api/sites/${site.id}/sauna/plans`, "POST", {
+      const url = `/api/sites/${site.id}/sauna/plans`;
+      const { id } = await sendJson<{ id: string }>(url, "POST", {
         id: plan?.id ?? null,
         updatedAt: plan?.updatedAt ?? null,
         name: text("name"),
@@ -33,9 +43,12 @@ function PlanForm({ plan, depositPercent, onDone }: { plan: Plan | null; deposit
         // The panel writes pesos; the server keeps cents.
         priceCents,
         windowDays: Number(text("windowDays")),
+        durationMinutes: Number(text("durationMinutes")),
+        allowsCodes: values.get("allowsCodes") === "on",
         active: values.get("active") === "on",
       });
       await onDone(true);
+      offerRowUndo<Plan, Result>({ message: plan ? "Se guardó el plan." : "Se creó el plan.", url, previous: plan, savedId: id, rowsOf: data => data.plans, bodyOf, reload });
     } catch (failure) {
       setError((failure as Error).message);
       setBusy(false);
@@ -56,6 +69,17 @@ function PlanForm({ plan, depositPercent, onDone }: { plan: Plan | null; deposit
       <Field label="Días para usarlo" hint="Del primer al último turno, contando el primero. Por ejemplo, 30.">
         <input className={inputClass} name="windowDays" type="number" min={1} max={365} step={1} defaultValue={plan?.windowDays ?? 30} required />
       </Field>
+      <Field label="Duración de cada turno" hint="Solo se ofrecen los turnos que duran esto.">
+        {/* A plan saved before this was asked has none: the list starts empty so it has to be chosen. Only lengths of real turn types are offered. */}
+        <select className={inputClass} name="durationMinutes" defaultValue={plan?.durationMinutes != null && durations.includes(plan.durationMinutes) ? String(plan.durationMinutes) : durations.length === 1 ? String(durations[0]) : ""} required>
+          <option value="" disabled>Elegí una duración</option>
+          {durations.map(minutes => <option key={minutes} value={minutes}>{durationText(minutes)}</option>)}
+        </select>
+      </Field>
+      <label className="flex items-center gap-2 self-end text-ink sm:min-h-control">
+        <input type="checkbox" name="allowsCodes" defaultChecked={plan?.allowsCodes ?? false} className="size-4" />
+        Acepta códigos de descuento
+      </label>
       <Field label="Descripción (opcional)" hint="Una línea que explique el plan." className="sm:col-span-2">
         <input className={inputClass} name="description" defaultValue={plan?.description ?? ""} maxLength={300} placeholder="Cuatro sesiones para empezar el hábito." />
       </Field>
@@ -87,7 +111,8 @@ export function PlanesScreen() {
       actions={!editing && <Button variant="primary" onClick={() => setEditing("new")}>Nuevo plan</Button>}
     />
     {error && <div className="mb-3 grid justify-items-start gap-2"><Notice kind="error">{error}</Notice><Button onClick={() => void reload()}>Reintentar</Button></div>}
-    {editing && data && <PlanForm key={editing === "new" ? "new" : editing.id} plan={editing === "new" ? null : editing} depositPercent={data.depositPercent} onDone={done} />}
+    {editing && data && data.durations.length === 0 && <div className="mb-4"><Notice kind="error">Primero creá un tipo de turno en Horarios y precios: el plan necesita saber cuánto dura cada turno.</Notice></div>}
+    {editing && data && data.durations.length > 0 && <PlanForm key={editing === "new" ? "new" : editing.id} plan={editing === "new" ? null : editing} depositPercent={data.depositPercent} durations={data.durations} onDone={done} reload={reload} />}
     {loading && !data && <p className="text-muted" aria-busy="true">Cargando…</p>}
     {data && (data.plans.length === 0
       ? !editing && <EmptyState title="Todavía no hay planes" text="Creá uno, por ejemplo un Plan Vitalidad de 4 turnos, para ofrecer varias sesiones juntas." />
@@ -97,6 +122,8 @@ export function PlanesScreen() {
             <strong className="text-ink">{plan.name}</strong>
             <span className="text-ink tabular-nums">{formatCents(plan.priceCents)}</span>
             {plan.active ? <Tag tone="accent">Activo</Tag> : <Tag>Inactivo</Tag>}
+            {plan.allowsCodes && <Tag>Acepta códigos</Tag>}
+            {plan.durationMinutes === null && <Tag>Falta la duración</Tag>}
           </div>
           <p className="m-0 text-muted">{planSummary(plan)} · seña {formatCents(planQuote(plan, data.depositPercent).depositCents)}</p>
           {plan.description && <p className="m-0 text-muted">{plan.description}</p>}

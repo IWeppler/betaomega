@@ -5,6 +5,7 @@ import { BellRing, Send, Smartphone, Trash2 } from "lucide-react";
 import { PageHeader, useSite } from "@/platform/panel";
 import { applicationServerKey } from "@/platform/notifications";
 import { showToast } from "@/shared/ui/toast";
+import { deferChange, offerUndo } from "@/shared/ui/undo";
 
 // The Avisos screen (docs/tareas-notificaciones.md, points 3 and 4): turn on push in this phone, link a Telegram chat, and see or remove every
 // destination. The same screen opens from any site: destinations belong to the panel and choose their sites.
@@ -17,8 +18,9 @@ const primary = `${button} bg-accent text-accent-ink hover:bg-accent-hover`;
 const quiet = `${button} border border-line-strong bg-surface text-ink hover:bg-sunken`;
 const field = "min-h-control w-full rounded-field border border-line-strong bg-surface px-3 text-ink";
 
-async function send<T>(url: string, method: string, body?: unknown): Promise<T> {
-  const response = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+/** `keepalive` lets a removal held back by deferChange reach the server even if the page is closing. */
+async function send<T>(url: string, method: string, body?: unknown, keepalive = false): Promise<T> {
+  const response = await fetch(url, { method, keepalive, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
   const answer = await response.json().catch(() => ({})) as T & { error?: string };
   if (!response.ok) throw new Error(answer.error || "No se pudo completar. Probá de nuevo.");
   return answer;
@@ -103,22 +105,34 @@ export function AvisosScreen() {
     await load();
   });
 
-  const remove = (destination: Destination) => run(async () => {
-    await send("/api/panel/notifications/destinations", "DELETE", { kind: destination.kind, id: destination.id });
-    // Removing this phone also drops its subscription, so the browser does not keep a dead one.
-    if (push?.kind === "ready" && destination.endpoint === push.endpoint) {
-      const registration = await navigator.serviceWorker.getRegistration("/panel-sw.js");
-      await (await registration?.pushManager.getSubscription())?.unsubscribe();
-    }
-    showToast(`Se quitó ${destination.label || "el destino"}.`);
-    await load();
-  });
+  // A phone or a chat comes back only by activating or linking it again, so removing one waits while its notice offers "Deshacer".
+  const remove = (destination: Destination) => {
+    setBusy(true);
+    deferChange({
+      message: `Se va a quitar ${destination.label || "el destino"}.`,
+      commit: async () => {
+        await send("/api/panel/notifications/destinations", "DELETE", { kind: destination.kind, id: destination.id }, true);
+        // Removing this phone also drops its subscription, so the browser does not keep a dead one.
+        if (push?.kind === "ready" && destination.endpoint === push.endpoint) {
+          const registration = await navigator.serviceWorker.getRegistration("/panel-sw.js");
+          await (await registration?.pushManager.getSubscription())?.unsubscribe();
+        }
+        return `Se quitó ${destination.label || "el destino"}.`;
+      },
+      onSettled: () => { setBusy(false); void load(); },
+    });
+  };
 
   const saveEdit = () => run(async () => {
     if (!editing) return;
+    const before = setup?.destinations.find(item => item.kind === editing.kind && item.id === editing.id);
     await send("/api/panel/notifications/destinations", "PATCH", { kind: editing.kind, id: editing.id, label: editing.label, siteIds: editing.siteIds });
     setEditing(null);
     await load();
+    if (before) offerUndo("Se guardó el destino.", async () => {
+      await send("/api/panel/notifications/destinations", "PATCH", { kind: before.kind, id: before.id, label: before.label, siteIds: before.siteIds });
+      await load();
+    });
   });
 
   const test = () => run(async () => {

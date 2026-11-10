@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { showToast } from "@/shared/ui/toast";
+import { offerUndo } from "@/shared/ui/undo";
 import { closuresOfRange, type AgendaBooking } from "../domain/agenda";
 import type { ClosureEntry } from "../domain/setup";
 import { addDays, businessDate, businessDayStart, businessTime, dayLabel } from "../domain/time";
@@ -22,13 +22,26 @@ export function AgendaAside({ selection, siteId, closures, bookings, now, onChan
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const run = async (method: "POST" | "DELETE", body?: object, id?: string) => {
+  const url = `/api/sites/${siteId}/sauna/closures`;
+  // Each has its opposite: a closure made is removed, a closure removed is made again with its own times and reason.
+  const close = async (body: object) => {
     setBusy(true); setError("");
     try {
-      await sendJson(`/api/sites/${siteId}/sauna/closures${id ? `?id=${id}` : ""}`, method, body);
+      const made = await sendJson<ClosureEntry>(url, "POST", body);
       await onChanged();
       setAsking(false); setReason("");
-      showToast(method === "DELETE" ? "Se liberó el horario." : "Se marcó como ocupado.");
+      offerUndo("Se marcó como ocupado.", async () => { await sendJson(`${url}?id=${made.id}`, "DELETE"); await onChanged(); });
+    } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
+  };
+  const free = async (closure: ClosureEntry) => {
+    setBusy(true); setError("");
+    try {
+      await sendJson(`${url}?id=${closure.id}`, "DELETE");
+      await onChanged();
+      offerUndo("Se liberó el horario.", async () => {
+        await sendJson(url, "POST", { startsAt: closure.startsAt, endsAt: closure.endsAt, reason: closure.reason });
+        await onChanged();
+      });
     } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   };
   if (!selection) return <Card>Elegí un horario o un día</Card>;
@@ -49,7 +62,7 @@ export function AgendaAside({ selection, siteId, closures, bookings, now, onChan
         <strong>Ocupado</strong><p className="m-0 text-muted">{closure.reason || "Sin motivo"}</p>
         <p className="m-0 text-sm text-muted">{stamp(closure.startsAt)} al {stamp(closure.endsAt)}</p>
         {wider && <Notice>Este cierre va del {stamp(closure.startsAt)} al {stamp(closure.endsAt)} y se libera completo</Notice>}
-        {!past && <Button disabled={busy || editor.saving} onClick={() => void run("DELETE", undefined, closure.id)}>Liberar</Button>}
+        {!past && <Button disabled={busy || editor.saving} onClick={() => void free(closure)}>Liberar</Button>}
       </div>;
     })}
     {past ? <p className="m-0 text-muted">Horario pasado. Solo lectura.</p> : <>
@@ -57,12 +70,12 @@ export function AgendaAside({ selection, siteId, closures, bookings, now, onChan
       {open && !occupied.length && <>
         <Field label="Motivo (opcional)"><input className={inputClass} value={reason} maxLength={200} onChange={event => setReason(event.target.value)} /></Field>
         {selectedBookings.length > 0 && <Notice>Las reservas ya hechas no se cancelan</Notice>}
-        <Button disabled={busy || editor.saving} onClick={() => void run("POST", clock ? { startsAt, endsAt, reason } : { from: day, to: day, reason })}>{clock ? "Marcar como ocupado" : "Marcar el día como ocupado"}</Button>
+        <Button disabled={busy || editor.saving} onClick={() => void close(clock ? { startsAt, endsAt, reason } : { from: day, to: day, reason })}>{clock ? "Marcar como ocupado" : "Marcar el día como ocupado"}</Button>
       </>}
       {!clock && today && <div className="grid gap-2 border-t border-line pt-3">
         {!asking ? <Button disabled={busy || editor.saving} onClick={() => setAsking(true)}>No habilitar más turnos por hoy</Button> : <>
           <Notice>Las reservas ya hechas no se cancelan.</Notice>
-          <Button variant="danger" disabled={busy || editor.saving} onClick={() => void run("POST", { today: true })}>Sí, cerrar por hoy</Button>
+          <Button variant="danger" disabled={busy || editor.saving} onClick={() => void close({ today: true })}>Sí, cerrar por hoy</Button>
           <Button disabled={busy} onClick={() => setAsking(false)}>No</Button>
         </>}
       </div>}

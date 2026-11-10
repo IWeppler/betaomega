@@ -5,8 +5,8 @@ export { getAgenda, getBookings, patchBooking, saunaNotice } from "./api/booking
 export { getManualAvailability, postManualBooking } from "./api/manual-bookings";
 export { getAvailability, postReservation, publicHome, publicPage, publicReservation, SITE_IMAGE } from "./api/public";
 export { getIcon, getManifest } from "./api/app-icon";
-export { getCodes, postCode, postCodeCheck } from "./api/codes";
+export { deleteCode, getCodes, postCode, postCodeCheck } from "./api/codes";
 export { disconnectMercadoPago, finishMercadoPagoConnect, startMercadoPagoConnect } from "./api/mercadopago-connect";
 export { postMercadoPagoNotice, postPayment, postPlanPayment } from "./api/payments";
-export { getPlans, postPlan, postPlanReservation, publicPlan } from "./api/plans";
+export { deletePlan, getPlans, postPlan, postPlanReservation, publicPlan } from "./api/plans";
 export { deleteClosure, getConfig, patchSettings, postClosure, putPage, putTypes, putWeek } from "./api/setup";

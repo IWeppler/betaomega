@@ -6,9 +6,10 @@ import { statusLabels, type Turn } from "../domain/agenda";
 import { manualBookingKinds, manualBookingPreview, prepareManualBooking, turnKey, type ManualBookingDraft, type ManualBookingPreparation } from "../domain/manual-booking";
 import { businessDate, businessTime, dayLabel } from "../domain/time";
 import { Button, Field, inputClass, Notice } from "./controls";
+import { offerUndo } from "@/shared/ui/undo";
 import { sendJson } from "./fetch-json";
 
-export function ManualBookingForm({ siteId, turn, draft, onChange, onBack, onSavingChange, onCreated }: { siteId: string; turn: Turn; draft: ManualBookingDraft; onChange: (draft: ManualBookingDraft) => void; onBack: () => void; onSavingChange: (value: boolean) => void; onCreated: () => Promise<void> }) {
+export function ManualBookingForm({ siteId, turn, draft, onChange, onBack, onSavingChange, onCreated, onUndone }: { /** After "Deshacer": the agenda reloads. */ onUndone: () => Promise<void>; siteId: string; turn: Turn; draft: ManualBookingDraft; onChange: (draft: ManualBookingDraft) => void; onBack: () => void; onSavingChange: (value: boolean) => void; onCreated: () => Promise<void> }) {
   const noticeId = useId();
   const [error, setError] = useState("");
   const [reviewed, setReviewed] = useState<string | null>(null);
@@ -36,11 +37,17 @@ export function ManualBookingForm({ siteId, turn, draft, onChange, onBack, onSav
     setSaving(true); onSavingChange(true); setError("");
     try {
       if (request.current?.signature !== signature) request.current = { signature, id: crypto.randomUUID() };
-      await sendJson(`/api/sites/${siteId}/sauna/manual-bookings`, "POST", {
+      const made = await sendJson<{ id: string }>(`/api/sites/${siteId}/sauna/manual-bookings`, "POST", {
         roomId: turn.roomId, turnTypeId: turn.turnTypeId, startsAt: turn.startsAt, kind, name: customer.name, whatsapp: customer.whatsapp,
         requestId: request.current.id, expectedPriceCents: preparation.booking.priceCents,
       });
       await onCreated();
+      // Nothing was charged on a booking loaded by hand, so undoing it is cancelling it: the turn is free again and the record says why.
+      offerUndo(`Se cargó la reserva de ${customer.name}.`, async () => {
+        await sendJson(`/api/sites/${siteId}/sauna/bookings/${made.id}`, "PATCH", { action: "cancel", note: "Deshecha desde el panel al cargarla" });
+        await onUndone();
+        return `Se canceló la reserva de ${customer.name}: el turno quedó libre.`;
+      });
     } catch (failure) { setError((failure as Error).message); }
     finally { flight.current = false; setSaving(false); onSavingChange(false); }
   };

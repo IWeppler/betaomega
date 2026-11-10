@@ -11,6 +11,7 @@ import {
 import { usePanel, useSite } from "../panel-context";
 import { PageHeader } from "../shell";
 import { useParams } from "next/navigation";
+import { offerUndo } from "@/shared/ui/undo";
 
 export default function SitePage() {
   const { site } = useParams<{ site: string }>();
@@ -21,6 +22,8 @@ export default function SitePage() {
   const [loadError, setLoadError] = useState("");
   // The revision of the last save: the next one must start from it.
   const revision = useRef(0);
+  // Changes after an undo, so the form shows the texts that came back.
+  const [shown, setShown] = useState(0);
   const base = `/api/sites/${site}/settings`;
   useEffect(() => {
     let current = true;
@@ -39,25 +42,36 @@ export default function SitePage() {
     };
   }, [base]);
 
+  type Texts = Pick<SiteSettings, "tagline" | "description" | "instagram" | "contact" | "donation">;
+  const put = async (texts: Texts) => {
+    const saved = await api<SiteSettings>(base, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revision: revision.current, ...texts }),
+    });
+    revision.current = saved.revision;
+    setSettings(saved);
+  };
   const submit = async (element: HTMLFormElement) => {
     const form = new FormData(element);
     const text = (key: string) => String(form.get(key) || "").trim();
+    const before = settings;
     setBusy(true);
     setError("");
     try {
-      const saved = await api<SiteSettings>(base, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          revision: revision.current,
-          tagline: text("tagline"),
-          description: text("description"),
-          instagram: text("instagram"),
-          contact: text("contact"),
-          donation: text("donation"),
-        }),
+      await put({
+        tagline: text("tagline"),
+        description: text("description"),
+        instagram: text("instagram"),
+        contact: text("contact"),
+        donation: text("donation"),
       });
-      revision.current = saved.revision;
+      if (before) {
+        offerUndo("Se guardó correctamente.", async () => {
+          await put({ tagline: before.tagline, description: before.description, instagram: before.instagram, contact: before.contact, donation: before.donation });
+          setShown((count) => count + 1);
+        });
+      }
       return true;
     } catch (e) {
       setError((e as Error).message);
@@ -87,6 +101,7 @@ export default function SitePage() {
       {settings && (
         <section className="panel-card panel-pad">
           <SaveForm
+            key={shown}
             error={error}
             registerRef={flushRef}
             paused={busy}

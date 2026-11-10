@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Layers, TicketPercent, X } 
 import { formatCents } from "@/platform/money";
 import type { Turn } from "../domain/agenda";
 import type { BookingKind } from "../domain/booking";
-import { planProblem, planQuote, planSummary, type Plan } from "../domain/plans";
+import { fitsPlan, planProblem, planQuote, planSummary, type Plan } from "../domain/plans";
 import { describeRules, type PolicyRule } from "../domain/policy";
 import { quote, type CodeEffect } from "../domain/pricing";
 import { planRejectionMessages } from "../domain/rejections";
@@ -16,7 +16,7 @@ import { fetchJson, sendJson } from "./fetch-json";
 
 const DAYS_SHOWN = 7;
 
-export type PublicPlan = Pick<Plan, "id" | "name" | "description" | "turns" | "priceCents" | "windowDays">;
+export type PublicPlan = Pick<Plan, "id" | "name" | "description" | "turns" | "priceCents" | "windowDays" | "durationMinutes" | "allowsCodes">;
 
 export type BookingFlowData = {
   siteId: string;
@@ -214,12 +214,29 @@ function BookingForm({ turn, data, onBack }: { turn: Turn; data: BookingFlowData
   </form>;
 }
 
-/** A plan's request: every turn chosen, who books, and the plan's own amounts. sauna_reserve_plan checks the turns again and decides the deposit. */
+/**
+ * A plan's request: every turn chosen, who books, a code if the plan takes one, and the plan's own amounts. sauna_reserve_plan checks the turns and
+ * the code again and decides the discount and the deposit.
+ */
 function PlanForm({ plan, turns, data, onBack }: { plan: PublicPlan; turns: Turn[]; data: BookingFlowData; onBack: () => void }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const amounts = planQuote(plan, data.depositPercent);
+  const [applied, setApplied] = useState<AppliedCode | null>(null);
+  const amounts = planQuote(plan, data.depositPercent, applied);
+  const form = useRef<HTMLFormElement>(null);
+  const checkCode = async (codeText: string) => {
+    try {
+      const whatsapp = form.current ? new FormData(form.current).get("whatsapp") : null;
+      setApplied(await sendJson<AppliedCode>(`/api/sites/${data.siteId}/sauna/codes/check`, "POST", {
+        code: codeText, planId: plan.id, turns: turns.map(turn => ({ roomId: turn.roomId, turnTypeId: turn.turnTypeId })), whatsapp,
+      }));
+      return null;
+    } catch (failure) {
+      setApplied(null);
+      return (failure as Error).message;
+    }
+  };
   const submit = async (element: HTMLFormElement) => {
     const values = new FormData(element);
     setBusy(true);
@@ -227,7 +244,7 @@ function PlanForm({ plan, turns, data, onBack }: { plan: PublicPlan; turns: Turn
     try {
       const { token } = await sendJson<{ token: string }>(`/api/sites/${data.siteId}/sauna/plan-reservations`, "POST", {
         planId: plan.id, turns: turns.map(turn => ({ roomId: turn.roomId, turnTypeId: turn.turnTypeId, startsAt: turn.startsAt })),
-        name: values.get("name"), whatsapp: values.get("whatsapp"), termsAccepted: true,
+        name: values.get("name"), whatsapp: values.get("whatsapp"), code: applied?.code ?? null, termsAccepted: true,
       });
       router.push(`/plan/${token}`);
     } catch (failure) {
@@ -235,14 +252,17 @@ function PlanForm({ plan, turns, data, onBack }: { plan: PublicPlan; turns: Turn
       setBusy(false);
     }
   };
-  return <form className="flex flex-1 flex-col gap-3 sm:grid" onSubmit={event => { event.preventDefault(); void submit(event.currentTarget); }}>
+  return <form ref={form} className="flex flex-1 flex-col gap-3 sm:grid" onSubmit={event => { event.preventDefault(); void submit(event.currentTarget); }}>
     <div className="flex items-center justify-between gap-3">
       <p className="m-0 text-[13px] text-ink"><span className="font-semibold">{plan.name}</span> <span className="text-muted">· {turns.length} turnos</span></p>
       <button type="button" disabled={busy} onClick={onBack} className="min-h-control shrink-0 px-2.5 text-[13px] text-accent-text hover:underline disabled:opacity-55">Cambiar turnos</button>
     </div>
     <ol className="m-0 grid list-none gap-1.5 p-0">{turns.map(turn => <li key={turn.startsAt}><TurnBox turn={turn} /></li>)}</ol>
     <PersonFields />
+    {plan.allowsCodes && <CodeBox applied={applied} busy={busy} onApply={checkCode} onRemove={() => setApplied(null)} />}
     <Amounts totalLabel="Precio del plan" totalCents={amounts.totalCents} depositCents={amounts.depositCents} balanceCents={amounts.balanceCents} />
+    {amounts.discountCents > 0 && <p className="m-0 text-xs text-muted">El precio ya tiene el descuento de {formatCents(amounts.discountCents)}.</p>}
+    {applied && amounts.depositCents === 0 && <p className="m-0 text-[13px] text-muted">Con este código no pagás seña: los turnos quedan confirmados al instante.</p>}
     <Cancellation rules={data.rules} />
     {error && <Notice kind="error">{error}</Notice>}
     {data.preview && <Notice>Es una vista previa: desde acá no se toman reservas.</Notice>}
@@ -309,7 +329,8 @@ export function BookingFlow({ data }: { data: BookingFlowData }) {
   const pickedDays = new Set(picks.map(turn => businessDate(turn.startsAt)));
   const dates = Array.from({ length: DAYS_SHOWN }, (_, index) => addDays(first, index));
   const loaded = result?.from === first;
-  const turnsOf = (date: DateText) => loaded ? result.turns.filter(turn => businessDate(turn.startsAt) === date) : [];
+  // A plan only shows the turns of its length.
+  const turnsOf = (date: DateText) => loaded ? result.turns.filter(turn => businessDate(turn.startsAt) === date && (!plan || fitsPlan(turn, plan))) : [];
   const startsOf = (date: DateText) => [...turnsOf(date).reduce((all, turn) => all.set(turn.startsAt, [...(all.get(turn.startsAt) ?? []), turn]), new Map<string, Turn[]>())];
   const starts = startsOf(day);
   const options = starts.find(([startsAt]) => startsAt === hour)?.[1] ?? [];

@@ -21,7 +21,8 @@ import {
   inputClass,
   Notice,
 } from "./controls";
-import { sendJson } from "./fetch-json";
+import { deferChange, offerUndo } from "@/shared/ui/undo";
+import { fetchJson, sendJson } from "./fetch-json";
 import { useResource } from "./use-resource";
 
 const textareaClass = `${inputClass} py-2`;
@@ -213,18 +214,19 @@ function MercadoPagoCard({
   const [error, setError] = useState("");
   const connectHref = `/api/sites/${site.id}/sauna/mercadopago/connect`;
   const notice = result ? resultNotices[result] : undefined;
-  const disconnect = async () => {
+  // Connecting again means authorizing in Mercado Pago again, so the disconnection waits while its notice offers "Deshacer".
+  const disconnect = () => {
     setBusy(true);
     setError("");
-    try {
-      await sendJson(connectHref, "DELETE");
-      setConfirming(false);
-      await onChanged();
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setBusy(false);
-    }
+    setConfirming(false);
+    deferChange({
+      message: "Se va a desconectar la cuenta de Mercado Pago.",
+      commit: async () => {
+        await sendJson(connectHref, "DELETE", undefined, { keepalive: true });
+        return "Se desconectó la cuenta de Mercado Pago.";
+      },
+      onSettled: () => { setBusy(false); void onChanged(); },
+    });
   };
   const account = status?.account ?? null;
   return (
@@ -263,7 +265,7 @@ function MercadoPagoCard({
                 <Button
                   variant="danger"
                   disabled={busy}
-                  onClick={() => void disconnect()}
+                  onClick={disconnect}
                 >
                   {busy ? "Desconectando…" : "Sí, desconectar"}
                 </Button>
@@ -303,16 +305,22 @@ function MercadoPagoCard({
   );
 }
 
+/** A list as its field writes it: one item per line. */
+const lines = (items: string[]) => items.join("\n");
+
 function SiteForm({
   settings,
   page,
   mercadopago,
   onSaved,
+  onUndone,
 }: {
   settings: Settings;
   page: PageContent;
   mercadopago: Config["mercadopago"];
   onSaved: () => Promise<void>;
+  /** After "Deshacer": the inputs have to show what came back. */
+  onUndone: () => Promise<void>;
 }) {
   const site = useSite();
   const panel = usePanel();
@@ -378,6 +386,17 @@ function SiteForm({
         contraindications: text("contraindications"),
       });
       await onSaved();
+      // Both go back as they were, over the revisions they have now. The lists travel as the form writes them, one per line.
+      offerUndo("Se guardó la configuración.", async () => {
+        const now = await fetchJson<Config>(`/api/sites/${site.id}/sauna/config`);
+        await sendJson(`/api/sites/${site.id}/sauna/config`, "PATCH", { ...settings, revision: now.settings?.revision ?? settings.revision });
+        await sendJson(`/api/sites/${site.id}/sauna/page`, "PUT", {
+          ...page, revision: now.page.revision,
+          includes: lines(page.includes), bring: lines(page.bring), recommendations: lines(page.recommendations),
+          indications: lines(page.indications), contraindications: lines(page.contraindications),
+        });
+        await onUndone();
+      });
       return true;
     } catch (failure) {
       panel.setError((failure as Error).message);
@@ -677,6 +696,7 @@ export function AjustesScreen() {
   const { data, error, reload } = useResource<Config>(
     `/api/sites/${site.id}/sauna/config`,
   );
+  const [round, setRound] = useState(0);
   const header = (
     <PageHeader
       title="Configuración"
@@ -715,10 +735,12 @@ export function AjustesScreen() {
     <>
       {header}
       <SiteForm
+        key={round}
         settings={data.settings}
         page={data.page}
         mercadopago={data.mercadopago}
         onSaved={reload}
+        onUndone={async () => { await reload(); setRound((value) => value + 1); }}
       />
     </>
   );

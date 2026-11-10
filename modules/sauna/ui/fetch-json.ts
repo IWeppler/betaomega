@@ -6,5 +6,6 @@ export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> 
   return data as T;
 }
 
-export const sendJson = <T>(url: string, method: "POST" | "PUT" | "PATCH" | "DELETE", body?: unknown) =>
-  fetchJson<T>(url, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+/** `keepalive` lets a change held back by deferChange reach the server even if the page is closing. */
+export const sendJson = <T>(url: string, method: "POST" | "PUT" | "PATCH" | "DELETE", body?: unknown, { keepalive = false } = {}) =>
+  fetchJson<T>(url, { method, keepalive, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
