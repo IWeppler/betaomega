@@ -1,23 +1,12 @@
-import sharp from "sharp";
 import { getSite } from "@/lib/site-registry";
+import { askedIconSize, redirectToStatic } from "@/shared/lib/static-icons";
+import { recipeIcon } from "../brand";
 
-// Tab, home-screen and installed-app icon: the Comidas del cielo bowl (public/comidasdelcielo-icon*.png), resized.
-// ?size= 32, 64 (default), 180 (Apple), 192, 512. ?maskable=1 serves the full-bleed square for Android's adaptive shapes.
+// Old address of the tab, home-screen and installed-app icon (?size=, ?maskable=1). The icons are pre-rendered into public/icons/
+// (scripts/generate-icons.mjs) and the pages point there; this only redirects installed apps and cached pages that still ask here.
 export async function GET(request: Request, context: { params: Promise<{ site: string }> }) {
   const site = await getSite((await context.params).site);
   if (site?.kind !== "recetas") return new Response("No encontrado", { status: 404 });
   const url = new URL(request.url);
-  const asked = Number(url.searchParams.get("size"));
-  const size = [32, 64, 180, 192, 512].includes(asked) ? asked : 64;
-  // The Apple icon has no transparency (iOS rounds it itself), so it uses the square version too.
-  const square = url.searchParams.get("maskable") === "1" || size === 180;
-  try {
-    const source = await fetch(new URL(square ? "/comidasdelcielo-icon-maskable.png" : "/comidasdelcielo-icon.png", request.url), { signal: AbortSignal.timeout(5000) });
-    if (!source.ok) throw new Error(`icon ${source.status}`);
-    const png = await sharp(Buffer.from(await source.arrayBuffer())).resize(size, size).png({ compressionLevel: 6 }).toBuffer();
-    return new Response(new Uint8Array(png), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400, s-maxage=86400" } });
-  } catch (error) {
-    console.error("[recetas/icon]", error);
-    return new Response("Ícono no disponible", { status: 502 });
-  }
+  return redirectToStatic(recipeIcon(askedIconSize(url.searchParams.get("size")), url.searchParams.get("maskable") === "1"));
 }

@@ -290,9 +290,22 @@ function ModeChoice({ plans, current, onChange }: { plans: PublicPlan[]; current
 }
 
 export function BookingFlow({ data }: { data: BookingFlowData }) {
-  const lastDay = addDays(data.today, data.maxAdvanceDays);
+  // The home page is cached for up to an hour, so it may come from before midnight: today is never earlier than the visitor's business date.
+  // The server still checks every turn, this only keeps yesterday off the screen.
+  const [today, setToday] = useState(data.today);
+  const firstDay = today > data.firstDay ? today : data.firstDay;
+  const lastDay = addDays(today, data.maxAdvanceDays);
   const [first, setFirst] = useState(data.firstDay);
   const [day, setDay] = useState(data.firstDay);
+  useEffect(() => {
+    const now = businessDate(new Date().toISOString());
+    if (now <= data.today) return;
+    void Promise.resolve().then(() => {
+      setToday(now);
+      setFirst(current => current < now ? now : current);
+      setDay(current => current < now ? now : current);
+    });
+  }, [data.today]);
   const [result, setResult] = useState<{ from: DateText; turns: Turn[] } | null>(null);
   const [error, setError] = useState("");
   const [hour, setHour] = useState<string | null>(null);
@@ -354,7 +367,7 @@ export function BookingFlow({ data }: { data: BookingFlowData }) {
   return <>
     {title}
     <div className="grid content-start gap-4 pb-6 sm:pb-0">
-      {data.firstDay > data.today && <p className="m-0 rounded-field border border-accent bg-accent-soft px-3 py-2 text-[13px] text-ink">Abrimos el <strong className="font-semibold">{dayLabel(data.firstDay)}</strong>: ya podés reservar desde ese día.</p>}
+      {firstDay > today && <p className="m-0 rounded-field border border-accent bg-accent-soft px-3 py-2 text-[13px] text-ink">Abrimos el <strong className="font-semibold">{dayLabel(firstDay)}</strong>: ya podés reservar desde ese día.</p>}
       {data.plans.length > 0 && <ModeChoice plans={data.plans} current={planId} onChange={changeMode} />}
       {plan && <div className="grid gap-2 rounded-field border border-line-strong bg-surface p-3 text-[13px]" aria-live="polite">
         <p className="m-0 flex items-center justify-between gap-2 text-ink">
@@ -374,7 +387,7 @@ export function BookingFlow({ data }: { data: BookingFlowData }) {
         <div className="mb-2 flex items-center justify-between gap-3">
           <h3 className={`${groupTitle} mb-0 font-text`}>{plan ? (complete ? "Ya elegiste todos los turnos" : `Elegí el turno ${picks.length + 1} de ${plan.turns}`) : "¿Qué día querés venir?"}</h3>
           <div className="flex gap-1.5">
-            <button type="button" aria-label="Días anteriores" className={arrow} disabled={first <= data.firstDay} onClick={() => page(addDays(first, -DAYS_SHOWN) < data.firstDay ? data.firstDay : addDays(first, -DAYS_SHOWN))}><ArrowLeft size={16} strokeWidth={1.5} aria-hidden="true" /></button>
+            <button type="button" aria-label="Días anteriores" className={arrow} disabled={first <= firstDay} onClick={() => page(addDays(first, -DAYS_SHOWN) < firstDay ? firstDay : addDays(first, -DAYS_SHOWN))}><ArrowLeft size={16} strokeWidth={1.5} aria-hidden="true" /></button>
             <button type="button" aria-label="Días siguientes" className={arrow} disabled={addDays(first, DAYS_SHOWN) > lastDay} onClick={() => page(addDays(first, DAYS_SHOWN))}><ArrowRight size={16} strokeWidth={1.5} aria-hidden="true" /></button>
           </div>
         </div>

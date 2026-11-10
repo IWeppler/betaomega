@@ -45,6 +45,7 @@ import {
   type Preparation,
 } from "@/lib/catalog";
 import { importTonics, type ImportReport } from "@/lib/csv";
+import { liveRefreshMs } from "@/shared/lib/live-refresh";
 
 type Tab = "search" | "tonics" | "herbs" | "store";
 type Draft = { name: string; amount: string };
@@ -165,7 +166,7 @@ export default function Home() {
         void load();
     };
     window.addEventListener("focus", refresh);
-    const timer = window.setInterval(refresh, 30000);
+    const timer = window.setInterval(refresh, liveRefreshMs);
     return () => {
       window.removeEventListener("focus", refresh);
       window.clearInterval(timer);

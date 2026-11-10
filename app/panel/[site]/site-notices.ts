@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { liveRefreshMs } from "@/shared/lib/live-refresh";
 
 /** What is waiting in another site: how many, in words, and the section that shows it. */
 export type SiteNotice = { count: number; label: string; path: string };
 
-const POLL_MS = 60_000;
 const seenKey = (siteId: string) => `panel.seen.${siteId}`;
 
 // When the person last had each site's panel open. Only in this browser: losing it (private window, cleared data) only means the notices count the
@@ -18,7 +18,7 @@ function writeSeen(siteId: string) {
 }
 
 /**
- * Notices of the other sites of the panel, refreshed every minute and when the window gets the focus back. The site open now counts as seen: its
+ * Notices of the other sites of the panel, refreshed every few minutes (liveRefreshMs) and when the window gets the focus back. The site open now counts as seen: its
  * own sections already show what is pending.
  */
 export function useSiteNotices(currentId: string, siteIds: readonly string[]) {
@@ -44,7 +44,7 @@ export function useSiteNotices(currentId: string, siteIds: readonly string[]) {
     const refresh = () => { if (document.visibilityState === "visible") void load(); };
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
-    const timer = window.setInterval(refresh, POLL_MS);
+    const timer = window.setInterval(refresh, liveRefreshMs);
     return () => {
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", refresh);

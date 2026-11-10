@@ -1,5 +1,5 @@
 import { isAdmin, sameOrigin } from "@/platform/auth/server";
-import { getPanelSite } from "@/platform/sites/server";
+import { getPanelSite, publicTags, refreshPublic } from "@/platform/sites/server";
 import type { Site } from "@/platform/sites";
 import { createHmac } from "node:crypto";
 import { CodeConflictError } from "../data/codes";
@@ -55,6 +55,13 @@ function panelRoute<C extends SiteContext>(write: boolean, handler: Handler<C>) 
 
 export const panelRead = <C extends SiteContext>(handler: Handler<C>) => panelRoute(false, handler);
 export const panelWrite = <C extends SiteContext>(handler: Handler<C>) => panelRoute(true, handler);
+
+/** A write of something the public home page shows (texts, hours, turn types, plans, settings): when it works, the cached home is rendered again. */
+export const homeWrite = <C extends SiteContext>(handler: Handler<C>) => panelWrite<C>(async (request, site, context) => {
+  const response = await handler(request, site, context);
+  if (response.ok) refreshPublic(publicTags.sauna);
+  return response;
+});
 
 /** A keyed hash of the visitor's address, never the address: enough to limit how much one origin can try, and useless to identify anyone. */
 export const originHash = (request: Request) => {

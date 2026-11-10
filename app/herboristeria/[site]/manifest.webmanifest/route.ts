@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSite } from "@/lib/site-registry";
+import { herbIcon } from "../og-image";
 
 // The installed app opens on the team's finder (/equipo), as it did before the store took the home page.
 // id stays "/" (the old start_url) so tablets that already installed it keep the same app.
@@ -18,9 +19,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sit
     background_color: "#f3f5f1",
     theme_color: "#1c7a4d",
     icons: [
-      { src: "/pwa-icon?size=192", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/pwa-icon?size=512", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/pwa-icon?size=512&maskable=1", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: herbIcon(192), sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: herbIcon(512), sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: herbIcon(512, true), sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   }, { headers: { "Content-Type": "application/manifest+json" } });
 }

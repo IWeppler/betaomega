@@ -1,6 +1,7 @@
 import { isAdmin, isSeller, sameOrigin } from "@/lib/auth";
 import { readCatalog, saveCatalog, ConflictError } from "@/lib/store";
 import { searchCatalog, validateCatalog } from "@/lib/catalog";
+import { publicTags, refreshPublic } from "@/platform/sites/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
@@ -26,7 +27,9 @@ export async function PUT(request: Request) {
     if (text.length > 2_000_000) return Response.json({ error: "El catálogo es demasiado grande." }, { status: 413 });
     const data: unknown = JSON.parse(text);
     validateCatalog(data);
-    return Response.json(await saveCatalog(data));
+    const saved = await saveCatalog(data);
+    refreshPublic(publicTags.herbShop);
+    return Response.json(saved);
   } catch (error) {
     if (error instanceof ConflictError) { console.warn("[catalog PUT] conflict:", error.message); return Response.json({ error: error.message }, { status: 409 }); }
     if (error instanceof SyntaxError || (error instanceof Error && !("code" in error))) { console.warn("[catalog PUT] rejected:", error.message); return Response.json({ error: error.message }, { status: 400 }); }

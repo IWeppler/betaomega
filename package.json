@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "icons": "node --experimental-strip-types scripts/generate-icons.mjs",
     "test": "node --experimental-strip-types --test \"tests/*.test.mjs\" \"modules/**/*.test.ts\" \"platform/**/*.test.ts\" \"shared/**/*.test.ts\""
   },
   "dependencies": {

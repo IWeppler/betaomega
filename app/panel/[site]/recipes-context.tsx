@@ -6,6 +6,7 @@ import { deferChange, offerUndo } from "@/shared/ui/undo";
 import { pendingCount, type CommentStatus, type RecipeComment } from "@/lib/comments";
 import { isScheduled, toRecipeInput, type Recipe, type RecipeInput } from "@/lib/recipes";
 import { PanelContext } from "./panel-context";
+import { liveRefreshMs } from "@/shared/lib/live-refresh";
 
 type Value = {
   recipes: Recipe[] | null;
@@ -27,7 +28,7 @@ export function useRecipes() {
   return value;
 }
 
-// Same rules as the catalogue: loaded once for the whole panel, refreshed on focus and every 30 s unless something is being edited.
+// Same rules as the catalogue: loaded once for the whole panel, refreshed on focus and every few minutes (liveRefreshMs) unless something is being edited.
 export function RecipesProvider({ siteId, children }: { siteId: string; children: ReactNode }) {
   const base = `/api/sites/${siteId}/recipes`;
   const [recipes, setRecipes] = useState<Recipe[] | null>(null);
@@ -53,7 +54,7 @@ export function RecipesProvider({ siteId, children }: { siteId: string; children
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === "visible" && !busy && !dirty) void reload(); };
     window.addEventListener("focus", refresh);
-    const timer = window.setInterval(refresh, 30000);
+    const timer = window.setInterval(refresh, liveRefreshMs);
     return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };
   }, [reload, busy, dirty]);
   // Latest lists, also between renders: an undo builds on what is there when it runs, not on when it was offered.

@@ -5,6 +5,7 @@ import { api } from "@/app/admin-fields";
 import { offerUndo } from "@/shared/ui/undo";
 import type { Catalog } from "@/lib/catalog";
 import { PanelContext } from "./panel-context";
+import { liveRefreshMs } from "@/shared/lib/live-refresh";
 
 type Value = {
   catalog: Catalog | null;
@@ -31,7 +32,7 @@ export function useCatalog() {
   return value;
 }
 
-// The catalogue is loaded once for every panel page and refreshed on focus and every 30 s, unless something is being edited.
+// The catalogue is loaded once for every panel page and refreshed on focus and every few minutes (liveRefreshMs), unless something is being edited.
 export function CatalogProvider({ children }: { children: ReactNode }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const catalogRef = useRef<Catalog | null>(null);
@@ -52,7 +53,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === "visible" && !busy && !dirty) void reload(); };
     window.addEventListener("focus", refresh);
-    const timer = window.setInterval(refresh, 30000);
+    const timer = window.setInterval(refresh, liveRefreshMs);
     return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };
   }, [reload, busy, dirty]);
   const put = useCallback(async (next: Catalog) => {

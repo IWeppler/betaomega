@@ -13,7 +13,7 @@ import { transferAccount } from "../domain/setup";
 import { CODE_ATTEMPTS_MESSAGE, tooManyCodeAttempts } from "./codes";
 import { paymentOptionsOf, settleReturnedPlanPayment } from "./payments";
 import { notify } from "@/platform/notifications/server";
-import { fail, failure, noStore, originHash, panelRead, panelWrite, readJson, type SiteContext } from "./route-tools";
+import { fail, failure, noStore, originHash, homeWrite, panelRead, readJson, type SiteContext } from "./route-tools";
 
 // Plans (docs/SAUNA.md §11): their management in the panel, booking one from the public site and the page of a purchase.
 
@@ -31,7 +31,7 @@ export const getPlans = panelRead(async (_request, site) => {
 });
 
 /** Creates a plan, or saves one over the version that was read. */
-export const postPlan = panelWrite(async (request, site) => {
+export const postPlan = homeWrite(async (request, site) => {
   try {
     const id = await savePlan(site.id, cleanPlan(await readJson(request, 2_000), await turnDurations(site.id)));
     return Response.json({ ok: true, id });
@@ -39,7 +39,7 @@ export const postPlan = panelWrite(async (request, site) => {
 });
 
 /** DELETE ?id=: undoes creating a plan. One that was already bought is deactivated instead, and the answer says so. */
-export const deletePlan = panelWrite(async (request, site) => {
+export const deletePlan = homeWrite(async (request, site) => {
   const id = new URL(request.url).searchParams.get("id") ?? "";
   if (!UUID.test(id)) return fail(400, "Plan inválido.");
   try {

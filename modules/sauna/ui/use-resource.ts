@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchJson } from "./fetch-json";
+import { liveRefreshMs } from "@/shared/lib/live-refresh";
 
 /**
  * Data of a screen of this module. Unlike the other kinds of site there is no list loaded once for the whole panel (pattern 6): what a screen reads depends on its dates.
@@ -30,7 +31,7 @@ export function useResource<T>(url: string, { live = false }: { live?: boolean }
     if (!live) return;
     const refresh = () => { if (document.visibilityState === "visible") void reload(); };
     window.addEventListener("focus", refresh);
-    const timer = window.setInterval(refresh, 30_000);
+    const timer = window.setInterval(refresh, liveRefreshMs);
     return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };
   }, [live, reload]);
   return { data, error, reload, loading: !error && loadedUrl !== url };

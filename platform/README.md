@@ -8,7 +8,7 @@ Por ahora casi todo es una **fachada**: reexporta el código legado sin moverlo,
 |---|---|---|
 | `@/platform/db` | Servidor | `siteTable`, `siteDocument`, `rpc` y sus errores, y `panelTable` solo para las tablas `panel_*`, que no son de un sitio. El cliente `supabase` crudo queda afuera a propósito. |
 | `@/platform/sites` | Cliente y servidor | `siteKinds` y los tipos de sitio. |
-| `@/platform/sites/server` | Servidor | `getSite`, `listSites` (solo sitios activos: lo público) y `getPanelSite` (también los inactivos: solo detrás de una sesión). |
+| `@/platform/sites/server` | Servidor | `getSite`, `listSites` (solo sitios activos: lo público) y `getPanelSite` (también los inactivos: solo detrás de una sesión). Caché pública: `publicRevalidate`, `publicTags` y `refreshPublic`, que llama toda ruta que guarde algo visible en un sitio público con ISR. |
 | `@/platform/auth` | Cliente y servidor | `canOpen`, `visibleSections`. |
 | `@/platform/auth/server` | Servidor | `isAdmin`, `sameOrigin`, `equal`. |
 | `@/platform/panel` | Pantallas del panel | `SaveForm`, `PageHeader`, `PanelContext`, `useSite`, `usePanel`, herramientas de lista y los tipos del registro del panel. |

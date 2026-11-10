@@ -1,6 +1,7 @@
 import { isAdmin, sameOrigin } from "@/lib/auth";
 import { RecipeConflictError, listRecipes, saveRecipe } from "@/lib/recipe-store";
 import { canonicalCategory, renameCategory, toRecipeInput } from "@/lib/recipes";
+import { publicTags, refreshPublic } from "@/platform/sites/server";
 import { failure, forbidden, notFound, recipeSite, type SiteParams } from "../helpers";
 
 export const runtime = "nodejs";
@@ -28,6 +29,8 @@ export async function POST(request: Request, { params }: SiteParams) {
         // saveRecipe starts from the revision just read, so a recipe someone else saved meanwhile is reported, not overwritten.
         await saveRecipe(site.id, renameCategory(toRecipeInput(recipe), body.from, to));
         changed++;
+        // Per recipe, so a failure halfway still refreshes the ones already renamed.
+        refreshPublic(publicTags.recipes);
       } catch (error) {
         if (!(error instanceof RecipeConflictError)) throw error;
         failed.push({ title: recipe.title, error: error.message });

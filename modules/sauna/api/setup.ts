@@ -5,7 +5,7 @@ import { cleanPage } from "../domain/page";
 import { cleanSettings, closureFromDays, closureFromRange } from "../domain/setup";
 import { restOfBusinessDay } from "../domain/time";
 import { mercadoPagoStatus } from "./mercadopago-connect";
-import { fail, failure, noStore, panelRead, panelWrite, readJson } from "./route-tools";
+import { fail, failure, homeWrite, noStore, panelRead, panelWrite, readJson } from "./route-tools";
 
 const BODY_LIMIT = 4_000;
 
@@ -16,20 +16,20 @@ export const getConfig = panelRead(async (_request, site) => {
   } catch (error) { return failure(error, "leer la configuración"); }
 });
 
-export const patchSettings = panelWrite(async (request, site) => {
+export const patchSettings = homeWrite(async (request, site) => {
   try {
     return Response.json(await saveSettings(site.id, cleanSettings(await readJson(request, BODY_LIMIT))));
   } catch (error) { return failure(error, "guardar los ajustes"); }
 });
 
-export const putPage = panelWrite(async (request, site) => {
+export const putPage = homeWrite(async (request, site) => {
   try {
     await savePage(site.id, cleanPage(await readJson(request, 20_000)));
     return Response.json({ ok: true });
   } catch (error) { return failure(error, "guardar los textos del sitio"); }
 });
 
-export const putWeek = panelWrite(async (request, site) => {
+export const putWeek = homeWrite(async (request, site) => {
   try {
     const body = await readJson(request, 12_000);
     await saveWeek(site.id, cleanWeek(body, await listTurnTypes(site.id)));
@@ -38,7 +38,7 @@ export const putWeek = panelWrite(async (request, site) => {
 });
 
 /** Only what changed: a type removed from the list arrives with active: false. */
-export const putTypes = panelWrite(async (request, site) => {
+export const putTypes = homeWrite(async (request, site) => {
   try {
     const body = await readJson(request, BODY_LIMIT) as { types?: unknown } | null;
     if (!Array.isArray(body?.types)) return fail(400, "Datos inválidos.");
