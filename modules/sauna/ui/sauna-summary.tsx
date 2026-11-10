@@ -101,7 +101,7 @@ export function SaunaSummary() {
   // A week back for attendance not marked yet, a month ahead for bookings waiting for confirmation.
   const { data, error, reload } = useResource<Agenda>(`/api/sites/${site.id}/sauna/agenda?from=${addDays(today, -7)}&to=${addDays(today, 30)}`, { live: true });
   const summary = data ? summaryOf(data.bookings, data.now) : null;
-  // The screen already refreshes every 30 seconds and on focus: what is new since the last answer is a booking that just came in.
+  // The screen already refreshes every few minutes and on focus: what is new since the last answer is a booking that just came in.
   const seen = useRef<Set<string> | null>(null);
   useEffect(() => {
     if (!data) return;

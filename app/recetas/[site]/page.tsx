@@ -9,7 +9,8 @@ import { RecipeBrowser } from "./recipe-browser";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 
 export function generateStaticParams() { return []; }
-export const revalidate = 60;
+// Same as publicRevalidate (platform/sites/public-cache.ts); segment config must be a literal.
+export const revalidate = 3600;
 type Props = {
   params: Promise<{ site: string }>;
 };

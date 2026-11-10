@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { Atkinson_Hyperlegible, Instrument_Sans } from "next/font/google";
-import { brand, getSettings, ogImage, recipeSite } from "./brand";
+import { brand, getSettings, ogImage, recipeIcon, recipeSite } from "./brand";
 import { Splash } from "./splash";
 import "./recetas.css";
 
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: { title, description: settings.description, siteName: site.name, locale: "es_AR", type: "website", url: "/", images: [image] },
     twitter: { card: "summary_large_image", title, description: settings.description, images: [image] },
     manifest: "/manifest.webmanifest",
-    icons: { icon: [{ url: "/icon", type: "image/png" }], apple: "/icon?size=180" },
+    icons: { icon: [{ url: recipeIcon(64), type: "image/png" }], apple: recipeIcon(180) },
   };
 }
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: brand.background };

@@ -2,6 +2,7 @@ import { isAdmin, sameOrigin } from "@/lib/auth";
 import { cleanSettings } from "@/lib/site-settings";
 import { readSiteSettings, saveSiteSettings } from "@/lib/site-store";
 import { getSite } from "@/lib/site-registry";
+import { publicTags, refreshPublic } from "@/platform/sites/server";
 import { failure, forbidden, notFound, type SiteParams } from "../recipes/helpers";
 
 export const runtime = "nodejs";
@@ -31,6 +32,8 @@ export async function PUT(request: Request, { params }: SiteParams) {
   try {
     const text = await request.text();
     if (text.length > 20_000) return Response.json({ error: "Los datos son demasiado largos." }, { status: 413 });
-    return Response.json(await saveSiteSettings(site.id, cleanSettings(JSON.parse(text))));
+    const saved = await saveSiteSettings(site.id, cleanSettings(JSON.parse(text)));
+    refreshPublic(publicTags.recipeSettings);
+    return Response.json(saved);
   } catch (error) { return failure(error, "guardar los datos del sitio"); }
 }

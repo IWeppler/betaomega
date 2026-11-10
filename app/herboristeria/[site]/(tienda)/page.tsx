@@ -8,7 +8,8 @@ import { getShop, pricesDate } from "./get-shop";
 import { ogImage } from "../og-image";
 
 export const dynamic = "force-static";
-export const revalidate = 60;
+// Same as publicRevalidate (platform/sites/public-cache.ts); segment config must be a literal.
+export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Catálogo | Ñekurel",
   description: "Hierbas y preparados de Ñekurel con sus precios.",

@@ -1,21 +1,22 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
-import { publicPage, SITE_IMAGE } from "@/modules/sauna/server";
+import { saunaIcon, SITE_IMAGE } from "@/modules/sauna/server";
 import { SiteFrame } from "@/modules/sauna/ui/public";
-import { getSite } from "@/platform/sites/server";
+import { cachedPage, cachedSite } from "./public-data";
 import "@/app/globals.css";
 
 type Props = { params: Promise<{ site: string }> };
 
 const saunaSite = async (params: Props["params"]) => {
-  const site = await getSite((await params).site);
+  // Cached: the home page below is ISR, and a no-store read here would make every page of the site dynamic again.
+  const site = await cachedSite((await params).site);
   return site?.kind === "sauna" ? site : undefined;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const site = await saunaSite(params);
   if (!site) return {};
-  const { description } = await publicPage(site.id);
+  const { description } = await cachedPage(site.id);
   const image = { ...SITE_IMAGE, type: "image/jpeg", alt: site.name };
   return {
     metadataBase: new URL(site.url),
@@ -24,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical: "/" },
     manifest: "/manifest.webmanifest",
     appleWebApp: { capable: true, title: site.name, statusBarStyle: "black-translucent" },
-    icons: { icon: [{ url: "/icon?size=32", sizes: "32x32", type: "image/png" }, { url: "/icon?size=192", sizes: "192x192", type: "image/png" }], apple: "/icon?size=180" },
+    icons: { icon: [{ url: saunaIcon(32), sizes: "32x32", type: "image/png" }, { url: saunaIcon(192), sizes: "192x192", type: "image/png" }], apple: saunaIcon(180) },
     openGraph: { title: site.name, description, siteName: site.name, locale: "es_AR", type: "website", url: "/", images: [image] },
     twitter: { card: "summary_large_image", title: site.name, description, images: [image] },
   };

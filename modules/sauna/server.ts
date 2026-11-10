@@ -4,7 +4,7 @@ import "server-only";
 export { getAgenda, getBookings, patchBooking, saunaNotice } from "./api/bookings";
 export { getManualAvailability, postManualBooking } from "./api/manual-bookings";
 export { getAvailability, postReservation, publicHome, publicPage, publicReservation, SITE_IMAGE } from "./api/public";
-export { getIcon, getManifest } from "./api/app-icon";
+export { getIcon, getManifest, saunaIcon } from "./api/app-icon";
 export { deleteCode, getCodes, postCode, postCodeCheck } from "./api/codes";
 export { disconnectMercadoPago, finishMercadoPagoConnect, startMercadoPagoConnect } from "./api/mercadopago-connect";
 export { postMercadoPagoNotice, postPayment, postPlanPayment } from "./api/payments";

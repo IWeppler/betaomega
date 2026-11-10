@@ -1,15 +1,16 @@
 import { ImageResponse } from "next/og";
 import sharp from "sharp";
 import { getSite } from "@/lib/site-registry";
+import { appIcon, askedIconSize, redirectToStatic } from "@/shared/lib/static-icons";
 
-// Tab, home-screen and installed-app icon: the site's icon files in public/, resized, or its initial on the accent colour when it has none.
+// Tab, home-screen and installed-app icon. Icons pre-rendered into public/icons/ redirect there (pages point there directly, see productIcon);
+// a site added later from the database gets its icon files resized here, or its initial on the accent colour when it has none.
 // ?size= 32, 64 (default), 180 (Apple), 192, 512. ?maskable=1 serves the full-bleed square for Android's adaptive shapes.
 export async function GET(request: Request, context: { params: Promise<{ site: string }> }) {
   const site = await getSite((await context.params).site);
   if (!site?.products) return new Response("No encontrado", { status: 404 });
   const url = new URL(request.url);
-  const asked = Number(url.searchParams.get("size"));
-  const size = [32, 64, 180, 192, 512].includes(asked) ? asked : 64;
+  const size = askedIconSize(url.searchParams.get("size"));
   const headers = { "Cache-Control": "public, max-age=86400, s-maxage=86400" };
   const { accent, icon } = site.products;
   if (!icon) {
@@ -20,6 +21,8 @@ export async function GET(request: Request, context: { params: Promise<{ site: s
   }
   // The Apple icon has no transparency (iOS rounds it itself), so it uses the square version too.
   const square = url.searchParams.get("maskable") === "1" || size === 180;
+  const prerendered = appIcon(icon, size, square);
+  if (prerendered) return redirectToStatic(prerendered);
   try {
     const source = await fetch(new URL(square ? icon.maskable : icon.any, request.url), { signal: AbortSignal.timeout(5000) });
     if (!source.ok) throw new Error(`icon ${source.status}`);

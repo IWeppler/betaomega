@@ -69,7 +69,7 @@ El catálogo, el uso y las fotos se guardan en Supabase, tanto en local como en 
 
 ## Persistencia y alcance
 
-Si todavía no hay catálogo guardado, la app muestra el catálogo inicial y lo guarda en Supabase al primer cambio. Todos los dispositivos consultan el mismo catálogo. La interfaz lo actualiza cada 30 segundos y al recuperar foco. Hay control de versión: si dos administradores editan a la vez, el segundo debe actualizar antes de guardar.
+Si todavía no hay catálogo guardado, la app muestra el catálogo inicial y lo guarda en Supabase al primer cambio. Todos los dispositivos consultan el mismo catálogo. La interfaz lo actualiza cada cinco minutos y al recuperar foco. Hay control de versión: si dos administradores editan a la vez, el segundo debe actualizar antes de guardar.
 
 El catálogo del equipo (con notas internas y preparaciones) solo se entrega con el código de vendedor o la sesión de administrador. La tienda pública (`/`) no muestra notas internas ni preparaciones. Cambiar `ANKORA_SELLER_CODE` cierra todas las sesiones de vendedor (por ejemplo, si alguien deja el equipo); las de administrador siguen abiertas. Eliminar una planta utilizada por una mezcla está bloqueado hasta quitarla de sus preparados.
 

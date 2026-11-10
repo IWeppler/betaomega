@@ -56,10 +56,12 @@ revoke execute on function public.increment_usage(text) from public, anon, authe
 grant execute on function public.save_catalog(integer, jsonb) to service_role;
 grant execute on function public.increment_usage(text) to service_role;
 
--- Private bucket for catalog photos; the app serves them through /api/images/<name>.
+-- Bucket for the photos of every site (catalogue, recipes, products, sauna). Public for reading: next.config.ts rewrites /api/images/<name>
+-- straight to it, so serving a photo runs no function on Vercel. Every photo here is shown on a public site anyway; names are random UUIDs,
+-- listing still needs the secret key, and only the app (secret key) uploads.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('images', 'images', false, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
-on conflict (id) do nothing;
+values ('images', 'images', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update set public = excluded.public;
 
 -- Recipes of the recipe sites (lib/sites.ts, kind "recetas"). One row per recipe; ingredients and steps travel with it.
 create table if not exists public.recipes (

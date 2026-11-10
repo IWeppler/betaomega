@@ -22,7 +22,8 @@ export async function POST(request: Request) {
     // Everything is stored as WebP of at most 1 MB (lib/image-optimizer.ts), whatever format came in.
     const optimized = await optimizeImage(bytes);
     const name = `${folder}${randomUUID()}.webp`;
-    await supabase(`/storage/v1/object/images/${name}`, { method: "POST", headers: { "Content-Type": imageTypes.webp }, body: optimized as BodyInit });
+    // A name is never reused, so Supabase's own CDN may keep the photo for a year (it is served from there through next.config.ts).
+    await supabase(`/storage/v1/object/images/${name}`, { method: "POST", headers: { "Content-Type": imageTypes.webp, "Cache-Control": "max-age=31536000" }, body: optimized as BodyInit });
     return Response.json({ image: `/api/images/${name}` }, { status: 201 });
   } catch (error) {
     const storageError = error instanceof Error && "code" in error;

@@ -1,7 +1,8 @@
 import { generateMetadata as recipeMetadata, default as RecipePage } from "./recipe-page";
 
 export const dynamic = "force-static";
-export const revalidate = 60;
+// Same as publicRevalidate (platform/sites/public-cache.ts); segment config must be a literal.
+export const revalidate = 3600;
 type Props = { params: Promise<{ site: string; slug: string }> };
 
 export function generateMetadata({ params }: Props) {

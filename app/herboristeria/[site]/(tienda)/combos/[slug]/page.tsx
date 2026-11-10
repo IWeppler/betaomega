@@ -11,7 +11,10 @@ import { WasPrice } from "../../storefront";
 import { getShop, pricesDate } from "../../get-shop";
 import { ogImage } from "../../../og-image";
 
-export const dynamic = "force-dynamic";
+// ISR like the store home: the shop is a cached read (getShop) and the panel refreshes it when the catalogue is saved.
+export function generateStaticParams() { return []; }
+// Same as publicRevalidate (platform/sites/public-cache.ts); segment config must be a literal.
+export const revalidate = 3600;
 
 async function find(slug: string) {
   const shop = await getShop();

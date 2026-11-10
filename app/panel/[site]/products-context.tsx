@@ -6,6 +6,7 @@ import { offerUndo } from "@/shared/ui/undo";
 import type { Product, ProductList } from "@/lib/products";
 import type { ProductSiteOptions } from "@/lib/sites";
 import { PanelContext } from "./panel-context";
+import { liveRefreshMs } from "@/shared/lib/live-refresh";
 
 type Value = {
   products: Product[] | null;
@@ -24,7 +25,7 @@ export function useProducts() {
 
 const byName = (a: Product, b: Product) => a.name.localeCompare(b.name, "es");
 
-// Same rules as the catalogue: loaded once for the whole panel, refreshed on focus and every 30 s unless something is being edited.
+// Same rules as the catalogue: loaded once for the whole panel, refreshed on focus and every few minutes (liveRefreshMs) unless something is being edited.
 export function ProductsProvider({ siteId, options, children }: { siteId: string; options: ProductSiteOptions | undefined; children: ReactNode }) {
   const base = `/api/sites/${siteId}/products`;
   const [list, setList] = useState<ProductList | null>(null);
@@ -49,7 +50,7 @@ export function ProductsProvider({ siteId, options, children }: { siteId: string
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === "visible" && !busy && !dirty) void reload(); };
     window.addEventListener("focus", refresh);
-    const timer = window.setInterval(refresh, 30000);
+    const timer = window.setInterval(refresh, liveRefreshMs);
     return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };
   }, [reload, busy, dirty]);
   const put = useCallback(async (products: Product[]) => {

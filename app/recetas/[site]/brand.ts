@@ -4,6 +4,8 @@ import { listPublishedRecipes } from "@/lib/recipe-store";
 import { effectiveSettings, recipeSiteDefaults } from "@/lib/site-settings";
 import { readSiteSettings } from "@/lib/site-store";
 import { getSite } from "@/lib/site-registry";
+import { publicRevalidate, publicTags } from "@/platform/sites/server";
+import { appIcon, type IconSize } from "@/shared/lib/static-icons";
 
 // The recipe template's brand. It lives in code until themes are edited from the panel (fase 4).
 export const brand = {
@@ -16,6 +18,10 @@ export const brand = {
   logo: "/comidasdelcielo-logo.webp",
 };
 
+/** The Comidas del cielo bowl, pre-rendered (public/icons/). The Apple icon (180) has no transparency, iOS rounds it itself. */
+export const recipeIcon = (size: IconSize, maskable = false) =>
+  appIcon({ any: "/comidasdelcielo-icon.png", maskable: "/comidasdelcielo-icon-maskable.png" }, size, maskable || size === 180) as string;
+
 // Public path (/og): a file convention would point at the internal /recetas/... tree.
 export const ogImage = (name: string, tagline: string = brand.tagline, slug?: string) => ({
   url: slug ? `/og?receta=${encodeURIComponent(slug)}` : "/og",
@@ -25,7 +31,7 @@ export const ogImage = (name: string, tagline: string = brand.tagline, slug?: st
 });
 
 /** One read per request, shared by generateMetadata and the page. */
-export const getRecipes = cache(unstable_cache(listPublishedRecipes, ["public-recipes", process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""], { revalidate: 60 }));
+export const getRecipes = cache(unstable_cache(listPublishedRecipes, ["public-recipes", process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""], { revalidate: publicRevalidate, tags: [publicTags.recipes] }));
 
 /** The site's editable data (tagline, description, Instagram, contact), read once per request. If the read fails, the site keeps working with the template's text. */
 export const getSettings = cache(unstable_cache(async (siteId: string) => {
@@ -33,7 +39,7 @@ export const getSettings = cache(unstable_cache(async (siteId: string) => {
     console.warn("[recetas] no se pudieron leer los datos del sitio:", error);
     return effectiveSettings(null);
   }
-}, ["public-recipe-settings", process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""], { revalidate: 60 }));
+}, ["public-recipe-settings", process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""], { revalidate: publicRevalidate, tags: [publicTags.recipeSettings] }));
 
 /** The site of a recipe route, or undefined when the id is unknown or belongs to another kind of site. */
 export const recipeSite = async (params: Promise<{ site: string }>) => {
@@ -41,4 +47,4 @@ export const recipeSite = async (params: Promise<{ site: string }>) => {
   return site?.kind === "recetas" ? site : undefined;
 };
 
-const publicSite = unstable_cache(getSite, ["public-recipe-site", process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""], { revalidate: 60 });
+const publicSite = unstable_cache(getSite, ["public-recipe-site", process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""], { revalidate: publicRevalidate, tags: [publicTags.sites] });

@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { Atkinson_Hyperlegible, Barlow_Condensed } from "next/font/google";
-import { getDonation, productSite, siteDescription } from "./brand";
+import { getDonation, productIcon, productSite, siteDescription } from "./brand";
 import { FooterActions, HeaderDonate } from "./site-actions";
 import "./productos.css";
 
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     twitter: { card: "summary_large_image", title: site.name, description, images: [image] },
     manifest: "/manifest.webmanifest",
     appleWebApp: { capable: true, title: site.name, statusBarStyle: "default" },
-    icons: { icon: [{ url: "/icon", type: "image/png" }], apple: "/icon?size=180" },
+    icons: { icon: [{ url: productIcon(site, 64), type: "image/png" }], apple: productIcon(site, 180) },
   };
 }
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f6f8f8" };
