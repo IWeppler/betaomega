@@ -28,6 +28,7 @@ import { Screen } from "@/app/screen";
 import { CategoryPicker } from "@/app/category-picker";
 import { CategoryImageEditor } from "@/app/category-images";
 import { AvoidSelector } from "@/app/avoid-selector";
+import { offerUndo } from "@/shared/ui/undo";
 import { Toaster } from "@/shared/ui/toast";
 import { SaveForm } from "@/app/save-form";
 import { StoreTab } from "@/app/store-tab";
@@ -222,17 +223,23 @@ export default function Home() {
       body: JSON.stringify({ id: prep.id }),
     }).catch(() => undefined);
   };
-  const save = async (next: Catalog) => {
+  const put = async (next: Catalog) => {
+    const saved = await api<Catalog>("/api/catalog", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    });
+    catalogRef.current = saved;
+    setCatalog(saved);
+  };
+  const save = async (next: Catalog, message = "Se guardó correctamente.") => {
+    const before = catalogRef.current;
     setBusy(true);
     setFormError("");
     try {
-      const saved = await api<Catalog>("/api/catalog", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(next),
-      });
-      catalogRef.current = saved;
-      setCatalog(saved);
+      await put(next);
+      // As in the panel: the whole catalogue goes back, over the revision just saved.
+      if (before) offerUndo(message, () => put({ ...before, revision: catalogRef.current?.revision ?? before.revision }));
       return true;
     } catch (e) {
       setFormError((e as Error).message);
@@ -663,8 +670,8 @@ export default function Home() {
       }}
     >
       <p className="screen-intro">
-        Esta ficha se eliminará del catálogo. La eliminación no se puede
-        deshacer.
+        Esta ficha se eliminará del catálogo. Podés deshacerlo desde el aviso
+        que aparece abajo.
       </p>
       {formError && (
         <div className="alert error" role="alert">
@@ -718,6 +725,7 @@ export default function Home() {
                         (p) => p.id !== deleting.id,
                       ),
                     },
+                `Se eliminó ${deleting.name}.`,
               )
             ) {
               setDeleting(null);

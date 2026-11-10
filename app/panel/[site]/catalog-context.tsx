@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { api } from "@/app/admin-fields";
+import { offerUndo } from "@/shared/ui/undo";
 import type { Catalog } from "@/lib/catalog";
 import { PanelContext } from "./panel-context";
 
@@ -15,7 +16,8 @@ type Value = {
   setError: (message: string) => void;
   busy: boolean;
   setBusy: (busy: boolean) => void;
-  save: (next: Catalog) => Promise<boolean>;
+  /** Saves and offers to undo it. `message` says what changed: "Se guardó correctamente." if left out. */
+  save: (next: Catalog, message?: string) => Promise<boolean>;
   reload: () => Promise<void>;
   /** The open edit form registers here; leaving a page asks it first (save, discard or stay). */
   flushRef: MutableRefObject<() => Promise<boolean>>;
@@ -53,19 +55,25 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     const timer = window.setInterval(refresh, 30000);
     return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };
   }, [reload, busy, dirty]);
-  const save = useCallback(async (next: Catalog) => {
+  const put = useCallback(async (next: Catalog) => {
+    const saved = await api<Catalog>("/api/catalog", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) });
+    catalogRef.current = saved;
+    setCatalog(saved);
+  }, []);
+  const save = useCallback(async (next: Catalog, message = "Se guardó correctamente.") => {
+    const before = catalogRef.current;
     setBusy(true);
     setError("");
     try {
-      const saved = await api<Catalog>("/api/catalog", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) });
-      catalogRef.current = saved;
-      setCatalog(saved);
+      await put(next);
+      // The whole catalogue goes back as it was, over the revision just saved: if someone saved after, the server refuses it.
+      if (before) offerUndo(message, () => put({ ...before, revision: catalogRef.current?.revision ?? before.revision }));
       return true;
     } catch (e) {
       setError((e as Error).message);
       return false;
     } finally { setBusy(false); }
-  }, []);
+  }, [put]);
   return <PanelContext.Provider value={{ ready: Boolean(catalog), loadError, reload, error, setError, busy, setBusy, flushRef, setDirty }}>
     <CatalogContext.Provider value={{ catalog, catalogRef, loadError, error, setError, busy, setBusy, save, reload, flushRef, setDirty }}>{children}</CatalogContext.Provider>
   </PanelContext.Provider>;

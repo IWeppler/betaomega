@@ -223,7 +223,8 @@ function DeleteRecipe({
   return (
     <EditorFrame title={`Eliminar ${recipe.title}`} onClose={onCancel}>
       <p className="panel-muted">
-        La receta se elimina del panel y del sitio. No se puede deshacer. Si
+        La receta se elimina del panel y del sitio, con sus comentarios. Podés
+        deshacerlo durante unos segundos desde el aviso que aparece abajo. Si
         solo querés ocultarla, desmarcá &quot;Publicada en el sitio&quot;.
       </p>
       {error && (

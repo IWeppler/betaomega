@@ -254,20 +254,23 @@ Registradas el 2026-11-05. No quedan preguntas abiertas. Los puntos marcados com
 
 **Decidido el 2026-11-09, a pedido del cliente:** el plan reemplaza al pack de sesiones que se compraban y se reservaban después. Las tablas `sauna_pack_plans` y `sauna_pack_purchases`, y el camino de `p_pack_token` en `sauna_reserve_core`, quedan en la base sin uso; no se borran para no perder nada.
 
-Un plan es **un precio fijo por una cantidad de turnos que la persona elige todos juntos antes de pagar**. Ejemplo: "Plan Vitalidad", 4 turnos por un precio, dentro de 30 días. Se crea y se edita en la sección **Planes** del panel (`planes`): nombre, descripción opcional, cantidad de turnos (2 a 12), precio total y días para usarlo. Un plan se desactiva, nunca se borra.
+Un plan es **un precio fijo por una cantidad de turnos que la persona elige todos juntos antes de pagar**. Ejemplo: "Plan Vitalidad", 4 turnos por un precio, dentro de 30 días. Se crea y se edita en la sección **Planes** del panel (`planes`): nombre, descripción opcional, cantidad de turnos (2 a 12), precio total, días para usarlo, **duración de cada turno** y si **acepta códigos de descuento**. Un plan se desactiva, nunca se borra; la única excepción es deshacer su creación desde el aviso del panel mientras nadie lo reservó ([PATTERNS.md §19](PATTERNS.md)).
+
+**Duración (2026-11-10).** Se elige entre las duraciones de los tipos de turno activos; el diálogo de reserva solo muestra los turnos de esa duración y `sauna_reserve_plan` rechaza otros (`plan_wrong_duration`). Los planes guardados antes no tienen duración: aceptan cualquiera, el panel los marca con "Falta la duración" y piden elegirla al editarlos.
 
 **Reservar.**
 1. En el diálogo de reserva, la persona elige "Un turno" o uno de los planes activos.
-2. Con un plan, cada turno que toca se suma a una lista ("Tus turnos: 2 de 4"). Cada turno va en un **día distinto**, y entre el primero y el último no pueden pasar más días que los del plan (contando el primero). Solo se ofrecen turnos con modalidad individual.
-3. Con todos los turnos elegidos, deja nombre y WhatsApp y reserva. `sauna_reserve_plan` reserva **todos los turnos o ninguno**: cada uno pasa por `sauna_reserve_core` con las mismas comprobaciones y bloqueos que una reserva suelta.
-4. **Seña sobre el total:** el porcentaje de seña del sitio sobre el precio del plan. Precio y seña se reparten entre las reservas del plan en centavos enteros (el resto va al primer turno). Todas comparten la misma retención, que vence como mucho al empezar el primer turno.
+2. Con un plan, cada turno que toca se suma a una lista ("Tus turnos: 2 de 4"). Cada turno va en un **día distinto**, y entre el primero y el último no pueden pasar más días que los del plan (contando el primero). Solo se ofrecen turnos con modalidad individual y de la duración del plan.
+3. Con todos los turnos elegidos, deja nombre y WhatsApp, y un código si el plan los acepta, y reserva. `sauna_reserve_plan` reserva **todos los turnos o ninguno**: cada uno pasa por `sauna_reserve_core` con las mismas comprobaciones y bloqueos que una reserva suelta.
+4. **Seña sobre el total:** el porcentaje de seña del sitio sobre el precio del plan, después del descuento. Precio, descuento y seña se reparten entre las reservas del plan en centavos enteros: el precio en partes iguales (el resto va al primer turno); el descuento y la seña en proporción, con totales acumulados redondeados hacia abajo, para que ningún turno quede con un descuento mayor que su precio ni una seña mayor que lo que cuesta (`splitPlan` en `domain/plans.ts`). Todas comparten la misma retención, que vence como mucho al empezar el primer turno.
 5. Un solo pago (Mercado Pago, con `external_reference = plan:<id>`, o transferencia) paga la seña completa. `sauna_confirm_plan_payment` registra la parte de cada turno con su propia referencia (`<ref>:<reserva>`) a través de `sauna_confirm_payment`, así cada turno sigue la regla del pago tardío. Un monto distinto del total se registra entero en el primer turno, que queda marcado para devolver.
 6. La persona llega a la página del plan (`/plan/<token>`), con todos sus turnos, lo que falta pagar y el botón para reservar otro turno.
 
 En el panel, cada reserva de un plan muestra el nombre del plan. Registrar la transferencia de una reserva de un plan registra la del plan entero. Cancelar se hace turno por turno, con la política vigente al reservar.
 
+**Códigos en un plan (2026-11-10).** Solo si el plan los acepta (`plan_no_code` si no). El código se comprueba como en una reserva suelta, después de bloquear las salas y en cada turno (sala y tipo de turno a los que está limitado), y se aplica al **precio total del plan**: porcentaje, monto fijo (nunca por debajo de cero), pase gratis (precio cero, sin seña, confirmado al instante) o sin seña (el precio queda entero para pagar en el lugar). Cada turno lleva el código, pero **el plan cuenta como un solo uso** mientras alguno de sus turnos siga vigente, también en el límite por persona. La compra guarda el descuento (`discount_cents`) y la página del plan muestra el precio con descuento.
+
 **Decisiones de alcance, que se pueden revisar:**
-- Un código no se aplica a un plan.
 - Un plan reserva un lugar individual en cada turno, no la sala en modo grupal.
 - No hay máximo por semana: alcanza con un turno por día y la ventana de días.
 

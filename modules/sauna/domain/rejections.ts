@@ -43,7 +43,7 @@ export const rejectionMessages: Record<ReserveRejection, string> = {
 };
 
 /** Why public.sauna_reserve_plan refuses a plan as a whole. Each of its turns can also be refused for any ReserveRejection. */
-export const planRejections = ["plan_not_found", "plan_turn_count", "plan_same_day", "plan_window"] as const;
+export const planRejections = ["plan_not_found", "plan_turn_count", "plan_same_day", "plan_window", "plan_wrong_duration", "plan_no_code"] as const;
 export type PlanRejection = (typeof planRejections)[number];
 
 export const planRejectionMessages: Record<PlanRejection, string> = {
@@ -51,6 +51,8 @@ export const planRejectionMessages: Record<PlanRejection, string> = {
   plan_turn_count: "Elegí la cantidad de turnos que incluye el plan.",
   plan_same_day: "Elegí cada turno en un día distinto.",
   plan_window: "Los turnos del plan tienen que estar más cerca entre sí.",
+  plan_wrong_duration: "Elegí turnos de la duración que incluye el plan.",
+  plan_no_code: "Este plan no acepta códigos de descuento.",
 };
 
 export type WindowRejection = Extract<ReserveRejection, "too_soon" | "too_far">;

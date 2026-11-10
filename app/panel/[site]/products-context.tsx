@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "@/app/admin-fields";
+import { offerUndo } from "@/shared/ui/undo";
 import type { Product, ProductList } from "@/lib/products";
 import type { ProductSiteOptions } from "@/lib/sites";
 import { PanelContext } from "./panel-context";
@@ -64,12 +65,22 @@ export function ProductsProvider({ siteId, options, children }: { siteId: string
       return null;
     } finally { setBusy(false); }
   }, [base, store]);
+  // "Deshacer" saves the previous list back over the revision just saved, so a save made by someone else in between is refused, not lost.
+  const undoTo = useCallback((before: Product[], message: string) => offerUndo(message, async () => {
+    if (!(await put(before))) throw new Error("No se pudo deshacer. Recargá la página y revisalo a mano.");
+  }), [put]);
   const save = useCallback(async (product: Product) => {
     const current = listRef.current?.products ?? [];
     const saved = await put(current.some(p => p.id === product.id) ? current.map(p => (p.id === product.id ? product : p)) : [...current, product]);
+    if (saved) undoTo(current, "Se guardó correctamente.");
     return saved?.products.find(p => p.id === product.id) ?? null;
-  }, [put]);
-  const remove = useCallback(async (id: string) => Boolean(await put((listRef.current?.products ?? []).filter(p => p.id !== id))), [put]);
+  }, [put, undoTo]);
+  const remove = useCallback(async (id: string) => {
+    const current = listRef.current?.products ?? [];
+    const saved = await put(current.filter(p => p.id !== id));
+    if (saved) undoTo(current, `Se eliminó ${current.find(p => p.id === id)?.name ?? "el producto"}.`);
+    return Boolean(saved);
+  }, [put, undoTo]);
   const products = list ? [...list.products].sort(byName) : null;
   return <PanelContext.Provider value={{ ready: Boolean(list), loadError, reload, error, setError, busy, setBusy, flushRef, setDirty }}>
     <ProductsContext.Provider value={{ products, options, save, remove }}>{children}</ProductsContext.Provider>

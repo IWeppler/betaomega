@@ -8,9 +8,9 @@ import { Button, Notice } from "./controls";
 import { useResource } from "./use-resource";
 import { ManualBookingForm } from "./manual-booking-form";
 
-export type ManualBookingEditor = { draft: ManualBookingDraft; onDraftChange: (draft: ManualBookingDraft) => void; onDiscard: () => Promise<boolean>; saving: boolean; onSavingChange: (value: boolean) => void; onCreated: () => Promise<void> };
+export type ManualBookingEditor = { draft: ManualBookingDraft; onDraftChange: (draft: ManualBookingDraft) => void; onDiscard: () => Promise<boolean>; saving: boolean; onSavingChange: (value: boolean) => void; onCreated: () => Promise<void>; onUndone: () => Promise<void> };
 
-function TurnPicker({ siteId, day, clock, now, onBack, draft, onDraftChange, onDiscard, saving, onSavingChange, onCreated }: { siteId: string; day: string; clock?: string; now: string; onBack: () => void } & ManualBookingEditor) {
+function TurnPicker({ siteId, day, clock, now, onBack, draft, onDraftChange, onDiscard, saving, onSavingChange, onCreated, onUndone }: { siteId: string; day: string; clock?: string; now: string; onBack: () => void } & ManualBookingEditor) {
   const { data, error, loading, reload } = useResource<Turn[]>(`/api/sites/${siteId}/sauna/manual-bookings?from=${day}&to=${day}`, { live: true });
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -33,7 +33,7 @@ function TurnPicker({ siteId, day, clock, now, onBack, draft, onDraftChange, onD
         })}
       </fieldset>}
       {selected && !chosen && <Notice>Ese turno ya no está disponible. Elegí otro.</Notice>}
-      {chosen && (editing ? <ManualBookingForm key={turnKey(chosen)} siteId={siteId} turn={chosen} draft={draft} onChange={onDraftChange} onBack={() => setEditing(false)} onSavingChange={onSavingChange} onCreated={async () => { await onCreated(); onBack(); }} /> : <Button variant="primary" onClick={() => setEditing(true)}>Cargar datos</Button>)}
+      {chosen && (editing ? <ManualBookingForm key={turnKey(chosen)} siteId={siteId} turn={chosen} draft={draft} onChange={onDraftChange} onBack={() => setEditing(false)} onSavingChange={onSavingChange} onCreated={async () => { await onCreated(); onBack(); }} onUndone={onUndone} /> : <Button variant="primary" onClick={() => setEditing(true)}>Cargar datos</Button>)}
     </>}
     <Button disabled={saving} onClick={() => { void onDiscard().then(leave => { if (leave) onBack(); }); }}>Volver a la agenda</Button>
   </section>;

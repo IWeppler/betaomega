@@ -93,9 +93,15 @@ export type CodeUses = { total: number; byCustomer: number };
  * Uses are counted, never stored: only current bookings count, so an expired or cancelled one gives its use back with no scheduled task.
  * Pass the bookings that carry this code, read under the code's lock. A customer not yet registered has no id and no uses.
  */
-export function countUses(bookings: readonly { status: BookingStatus; expiresAt: Instant | null; customerId: string }[], customerId: string | null, now: Instant): CodeUses {
+export function countUses(
+  bookings: readonly { status: BookingStatus; expiresAt: Instant | null; customerId: string; planPurchaseId?: string | null }[],
+  customerId: string | null,
+  now: Instant,
+): CodeUses {
   const current = bookings.filter(booking => isCurrent(booking, now));
-  return { total: current.length, byCustomer: current.filter(booking => booking.customerId === customerId).length };
+  // A plan carries the code on each of its turns and is one use while any of them is current, as sauna_reserve counts it.
+  const distinct = (list: typeof current) => new Set(list.map((booking, index) => booking.planPurchaseId ? `plan:${booking.planPurchaseId}` : index)).size;
+  return { total: distinct(current), byCustomer: distinct(current.filter(booking => booking.customerId === customerId)) };
 }
 
 /** Null when the code applies to this turn and person. Checked when reserving, in the same transaction that takes the seats. */

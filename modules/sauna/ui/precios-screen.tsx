@@ -7,7 +7,9 @@ import { SaveForm, usePanel, useSite } from "@/platform/panel";
 import type { TurnType } from "../domain/hours";
 import type { Settings } from "../domain/setup";
 import { Button, Card, Field, FormArea, inputClass } from "./controls";
-import { sendJson } from "./fetch-json";
+import { offerUndo } from "@/shared/ui/undo";
+import type { Config } from "./config";
+import { fetchJson, sendJson } from "./fetch-json";
 
 /** A row being edited: prices stay as typed until saving. `key` tells apart rows that have no id yet. */
 type Row = {
@@ -37,6 +39,18 @@ const rowFrom = (type: TurnType): Row => ({
 /** A price that cannot be read goes as it is, so the server's validation answers instead of it silently meaning "not offered". */
 const readPrice = (text: string) =>
   text.trim() === "" ? null : (centsFromPesos(text) ?? -1);
+
+/** What the types route takes for a row. */
+const payload = (row: Row, active: boolean) => ({
+  id: row.id,
+  revision: row.revision,
+  name: row.name,
+  durationMinutes: Number(row.duration),
+  priceCents: readPrice(row.price),
+  privatePriceCents: readPrice(row.privatePrice),
+  depositPercent: row.deposit.trim() === "" ? null : Number(row.deposit),
+  active,
+});
 
 export function TypesForm({
   types,
@@ -81,16 +95,6 @@ export function TypesForm({
     panel.setBusy(true);
     setError("");
     try {
-      const payload = (row: Row, active: boolean) => ({
-        id: row.id,
-        revision: row.revision,
-        name: row.name,
-        durationMinutes: Number(row.duration),
-        priceCents: readPrice(row.price),
-        privatePriceCents: readPrice(row.privatePrice),
-        depositPercent: row.deposit.trim() === "" ? null : Number(row.deposit),
-        active,
-      });
       const unchanged = (row: Row) => {
         const before = types.find((type) => type.id === row.id);
         return (
@@ -113,6 +117,21 @@ export function TypesForm({
           depositPercent: Number(deposit),
         });
       await onSaved();
+      offerUndo("Se guardaron los tipos de turno.", async () => {
+        // Each type saved here moved one revision; one created here is removed (deactivated) again.
+        const touched = [...changed, ...removed].flatMap(row => types.filter(type => type.id !== null && type.id === row.id));
+        const now = await fetchJson<Config>(`/api/sites/${site.id}/sauna/config`);
+        const created = now.types.filter(type => !types.some(before => before.id === type.id));
+        const back = [
+          ...touched.map(type => payload({ ...rowFrom(type), revision: type.revision + 1 }, true)),
+          ...created.map(type => payload(rowFrom(type), false)),
+        ];
+        if (back.length) await sendJson(`/api/sites/${site.id}/sauna/types`, "PUT", { types: back });
+        if (now.settings && now.settings.depositPercent !== settings.depositPercent) {
+          await sendJson(`/api/sites/${site.id}/sauna/config`, "PATCH", { ...now.settings, depositPercent: settings.depositPercent });
+        }
+        await onSaved();
+      });
       return true;
     } catch (failure) {
       setError((failure as Error).message);

@@ -4,10 +4,10 @@ import { useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import { useSite } from "@/platform/panel";
 import { Dialog } from "@/shared/ui/dialog";
-import { showToast } from "@/shared/ui/toast";
+import { deferChange } from "@/shared/ui/undo";
 import type { AgendaBooking } from "../domain/agenda";
 import { businessTime } from "../domain/time";
-import { Button, inputClass, Notice } from "./controls";
+import { Button, inputClass } from "./controls";
 import { sendJson } from "./fetch-json";
 
 /** How far a row slides to show its delete button, in px. Matches w-18 on the button. */
@@ -20,29 +20,29 @@ const nameOf = (booking: AgendaBooking) => booking.customerName || "la persona";
 /** Asks before cancelling a booking. Cancelling frees the turn; money already collected is not returned from here (same as Cancelar in Reservas). */
 export function CancelBookingDialog({ booking, onClose, onChanged }: { booking: AgendaBooking | null; onClose: () => void; onChanged: () => Promise<void> }) {
   const site = useSite();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [note, setNote] = useState("");
-  const close = () => { if (busy) return; setError(""); setNote(""); onClose(); };
-  const cancel = async () => {
+  const close = () => { setNote(""); onClose(); };
+  // A cancelled booking gives its turn away, so it cannot be put back: it waits while its notice offers "Deshacer", as in BookingCard.
+  const cancel = () => {
     if (!booking) return;
-    setBusy(true);
-    setError("");
-    try {
-      await sendJson(`/api/sites/${site.id}/sauna/bookings/${booking.id}`, "PATCH", { action: "cancel", note });
-      showToast(`Se canceló la reserva de ${nameOf(booking)}.`, 5000);
-      setNote("");
-      onClose();
-      await onChanged();
-    } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
+    const reason = note;
+    setNote("");
+    onClose();
+    deferChange({
+      message: `Se va a cancelar la reserva de ${nameOf(booking)}.`,
+      commit: async () => {
+        await sendJson(`/api/sites/${site.id}/sauna/bookings/${booking.id}`, "PATCH", { action: "cancel", note: reason }, { keepalive: true });
+        return `Se canceló la reserva de ${nameOf(booking)}.`;
+      },
+      onSettled: () => void onChanged(),
+    });
   };
   return <Dialog open={booking !== null} onOpenChange={open => { if (!open) close(); }} title={booking ? `¿Cancelar la reserva de ${nameOf(booking)}?` : ""}
     description={booking ? `Turno de las ${businessTime(booking.startsAt)}. El turno queda libre. Si ya pagó algo, la devolución se registra aparte.` : undefined}>
     <label className="grid gap-1"><span className="font-semibold text-ink">Motivo (opcional)</span><input className={inputClass} value={note} maxLength={500} onChange={event => setNote(event.target.value)} /></label>
-    {error && <Notice kind="error">{error}</Notice>}
     <div className="flex flex-wrap justify-end gap-2">
-      <Button disabled={busy} onClick={close}>No, volver</Button>
-      <Button variant="danger" disabled={busy} onClick={() => void cancel()}>{busy ? "Cancelando…" : "Sí, cancelar"}</Button>
+      <Button onClick={close}>No, volver</Button>
+      <Button variant="danger" onClick={cancel}>Sí, cancelar</Button>
     </div>
   </Dialog>;
 }

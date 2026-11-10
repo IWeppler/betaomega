@@ -1711,13 +1711,14 @@ begin
       if v_code.valid_until is not null and now() > v_code.valid_until then return public.sauna_reject('code_expired'); end if;
       if v_code.room_id is not null and v_code.room_id <> p_room then return public.sauna_reject('code_wrong_slot'); end if;
       if v_code.turn_type_id is not null and v_code.turn_type_id <> p_turn_type then return public.sauna_reject('code_wrong_slot'); end if;
+      -- A plan that used the code is one use however many of its turns carry it (sauna_reserve_plan).
       if v_code.max_uses is not null then
-        select count(*) into v_uses from public.sauna_bookings b
+        select count(distinct coalesce(b.plan_purchase_id, b.id)) into v_uses from public.sauna_bookings b
          where b.site_id = p_site and b.code_id = v_code.id and public.sauna_is_current(b.status, b.expires_at);
         if v_uses >= v_code.max_uses then return public.sauna_reject('code_exhausted'); end if;
       end if;
       if v_code.max_uses_per_customer is not null and v_customer is not null then
-        select count(*) into v_uses from public.sauna_bookings b
+        select count(distinct coalesce(b.plan_purchase_id, b.id)) into v_uses from public.sauna_bookings b
          where b.site_id = p_site and b.code_id = v_code.id and b.customer_id = v_customer and public.sauna_is_current(b.status, b.expires_at);
         if v_uses >= v_code.max_uses_per_customer then return public.sauna_reject('code_customer_limit'); end if;
       end if;
@@ -2040,6 +2041,10 @@ create table if not exists public.sauna_plans (
 );
 alter table public.sauna_plans enable row level security;
 revoke all on public.sauna_plans from anon, authenticated;
+-- Added on 2026-11-10. The length of every turn of the plan: only turn types that last this long are offered. Null, for the plans saved before, takes
+-- any length. And whether a discount code applies to the plan's whole price.
+alter table public.sauna_plans add column if not exists duration_minutes integer check (duration_minutes between 5 and 600);
+alter table public.sauna_plans add column if not exists allows_codes boolean not null default false;
 
 -- A purchase keeps its own copy of the plan's name, turns and amounts: changing the plan later does not change what someone already booked.
 create table if not exists public.sauna_plan_purchases (
@@ -2060,6 +2065,8 @@ create table if not exists public.sauna_plan_purchases (
 );
 alter table public.sauna_plan_purchases enable row level security;
 revoke all on public.sauna_plan_purchases from anon, authenticated;
+-- Added on 2026-11-10: what a code took off the plan's price. price_cents stays the plan's price before it.
+alter table public.sauna_plan_purchases add column if not exists discount_cents bigint not null default 0 check (discount_cents >= 0);
 
 drop trigger if exists sauna_plans_updated_at on public.sauna_plans;
 create trigger sauna_plans_updated_at before update on public.sauna_plans for each row execute function public.sauna_touch_updated_at();
@@ -2077,13 +2084,17 @@ create index if not exists sauna_bookings_plan on public.sauna_bookings (site_id
 
 -- Books every turn of a plan or none. Each turn goes through sauna_reserve_core, so each one is checked and locked as a single booking would be; a
 -- refusal undoes the turns already taken. p_turns is [{room_id, turn_type_id, starts_at}]. Returns { ok: true, token } or { ok: false, reason }.
+-- A code, if the plan takes one, is checked as sauna_reserve_core checks it (on every turn for its room and type, after the room locks, as there) and
+-- applies to the plan's whole price: every turn carries it, and the plan counts as one use.
+drop function if exists public.sauna_reserve_plan(text, uuid, jsonb, text, text, boolean);
 create or replace function public.sauna_reserve_plan(
   p_site text,
   p_plan uuid,
   p_turns jsonb,
   p_name text,
   p_whatsapp text,
-  p_terms_accepted boolean
+  p_terms_accepted boolean,
+  p_code text
 )
 returns jsonb
 language plpgsql
@@ -2092,14 +2103,25 @@ set search_path = ''
 as $$
 declare
   v_tz constant text := 'America/Argentina/Buenos_Aires';
+  v_code_text text := nullif(btrim(coalesce(p_code, '')), '');
   v_settings public.sauna_settings;
   v_plan public.sauna_plans;
   v_purchase public.sauna_plan_purchases;
+  v_code public.discount_codes;
   v_turn record;
   v_result jsonb;
   v_ids uuid[] := '{}';
   v_customer uuid;
+  v_uses bigint;
+  v_discount bigint := 0;
   v_deposit bigint;
+  v_index integer;
+  v_price_from bigint := 0;
+  v_price_to bigint;
+  v_discount_from bigint := 0;
+  v_discount_to bigint;
+  v_deposit_from bigint := 0;
+  v_deposit_to bigint;
   v_status text;
   v_first timestamptz;
   v_count integer;
@@ -2112,6 +2134,7 @@ begin
   select * into v_plan from public.sauna_plans p where p.site_id = p_site and p.id = p_plan and p.active;
   if not found then return public.sauna_reject('plan_not_found'); end if;
   if jsonb_array_length(p_turns) <> v_plan.turns then return public.sauna_reject('plan_turn_count'); end if;
+  if v_code_text is not null and not v_plan.allows_codes then return public.sauna_reject('plan_no_code'); end if;
 
   -- One turn per day and all within the window, in Buenos Aires days.
   select count(*), count(distinct (t.starts_at at time zone v_tz)::date),
@@ -2120,6 +2143,14 @@ begin
     from jsonb_to_recordset(p_turns) as t(room_id uuid, turn_type_id uuid, starts_at timestamptz);
   if v_days <> v_count then return public.sauna_reject('plan_same_day'); end if;
   if v_span >= v_plan.window_days then return public.sauna_reject('plan_window'); end if;
+  -- Every turn of the plan's length. A type that does not exist is left to sauna_reserve_core, which refuses it.
+  if v_plan.duration_minutes is not null and exists (
+    select 1 from jsonb_to_recordset(p_turns) as t(room_id uuid, turn_type_id uuid, starts_at timestamptz)
+      join public.sauna_turn_types y on y.site_id = p_site and y.id = t.turn_type_id
+     where y.duration_minutes <> v_plan.duration_minutes
+  ) then
+    return public.sauna_reject('plan_wrong_duration');
+  end if;
 
   begin
     -- In room order, as every other path takes the room locks.
@@ -2130,37 +2161,80 @@ begin
       end if;
       v_ids := v_ids || (v_result -> 'booking' ->> 'id')::uuid;
     end loop;
+    select b.customer_id into v_customer from public.sauna_bookings b where b.site_id = p_site and b.id = v_ids[1];
+
+    -- The code, under its lock and after the rooms', in the order of sauna_reserve_core. Its uses are counted as there; this plan's bookings do not
+    -- carry it yet. A refusal undoes the turns already taken.
+    if v_code_text is not null then
+      select * into v_code from public.discount_codes c
+       where c.site_id = p_site and lower(c.code) = lower(v_code_text) for update;
+      if not found then raise exception using errcode = 'SP001', message = 'code_not_found'; end if;
+      if not v_code.active then raise exception using errcode = 'SP001', message = 'code_inactive'; end if;
+      if v_code.valid_from is not null and now() < v_code.valid_from then raise exception using errcode = 'SP001', message = 'code_not_started'; end if;
+      if v_code.valid_until is not null and now() > v_code.valid_until then raise exception using errcode = 'SP001', message = 'code_expired'; end if;
+      if exists (select 1 from jsonb_to_recordset(p_turns) as t(room_id uuid, turn_type_id uuid, starts_at timestamptz)
+                  where (v_code.room_id is not null and t.room_id <> v_code.room_id) or (v_code.turn_type_id is not null and t.turn_type_id <> v_code.turn_type_id)) then
+        raise exception using errcode = 'SP001', message = 'code_wrong_slot';
+      end if;
+      if v_code.max_uses is not null then
+        select count(distinct coalesce(b.plan_purchase_id, b.id)) into v_uses from public.sauna_bookings b
+         where b.site_id = p_site and b.code_id = v_code.id and public.sauna_is_current(b.status, b.expires_at);
+        if v_uses >= v_code.max_uses then raise exception using errcode = 'SP001', message = 'code_exhausted'; end if;
+      end if;
+      if v_code.max_uses_per_customer is not null then
+        select count(distinct coalesce(b.plan_purchase_id, b.id)) into v_uses from public.sauna_bookings b
+         where b.site_id = p_site and b.code_id = v_code.id and b.customer_id = v_customer and public.sauna_is_current(b.status, b.expires_at);
+        if v_uses >= v_code.max_uses_per_customer then raise exception using errcode = 'SP001', message = 'code_customer_limit'; end if;
+      end if;
+      v_discount := case v_code.type
+        when 'percent' then public.sauna_percent_of(v_plan.price_cents, v_code.value::integer)
+        when 'fixed' then least(v_code.value, v_plan.price_cents)
+        when 'free' then v_plan.price_cents
+        else 0
+      end;
+    end if;
   exception when sqlstate 'SP001' then
     return public.sauna_reject(sqlerrm);
   end;
 
-  select b.customer_id into v_customer from public.sauna_bookings b where b.site_id = p_site and b.id = v_ids[1];
-  v_deposit := public.sauna_percent_of(v_plan.price_cents, v_settings.deposit_percent);
+  -- As for a single booking: the deposit comes from the discounted price, and "no_deposit" keeps the price and charges nothing now.
+  v_deposit := case when v_code.type = 'no_deposit' then 0 else public.sauna_percent_of(v_plan.price_cents - v_discount, v_settings.deposit_percent) end;
   v_status := case when v_deposit = 0 then 'confirmed' else 'held' end;
-  insert into public.sauna_plan_purchases (site_id, plan_id, customer_id, name, turns, price_cents, deposit_cents)
-  values (p_site, v_plan.id, v_customer, v_plan.name, v_plan.turns, v_plan.price_cents, v_deposit)
+  insert into public.sauna_plan_purchases (site_id, plan_id, customer_id, name, turns, price_cents, discount_cents, deposit_cents)
+  values (p_site, v_plan.id, v_customer, v_plan.name, v_plan.turns, v_plan.price_cents, v_discount, v_deposit)
   returning * into v_purchase;
 
   insert into public.booking_events (site_id, booking_id, from_status, to_status, actor, note)
   select p_site, b.id, b.status, v_status, 'sitio', 'plan'
     from public.sauna_bookings b where b.site_id = p_site and b.id = any (v_ids) and b.status <> v_status;
 
-  -- The plan's price and deposit, split across its turns in whole cents: the first one takes what does not divide. Every turn shares one hold, which
-  -- ends when the earliest turn starts at the latest.
-  update public.sauna_bookings b
-     set plan_purchase_id = v_purchase.id,
-         price_cents = v_plan.price_cents / v_plan.turns + case when x.n = 1 then v_plan.price_cents % v_plan.turns else 0 end,
-         discount_cents = 0,
-         deposit_cents = v_deposit / v_plan.turns + case when x.n = 1 then v_deposit % v_plan.turns else 0 end,
-         status = v_status,
-         expires_at = case when v_deposit = 0 then null else least(now() + make_interval(mins => v_settings.mp_hold_minutes), v_first) end
-    from unnest(v_ids) with ordinality as x(id, n)
-   where b.site_id = p_site and b.id = x.id;
+  -- The plan's price, discount and deposit, split across its turns in whole cents, as splitPlan in domain/plans.ts does. The price evenly, the first
+  -- turn taking what does not divide; the discount in proportion to each price and the deposit to what each turn costs after it, both by running
+  -- totals rounded down (bigint division of amounts that are never negative), so no turn takes a discount above its price or a deposit above what
+  -- it costs. Every turn shares one hold, which ends when the earliest turn starts at the latest.
+  for v_index in 1 .. array_length(v_ids, 1) loop
+    v_price_to := (v_plan.price_cents / v_plan.turns) * v_index + v_plan.price_cents % v_plan.turns;
+    v_discount_to := v_discount * v_price_to / v_plan.price_cents;
+    v_deposit_to := case when v_plan.price_cents = v_discount then 0
+      else v_deposit * (v_price_to - v_discount_to) / (v_plan.price_cents - v_discount) end;
+    update public.sauna_bookings b
+       set plan_purchase_id = v_purchase.id,
+           price_cents = v_price_to - v_price_from,
+           discount_cents = v_discount_to - v_discount_from,
+           deposit_cents = v_deposit_to - v_deposit_from,
+           code_id = v_code.id,
+           status = v_status,
+           expires_at = case when v_deposit = 0 then null else least(now() + make_interval(mins => v_settings.mp_hold_minutes), v_first) end
+     where b.site_id = p_site and b.id = v_ids[v_index];
+    v_price_from := v_price_to;
+    v_discount_from := v_discount_to;
+    v_deposit_from := v_deposit_to;
+  end loop;
 
   return jsonb_build_object('ok', true, 'token', v_purchase.token);
 end $$;
-revoke execute on function public.sauna_reserve_plan(text, uuid, jsonb, text, text, boolean) from public, anon, authenticated;
-grant execute on function public.sauna_reserve_plan(text, uuid, jsonb, text, text, boolean) to service_role;
+revoke execute on function public.sauna_reserve_plan(text, uuid, jsonb, text, text, boolean, text) from public, anon, authenticated;
+grant execute on function public.sauna_reserve_plan(text, uuid, jsonb, text, text, boolean, text) to service_role;
 
 -- The person chose to pay a plan by transfer: every turn waits for it, or none does.
 create or replace function public.sauna_plan_choose_transfer(p_site text, p_purchase uuid, p_actor text)

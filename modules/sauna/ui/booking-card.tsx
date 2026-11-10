@@ -8,6 +8,7 @@ import { useSite } from "@/platform/panel";
 import { bookingActions, moneyState, statusLabels, type AgendaBooking } from "../domain/agenda";
 import { effectiveStatus, type BookingStatus } from "../domain/booking";
 import { showToast } from "@/shared/ui/toast";
+import { deferChange } from "@/shared/ui/undo";
 import { cancellationMessage, confirmationMessage, reminderMessage, whatsappLink, type MessageBooking } from "../domain/messages";
 import { businessDate, businessTime, dayLabel } from "../domain/time";
 import { Button, buttonClass, inputClass, Notice, Tag } from "./controls";
@@ -47,15 +48,24 @@ export function BookingCard({ booking, now, roomName, showTurn = false, onChange
   const status = effectiveStatus(booking, now);
   const money = moneyState(booking);
   const actions = bookingActions(booking, now);
-  const run = async (action: Action) => {
+  // None of these can be taken back once made (a payment recorded, a seat given up), so each one waits while its notice offers "Deshacer".
+  const run = (action: Action) => {
+    const who = booking.customerName || "la persona";
+    const pending: Record<Action, string> = {
+      confirm: `Se va a confirmar la reserva de ${who}.`,
+      transfer: `Se va a registrar la transferencia de ${who}.`,
+      complete: `Se va a marcar que ${who} asistió.`,
+      no_show: `Se va a marcar que ${who} no vino.`,
+      cancel: `Se va a cancelar la reserva de ${who}.`,
+    };
     setBusy(true);
     setError("");
-    try {
-      const answer = await sendJson<{ message?: string }>(`/api/sites/${site.id}/sauna/bookings/${booking.id}`, "PATCH", { action, note });
-      if (answer?.message) showToast(answer.message, 6000);
-      setCancelling(false);
-      await onChanged();
-    } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
+    setCancelling(false);
+    deferChange({
+      message: pending[action],
+      commit: async () => (await sendJson<{ message?: string }>(`/api/sites/${site.id}/sauna/bookings/${booking.id}`, "PATCH", { action, note }, { keepalive: true }))?.message,
+      onSettled: () => { setBusy(false); void onChanged(); },
+    });
   };
   const message = messageOf(booking, site);
   const whatsapp = (label: string, text: string, what: string) => booking.customerWhatsapp && <a className={buttonClass()} href={whatsappLink(booking.customerWhatsapp, text)} target="_blank" rel="noopener noreferrer" onClick={() => announceWhatsapp(what, booking)}>
@@ -82,15 +92,15 @@ export function BookingCard({ booking, now, roomName, showTurn = false, onChange
       ? <div className="grid gap-2">
         <label className="grid gap-1"><span className="font-semibold text-ink">Motivo (opcional)</span><input className={inputClass} value={note} maxLength={500} onChange={event => setNote(event.target.value)} /></label>
         <div className="flex flex-wrap gap-2">
-          <Button variant="danger" disabled={busy} onClick={() => void run("cancel")}>{busy ? "Cancelando…" : "Sí, cancelar la reserva"}</Button>
+          <Button variant="danger" disabled={busy} onClick={() => run("cancel")}>{busy ? "Cancelando…" : "Sí, cancelar la reserva"}</Button>
           <Button disabled={busy} onClick={() => setCancelling(false)}>No, volver</Button>
         </div>
       </div>
       : <div className="flex flex-wrap gap-2">
-        {actions.confirm && <Button variant="primary" disabled={busy} onClick={() => void run("confirm")}>Confirmar</Button>}
-        {actions.transfer && <Button variant="primary" disabled={busy} onClick={() => void run("transfer")} title={`Registra una transferencia de ${formatCents(booking.depositCents)} y confirma la reserva si el turno sigue libre.`}>{busy ? "Registrando…" : "Confirmar transferencia"}</Button>}
-        {actions.attendance && <Button variant="primary" disabled={busy} onClick={() => void run("complete")}>Asistió</Button>}
-        {actions.attendance && <Button disabled={busy} onClick={() => void run("no_show")}>No vino</Button>}
+        {actions.confirm && <Button variant="primary" disabled={busy} onClick={() => run("confirm")}>Confirmar</Button>}
+        {actions.transfer && <Button variant="primary" disabled={busy} onClick={() => run("transfer")} title={`Registra una transferencia de ${formatCents(booking.depositCents)} y confirma la reserva si el turno sigue libre.`}>{busy ? "Registrando…" : "Confirmar transferencia"}</Button>}
+        {actions.attendance && <Button variant="primary" disabled={busy} onClick={() => run("complete")}>Asistió</Button>}
+        {actions.attendance && <Button disabled={busy} onClick={() => run("no_show")}>No vino</Button>}
         {status === "confirmed" && whatsapp("Confirmación", confirmationMessage(message), "confirmación")}
         {(status === "confirmed" || status === "held" || status === "pending_transfer") && whatsapp("Recordatorio", reminderMessage(message), "recordatorio")}
         {status === "cancelled" && whatsapp("Avisar la cancelación", cancellationMessage(message), "cancelación")}

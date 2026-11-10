@@ -237,3 +237,16 @@ export function transition(booking: Booking, to: BookingStatus): Booking {
 **Solución.** Los componentes usan **tokens semánticos** (`bg-surface`, `text-ink`, `bg-accent`) definidos en `@theme`. Un **tema** es un bloque de `globals.css` que redefine los valores (`[data-theme="panel"] { … }`) y se activa con `data-theme` en la raíz del layout. Lo que cambia por sitio viene de la base y se aplica como variable en esa misma raíz (`--color-accent` desde `sites.options`).
 
 **Reglas.** Un componente nunca sabe en qué tema está. Se prueba cambiando `data-theme`. Un color guardado en la base debe cumplir contraste 4,5:1 con su texto. Detalle y valores actuales: [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md).
+
+## 19. Deshacer un cambio del panel
+
+**Problema.** Un cambio hecho por error en el panel (guardar, borrar, cancelar una reserva) no tenía vuelta atrás desde la pantalla.
+
+**Solución.** Todo cambio del panel termina con un aviso abajo que ofrece **Deshacer** (`shared/ui/undo.ts`). Hay dos formas, según lo que permita el cambio:
+
+- **`offerUndo`: se guarda ya y Deshacer guarda lo anterior.** Para lo que tiene opuesto: formularios, estados de comentarios, cierres de la agenda, reservas cargadas a mano (deshacer es cancelarla). Lo anterior se guarda **sobre la versión que hay ahora** (`revision` o `updated_at`), así que si alguien guardó en el medio el servidor lo rechaza y el aviso lo dice, en vez de pisarlo (patrón 4). Algo creado se borra; un plan o un código que alguien ya usó se desactiva en su lugar (`deleteUnusedPlan`, `deleteUnusedCode`).
+- **`deferChange`: espera unos segundos y recién ahí se manda.** Para lo que no se puede volver atrás en la base: acciones sobre reservas (confirmar, transferencia, asistió, no vino, cancelar), borrar recetas y comentarios (se llevan comentarios y visitas), quitar un destino de avisos, desconectar Mercado Pago. El aviso dice "Se va a…". Se manda al terminar la espera, cuando otro aviso lo reemplaza o al cerrar la página (`pagehide`, con `fetch` `keepalive`).
+
+El tiempo del aviso se detiene con el puntero o el foco encima (WCAG 2.2.1). Un solo aviso a la vez: el resultado de un cambio retenido no tapa el Deshacer de otro (`unlessAction`). `SaveForm` solo dice "Se guardó correctamente." si quien guardó no mostró su propio aviso (`toastCount`). La lógica está en `shared/ui/toast-store.ts`, con pruebas en `shared/ui/undo.test.ts`; `toast.tsx` solo la dibuja.
+
+**Cuándo no.** Iniciar sesión, activar este celular o vincular Telegram, mandar una prueba y subir imágenes: no cambian datos de un sitio, o ya tienen su forma de quitarse. Lo que hace la persona desde el sitio público tampoco.

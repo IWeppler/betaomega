@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 
-import { showToast } from "@/shared/ui/toast";
+import { showToast, toastCount } from "@/shared/ui/toast";
 
 type LeaveChoice = "save" | "discard" | "stay";
 
@@ -58,6 +58,8 @@ export function SaveForm({
   const submit = useCallback(async (): Promise<boolean> => {
     if (flight.current) return flight.current;
     if (pausedRef.current || !form.current) return false;
+    // Whoever saves may report it with its own notice and its "Deshacer": then this one stays quiet.
+    const before = toastCount();
     const pending = save.current(form.current).catch(() => false);
     flight.current = pending;
     setStatus("saving");
@@ -65,7 +67,7 @@ export function SaveForm({
     flight.current = null;
     if (success) { dirty.current = false; setModified(false); }
     setStatus(success ? "saved" : "error");
-    if (success) showToast("Se guardó correctamente.");
+    if (success && toastCount() === before) showToast("Se guardó correctamente.");
     return success;
   }, []);
   const leave = useCallback(async (): Promise<boolean> => {

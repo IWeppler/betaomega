@@ -59,6 +59,17 @@ test("cuentan como uso las reservas vigentes, de cada persona y en total", () =>
   assert.deepEqual(countUses(uses, null, NOW), { total: 3, byCustomer: 0 }, "alguien que todavía no es cliente no tiene usos");
 });
 
+test("un plan es un solo uso del código aunque cada turno lo lleve", () => {
+  const plan = [
+    { status: "confirmed", expiresAt: null, customerId: "ana", planPurchaseId: "p1" },
+    { status: "confirmed", expiresAt: null, customerId: "ana", planPurchaseId: "p1" },
+    { status: "cancelled", expiresAt: null, customerId: "ana", planPurchaseId: "p1" },
+    { status: "confirmed", expiresAt: null, customerId: "ana", planPurchaseId: null },
+  ] as const;
+  assert.deepEqual(countUses(plan, "ana", NOW), { total: 2, byCustomer: 2 });
+  assert.deepEqual(countUses(plan.slice(2), "ana", NOW), { total: 1, byCustomer: 1 }, "un turno cancelado no cuenta");
+});
+
 test("una reserva cancelada o vencida devuelve el uso del código", () => {
   const released = [
     { status: "cancelled", expiresAt: null, customerId: "ana" },

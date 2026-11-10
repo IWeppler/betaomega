@@ -119,7 +119,7 @@ function DeleteProduct({ product, words, onCancel, onDeleted }: { product: Produ
   const { busy, error } = usePanel();
   const { remove } = useProducts();
   return <EditorFrame title={`Eliminar ${product.name}`} onClose={onCancel}>
-    <p className="panel-muted">{words.The} se elimina del panel y del sitio. No se puede deshacer. Si solo querés ocultar{words.it}, desmarcá &quot;{words.Published} en el sitio&quot;.</p>
+    <p className="panel-muted">{words.The} se elimina del panel y del sitio. Podés deshacerlo desde el aviso que aparece abajo. Si solo querés ocultar{words.it}, desmarcá &quot;{words.Published} en el sitio&quot;.</p>
     {error && <div className="alert error" role="alert">{error}</div>}
     <div className="form-actions">
       <button className="button" disabled={busy} onClick={onCancel}>Cancelar</button>
