@@ -37,7 +37,7 @@ export default async function RecipesHome({ params }: Props) {
   const cuisines = recipeCuisines(recipes);
   return (
     <>
-      <SiteHeader name={site.name} siteId={site.id} />
+      <SiteHeader name={site.name} siteId={site.id} share />
       <main className="r-page">
         {cards.length ? (
           <Suspense fallback={<RecipeBrowser recipes={cards} types={types} cuisines={cuisines} initialFilters={noFilters} initialOrder="recientes" />}>

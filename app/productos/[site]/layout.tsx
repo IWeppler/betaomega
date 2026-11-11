@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { Atkinson_Hyperlegible, Barlow_Condensed } from "next/font/google";
 import { getDonation, productIcon, productSite, siteDescription } from "./brand";
-import { FooterActions, HeaderDonate } from "./site-actions";
+import { FooterActions, HeaderActions } from "./site-actions";
 import "./productos.css";
 
 // Barlow Condensed lets long product names stay big in capitals; Atkinson Hyperlegible for reading.
@@ -36,7 +36,7 @@ export default async function ProductSiteLayout({ children, params }: Props & { 
   if (!site?.products) notFound();
   const donation = await getDonation(site.id);
   return <div data-theme="productos" className={`productos ${display.variable} ${text.variable}`} style={{ "--p-accent": site.products.accent } as CSSProperties}>
-    <HeaderDonate donation={donation} />
+    <HeaderActions donation={donation} />
     {children}
     <footer className="p-foot"><FooterActions donation={donation} />© {new Date().getFullYear()} {site.name}.</footer>
   </div>;

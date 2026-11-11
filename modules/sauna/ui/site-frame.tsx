@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { Cinzel_Decorative } from "next/font/google";
+import { Share2 } from "lucide-react";
+import { ShareButton } from "@/shared/ui/share-button";
 import { Brand, CtaLink } from "./site-parts";
 import { SiteNav } from "./site-nav";
 import { SiteMotion } from "./site-motion";
@@ -22,8 +24,15 @@ export function SiteFrame({ siteName, home, termsHref, preview = false, children
       <div className="relative z-40"><Brand name={siteName} href={root} /></div>
       <div className="flex items-center gap-2 md:contents">
         <SiteNav home={home} />
-        {/* On a phone the hero's button is right below, and both would not fit next to the brand. */}
-        <div className="hidden sm:block"><CtaLink href={`${home}#reservar`} kind="overlay">Reservar una pausa</CtaLink></div>
+        {/* Before the menu button on a phone. */}
+        <div className="flex items-center gap-2 max-md:order-first">
+          {/* Always the home page: a reservation's or a plan's address is private to its owner. The preview is not public, so nothing to share. */}
+          {!preview && <ShareButton path={root} title={siteName} label="Compartir" className="grid size-control place-items-center rounded-control text-ink transition-opacity duration-150 hover:opacity-60">
+            <Share2 size={20} strokeWidth={1.5} aria-hidden="true" />
+          </ShareButton>}
+          {/* On a phone the hero's button is right below, and both would not fit next to the brand. */}
+          <div className="hidden sm:block"><CtaLink href={`${home}#reservar`} kind="overlay">Reservar una pausa</CtaLink></div>
+        </div>
       </div>
     </header>
     <main id="contenido" className="m-0 w-full max-w-none flex-1 p-0">{children}</main>

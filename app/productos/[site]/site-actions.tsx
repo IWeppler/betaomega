@@ -1,19 +1,22 @@
 "use client";
 
-import { DownloadSimple, Heart } from "@phosphor-icons/react";
+import { DownloadSimple, Heart, ShareNetwork } from "@phosphor-icons/react";
 import { useDonate, useInstall } from "@/app/recetas/[site]/site-hooks";
+import { ShareButton } from "@/shared/ui/share-button";
 
 /** After copying a Mercado Pago alias: the same message as the recipe sites. */
 function DonationNote({ alias }: { alias: string }) {
   return <p className="p-note" role="status">Alias copiado: <strong>{alias}</strong>. Pegalo en Mercado Pago y poné el monto que quieras: la donación es voluntaria. ¡Gracias!</p>;
 }
 
-/** The round heart at the top of every page. Nothing when the panel left donations empty. */
-export function HeaderDonate({ donation }: { donation: string }) {
+/** The round buttons at the top of every page: sharing the page being viewed and, when the panel set an alias, the heart for donating. */
+export function HeaderActions({ donation }: { donation: string }) {
   const { donate, copied } = useDonate(donation);
-  if (!donation) return null;
   return <div className="p-top">
-    <button type="button" className="p-heart" aria-label="Hacer una donación" title="Hacer una donación" onClick={() => void donate()}><Heart size={22} weight="bold" aria-hidden="true" /></button>
+    <div className="p-actions">
+      <ShareButton className="p-heart" label="Compartir"><ShareNetwork size={22} weight="bold" aria-hidden="true" /></ShareButton>
+      {donation && <button type="button" className="p-heart" aria-label="Hacer una donación" title="Hacer una donación" onClick={() => void donate()}><Heart size={22} weight="bold" aria-hidden="true" /></button>}
+    </div>
     {copied && <DonationNote alias={donation} />}
   </div>;
 }

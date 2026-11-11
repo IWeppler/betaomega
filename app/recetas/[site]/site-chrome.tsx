@@ -12,16 +12,17 @@ export { ShareButton, PrintButton };
 
 /**
  * Logo and name (a link home; each page has its own h1) and, with `siteId`, the site's actions on the right:
- * Instagram, donating and installing the app. Without `siteId` (error pages) only the brand shows.
+ * Instagram, donating and installing the app, and with `share` (the home page; a recipe shares itself) sharing the site.
+ * Without `siteId` (error pages) only the brand shows.
  */
-export async function SiteHeader({ name, siteId }: { name: string; siteId?: string }) {
+export async function SiteHeader({ name, siteId, share = false }: { name: string; siteId?: string; share?: boolean }) {
   const settings = siteId ? await getSettings(siteId) : undefined;
   return <header className="r-head">
     <Link href="/" className="r-brand" aria-label={`${name}, inicio`}>
       <span className="r-logo"><Image src={brand.logo} alt="" width={108} height={144} unoptimized priority /></span>
       <span className="r-wordmark">{name}</span>
     </Link>
-    {settings && <HeaderActions instagram={settings.instagram} donation={settings.donation ?? ""} />}
+    {settings && siteId && <HeaderActions instagram={settings.instagram} donation={settings.donation ?? ""} share={share ? { siteId, text: name } : undefined} />}
   </header>;
 }
 
