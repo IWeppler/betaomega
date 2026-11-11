@@ -1,0 +1,13 @@
+# Anchor local-only folders so modules/*/data remains part of the deployment.
+/data/
+/node_modules/
+/.next/
+/.git/
+/.agents/
+/.claude/
+/.codex/
+/.aws/
+/.env*
+/*.tsbuildinfo
+/skills-lock.json
+/AGENTS.md

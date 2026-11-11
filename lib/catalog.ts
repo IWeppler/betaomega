@@ -5,6 +5,8 @@ export type Plant = {
   categoryIds?: string[];
   /** Sale price in pesos. Optional: items without one show no price. */
   price?: number;
+  /** Reference price per kilogram, in whole cents. Independent of legacy retail presentations. */
+  pricePerKgCents?: number;
   /** What the price covers, e.g. "100 g" or "bolsita". */
   priceUnit?: string;
 } & StoreFields;
@@ -21,6 +23,12 @@ export type Preparation = {
   id: string; name: string; uses: string[]; aliases: string[];
   ingredients: { plantId: string; amount: string }[];
   instructions: string; warnings: string; notes: string; published: boolean;
+  /** Ordered preparation steps; instructions remains the compatibility text for existing readers. */
+  steps?: string[];
+  /** Enables automatic pricing for this weight. Absent on legacy manually priced tonics. */
+  presentationWeightGrams?: number;
+  /** Server-derived whole cents. price is the compatibility projection in pesos. */
+  calculatedPriceCents?: number;
   image?: string;
   categoryIds?: string[];
   /** Situations in which this tonic is not recommended (see avoidOptions). */
@@ -244,9 +252,19 @@ export function validateCatalog(value: unknown): asserts value is Catalog {
     if (item.categoryIds !== undefined && (!Array.isArray(item.categoryIds) || item.categoryIds.length > 50 || item.categoryIds.some(id => typeof id !== "string" || !categoryIds.has(id)) || new Set(item.categoryIds).size !== item.categoryIds.length)) fail("Categorías de la ficha inválidas.");
     ids.add(item.id);
   }
-  for (const plant of data.plants) { string(plant.scientificName); string(plant.properties); }
+  for (const plant of data.plants) {
+    string(plant.scientificName); string(plant.properties);
+    if (plant.pricePerKgCents !== undefined && (!Number.isSafeInteger(plant.pricePerKgCents) || plant.pricePerKgCents < 0 || plant.pricePerKgCents > 90_000_000_000_000)) fail("El precio por kilogramo debe ser un monto válido en centavos.");
+  }
   for (const prep of data.preparations) {
+    if (prep.calculatedPriceCents !== undefined && (!Number.isSafeInteger(prep.calculatedPriceCents) || prep.calculatedPriceCents < 0 || prep.calculatedPriceCents > 10000000000)) fail("El precio calculado debe estar expresado en centavos enteros válidos.");
+    if (prep.presentationWeightGrams !== undefined && (!Number.isSafeInteger(prep.presentationWeightGrams) || prep.presentationWeightGrams < 1 || prep.presentationWeightGrams > 1000000)) fail("El peso de la presentación debe ser un entero entre 1 y 1.000.000 gramos.");
     string(prep.instructions);
+    if (prep.steps !== undefined) {
+      if (!Array.isArray(prep.steps) || !prep.steps.length || prep.steps.length > 100) fail("Agregá entre 1 y 100 pasos de preparación.");
+      for (const step of prep.steps) string(step, true);
+      if (prep.instructions !== prep.steps.join("\n\n")) fail("La preparación no coincide con sus pasos.");
+    }
     if (prep.avoid !== undefined) { tags(prep.avoid); if (prep.avoid.some(a => a.length > 200) || new Set(prep.avoid.map(normalize)).size !== prep.avoid.length) fail("Datos de no recomendado inválidos."); }
     if (!Array.isArray(prep.ingredients) || !prep.ingredients.length || prep.ingredients.length > 100) fail("Elegí al menos una planta.");
     const seen = new Set<string>();

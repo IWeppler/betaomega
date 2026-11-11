@@ -33,8 +33,6 @@ export const ORDER_LIMITS = { name: 80, address: 200, note: 500 };
 
 const keyPattern = /^[pc]:[^\s]{1,100}$/;
 const clampQty = (qty: number) => Math.min(MAX_QTY, Math.max(0, Math.floor(qty)));
-// Rounds away float noise from prices with cents (0.1 + 0.2).
-const cents = (value: number) => Math.round(value * 100) / 100;
 
 /** Reads what localStorage holds. Anything malformed is dropped rather than trusted. */
 export function parseCart(raw: string | null | undefined): Cart {
@@ -80,11 +78,11 @@ export function resolveCart(cart: Cart, offers: Offer[]): ResolvedCart {
   for (const line of cart) {
     const offer = byKey.get(line.key);
     if (!offer) { removed.push(line.key); continue; }
-    lines.push({ ...line, name: offer.name, unit: offer.unit, ...(offer.price === undefined ? {} : { unitPrice: offer.price, subtotal: cents(offer.price * line.qty) }) });
+    lines.push({ ...line, name: offer.name, unit: offer.unit, ...(offer.price === undefined ? {} : { unitPrice: offer.price, subtotal: Math.round(offer.price * 100) * line.qty / 100 }) });
   }
   return {
     lines, removed, cart: lines.map(({ key, qty }) => ({ key, qty })),
-    total: cents(lines.reduce((sum, l) => sum + (l.subtotal ?? 0), 0)),
+    total: lines.reduce((sum, l) => sum + Math.round((l.subtotal ?? 0) * 100), 0) / 100,
     pending: lines.filter(l => l.subtotal === undefined).length,
   };
 }

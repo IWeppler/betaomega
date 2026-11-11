@@ -5,7 +5,7 @@ import { ArrowLeft, Check, Minus, Plus, ShoppingCart, Trash } from "@phosphor-ic
 import { WhatsappIcon } from "@/app/whatsapp-icon";
 import { Screen } from "@/app/screen";
 import { formatMoney } from "@/lib/catalog";
-import { MAX_LINES, MAX_QTY, ORDER_LIMITS, addToCart, canAdd, cartCount, orderMessage, orderUrl, parseCart, removeFromCart, resolveCart, setQty, validateOrder, type Offer, type OrderDetails } from "@/lib/cart";
+import { MAX_LINES, MAX_QTY, ORDER_LIMITS, addToCart, canAdd, cartCount, parseCart, removeFromCart, resolveCart, setQty, validateOrder, type Offer, type OrderDetails } from "@/lib/cart";
 import { getRemoved, getServerRemoved, getServerSnapshot, getSnapshot, setRemoved, subscribe, writeCart } from "./cart-store";
 
 type CartApi = { count: number; add: (key: string) => boolean; open: () => void };
@@ -13,7 +13,7 @@ const CartContext = createContext<CartApi | null>(null);
 const useCart = () => useContext(CartContext);
 
 /** Holds the cart for every store page. Prices come from `offers` (built on the server); the browser stores keys and quantities only. */
-export function CartProvider({ offers, whatsapp, pricesDate, children }: { offers: Offer[]; whatsapp: string; pricesDate: string; children: ReactNode }) {
+export function CartProvider({ siteId, offers, whatsapp, pricesDate, children }: { siteId: string; offers: Offer[]; whatsapp: string; pricesDate: string; children: ReactNode }) {
   const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const resolved = useMemo(() => resolveCart(parseCart(raw), offers), [raw, offers]);
   const [open, setOpen] = useState(false);
@@ -42,7 +42,7 @@ export function CartProvider({ offers, whatsapp, pricesDate, children }: { offer
     {children}
     <CartFab />
     {toast && <div className={`cart-toast${toast.problem ? " is-problem" : ""}`} role="alert">{toast.text}</div>}
-    {open && <CartPanel resolved={resolved} whatsapp={whatsapp} pricesDate={pricesDate} removedCount={removedCount} onDismissRemoved={() => setRemoved(0)} onClose={() => setOpen(false)} />}
+    {open && <CartPanel siteId={siteId} resolved={resolved} whatsapp={whatsapp} pricesDate={pricesDate} removedCount={removedCount} onDismissRemoved={() => setRemoved(0)} onClose={() => setOpen(false)} />}
   </CartContext.Provider>;
 }
 
@@ -78,62 +78,81 @@ export function AddButton({ offerKey, name, className = "" }: { offerKey: string
 
 const blankOrder = (): OrderDetails => ({ name: "", delivery: "pickup", address: "", note: "" });
 
-function CartPanel({ resolved, whatsapp, pricesDate, removedCount, onDismissRemoved, onClose }: { resolved: ReturnType<typeof resolveCart>; whatsapp: string; pricesDate: string; removedCount: number; onDismissRemoved: () => void; onClose: () => void }) {
+function CartPanel({ siteId, resolved, whatsapp, pricesDate, removedCount, onDismissRemoved, onClose }: { siteId: string; resolved: ReturnType<typeof resolveCart>; whatsapp: string; pricesDate: string; removedCount: number; onDismissRemoved: () => void; onClose: () => void }) {
   const [details, setDetails] = useState<OrderDetails>(blankOrder);
   const [attempted, setAttempted] = useState(false);
   const [warnedFor, setWarnedFor] = useState("");
+  const [verified, setVerified] = useState<{ url: string; tooLong: boolean; total: number; pending: number } | null>(null);
+  const [sending, setSending] = useState(false);
+  const [orderError, setOrderError] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
   const [step, setStep] = useState<"cart" | "details">("cart");
   const form = useRef<HTMLFormElement>(null);
   const errors = validateOrder(details);
   const shown = attempted ? errors : {};
-  const patch = (change: Partial<OrderDetails>) => setDetails(current => ({ ...current, ...change }));
+  const patch = (change: Partial<OrderDetails>) => { setDetails(current => ({ ...current, ...change })); setVerified(null); setWarnedFor(""); setOrderError(""); };
   const lines = resolved.lines;
-  const priced = lines.length - resolved.pending;
+  const pending = verified?.pending ?? resolved.pending;
+  const priced = lines.length - pending;
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
     setAttempted(true);
     if (Object.keys(errors).length) { requestAnimationFrame(() => form.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()); return; }
-    const { url, tooLong } = orderUrl(whatsapp, orderMessage(resolved, details));
-    // A very long link can fail to open on some phones: warn once, and let the customer open it anyway.
-    if (tooLong && warnedFor !== url) { setWarnedFor(url); return; }
-    window.open(url, "_blank", "noopener,noreferrer");
+    if (sending) return;
+    setSending(true);
+    setOrderError("");
+    // Open within the user gesture so mobile browsers allow the tab; sever the opener before navigating.
+    const popup = window.open("about:blank", "_blank");
+    if (popup) popup.opener = null;
+    try {
+      const response = await fetch(`/api/sites/${encodeURIComponent(siteId)}/herbal/order`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cart: resolved.cart, details }),
+      });
+      const quote = await response.json();
+      if (!response.ok) throw new Error(quote.error || "No pudimos verificar los precios.");
+      setVerified(quote);
+      if (quote.tooLong && warnedFor !== quote.url) { popup?.close(); setWarnedFor(quote.url); return; }
+      if (popup) popup.location.href = quote.url;
+    } catch (error) {
+      popup?.close(); setVerified(null); setOrderError(error instanceof Error ? error.message : "Intentá de nuevo.");
+    } finally { setSending(false); }
   };
-  const preview = whatsapp && lines.length && !Object.keys(errors).length ? orderUrl(whatsapp, orderMessage(resolved, details)) : undefined;
 
   const inDetails = step === "details" && lines.length > 0;
   return <Screen title={inDetails ? "Tus datos" : "Tu carrito"} onClose={onClose}>
     {removedCount > 0 && <div className="alert warn" role="status"><span>Quitamos del carrito {removedCount === 1 ? "1 producto que ya no está disponible" : `${removedCount} productos que ya no están disponibles`}.</span><button type="button" aria-label="Cerrar aviso" onClick={onDismissRemoved}>Entendido</button></div>}
     {!lines.length ? <><p className="screen-intro">Tu carrito está vacío. Agregá productos desde el catálogo y armá tu pedido.</p><button type="button" className="button primary" onClick={onClose}>Ver el catálogo</button></> : inDetails ? <>
-      <button type="button" className="button back-button" onClick={() => setStep("cart")}><ArrowLeft size={20} aria-hidden="true" />Volver al carrito</button>
+      <button type="button" className="button back-button" disabled={sending} onClick={() => { setVerified(null); setWarnedFor(""); setStep("cart"); }}><ArrowLeft size={20} aria-hidden="true" />Volver al carrito</button>
       <div className="cart-total" role="status">
-        <p><span>{resolved.cart.length === 1 ? "1 producto" : `${resolved.cart.length} productos`}</span><strong>{priced ? formatMoney(resolved.total) : "A confirmar"}</strong></p>
-        {resolved.pending > 0 && <small>{priced ? "Los productos sin precio se confirman por WhatsApp." : "Los precios se confirman por WhatsApp."}</small>}
+        <p><span>{resolved.cart.length === 1 ? "1 producto" : `${resolved.cart.length} productos`}</span><strong>{priced ? formatMoney(verified?.total ?? resolved.total) : "A confirmar"}</strong></p>
+        {pending > 0 && <small>{priced ? "Los productos sin precio se confirman por WhatsApp." : "Los precios se confirman por WhatsApp."}</small>}
       </div>
       <form ref={form} className="order-form" onSubmit={submit} noValidate>
         <h3>Datos del pedido</h3>
         <label className="field"><span>Tu nombre<span className="required-tag">Obligatorio</span></span>
-          <input name="name" value={details.name} maxLength={ORDER_LIMITS.name + 20} autoComplete="name" aria-invalid={Boolean(shown.name)} aria-describedby={shown.name ? "order-name-error" : undefined} onChange={e => patch({ name: e.target.value })} />
+          <input name="name" disabled={sending} value={details.name} maxLength={ORDER_LIMITS.name + 20} autoComplete="name" aria-invalid={Boolean(shown.name)} aria-describedby={shown.name ? "order-name-error" : undefined} onChange={e => patch({ name: e.target.value })} />
           {shown.name && <small className="field-error" id="order-name-error">{shown.name}</small>}
         </label>
         <fieldset className="order-delivery" aria-describedby={shown.delivery ? "order-delivery-error" : undefined}>
           <legend>¿Cómo lo recibís?</legend>
-          <label className="check"><input type="radio" name="delivery" checked={details.delivery === "pickup"} onChange={() => patch({ delivery: "pickup" })} />Retiro en el local</label>
-          <label className="check"><input type="radio" name="delivery" checked={details.delivery === "delivery"} onChange={() => patch({ delivery: "delivery" })} />Envío</label>
+          <label className="check"><input type="radio" disabled={sending} name="delivery" checked={details.delivery === "pickup"} onChange={() => patch({ delivery: "pickup" })} />Retiro en el local</label>
+          <label className="check"><input type="radio" disabled={sending} name="delivery" checked={details.delivery === "delivery"} onChange={() => patch({ delivery: "delivery" })} />Envío</label>
           {shown.delivery && <small className="field-error" id="order-delivery-error">{shown.delivery}</small>}
         </fieldset>
         {details.delivery === "delivery" && <label className="field"><span>Dirección de envío<span className="required-tag">Obligatorio</span></span>
-          <input name="address" value={details.address} maxLength={ORDER_LIMITS.address + 20} autoComplete="street-address" aria-invalid={Boolean(shown.address)} aria-describedby={shown.address ? "order-address-error" : undefined} onChange={e => patch({ address: e.target.value })} />
+          <input name="address" disabled={sending} value={details.address} maxLength={ORDER_LIMITS.address + 20} autoComplete="street-address" aria-invalid={Boolean(shown.address)} aria-describedby={shown.address ? "order-address-error" : undefined} onChange={e => patch({ address: e.target.value })} />
           {shown.address && <small className="field-error" id="order-address-error">{shown.address}</small>}
         </label>}
         <label className="field"><span>Nota (opcional)</span>
-          <textarea name="note" rows={3} value={details.note} maxLength={ORDER_LIMITS.note + 50} aria-invalid={Boolean(shown.note)} aria-describedby={shown.note ? "order-note-error" : undefined} onChange={e => patch({ note: e.target.value })} />
+          <textarea name="note" disabled={sending} rows={3} value={details.note} maxLength={ORDER_LIMITS.note + 50} aria-invalid={Boolean(shown.note)} aria-describedby={shown.note ? "order-note-error" : undefined} onChange={e => patch({ note: e.target.value })} />
           {shown.note && <small className="field-error" id="order-note-error">{shown.note}</small>}
         </label>
         {!whatsapp ? <div className="alert warn" role="status"><span>Esta tienda todavía no cargó su número de WhatsApp, así que por ahora no podemos recibir pedidos por acá. Podés consultar por las redes o acercarte al local.</span></div> : <>
-          {preview && warnedFor === preview.url && <div className="alert warn" role="alert"><span>Tu pedido es muy largo y puede que WhatsApp no lo abra. Te conviene dividirlo en dos pedidos. Si querés, podés intentar abrirlo igual.</span></div>}
-          <button className="button primary full order-send" type="submit"><WhatsappIcon size={22} />{preview && warnedFor === preview.url ? "Abrir WhatsApp igual" : "Pedir por WhatsApp"}</button>
+          {verified?.tooLong && warnedFor === verified.url && <div className="alert warn" role="alert"><span>Tu pedido es muy largo y puede que WhatsApp no lo abra. Te conviene dividirlo en dos pedidos. Si querés, podés intentar abrirlo igual.</span></div>}
+          {orderError && <p className="text-danger" role="alert">{orderError}</p>}
+          <button className="button primary full order-send" type="submit" disabled={sending}><WhatsappIcon size={22} />{sending ? "Verificando precios…" : verified?.tooLong && warnedFor === verified.url ? "Abrir WhatsApp igual" : "Pedir por WhatsApp"}</button>
+          {verified && (!verified.tooLong || warnedFor === verified.url) && <a className="block py-2 text-center underline" href={verified.url} target="_blank" rel="noopener noreferrer">Si no se abrió, abrí tu pedido en WhatsApp</a>}
           <small className="order-hint">Se abre WhatsApp con tu pedido listo. Vos lo enviás desde ahí.</small>
         </>}
       </form>

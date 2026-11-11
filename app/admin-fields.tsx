@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { storeToday, type Plant, type Preparation } from "@/lib/catalog";
+import type { Plant, Preparation } from "@/lib/catalog";
 
 // Form pieces shared by the panel and the team page.
 export const proportions = [
@@ -59,7 +59,9 @@ export const parsePrice = (value: string) => {
 };
 export function PriceFields({
   item,
+  automatic = false,
 }: {
+  automatic?: boolean;
   item: {
     price?: number;
     priceUnit?: string;
@@ -69,28 +71,32 @@ export function PriceFields({
   };
 }) {
   const [price, setPrice] = useState(String(item.price ?? ""));
-  const [promo, setPromo] = useState(String(item.promoPrice ?? ""));
-  const [until, setUntil] = useState(item.promoUntil ?? "");
-  const base = parsePrice(price);
-  const sale = parsePrice(promo);
-  // Saved anyway (so lowering prices in bulk never blocks a save), but it does not apply.
-  const promoWarning =
-    sale === undefined
-      ? ""
-      : base === undefined
-        ? "Esta oferta no se aplica porque el producto no tiene precio."
-        : sale >= base
-          ? "Esta oferta no se aplica: tiene que ser menor al precio de venta."
-          : until && until < storeToday()
-            ? "Esta oferta ya venció: no se muestra en la tienda."
-            : "";
+  // Offer price and "offer valid until" are hidden from the UI for now (tonics and herbs).
+  // Saved offers are kept untouched by the editors and still apply in the shop.
+  // const [promo, setPromo] = useState(String(item.promoPrice ?? ""));
+  // const [until, setUntil] = useState(item.promoUntil ?? "");
+  // const base = parsePrice(price);
+  // const sale = parsePrice(promo);
+  // // Saved anyway (so lowering prices in bulk never blocks a save), but it does not apply.
+  // const promoWarning = automatic
+  //   ? ""
+  //   : sale === undefined
+  //     ? ""
+  //     : base === undefined
+  //       ? "Esta oferta no se aplica porque el producto no tiene precio."
+  //       : sale >= base
+  //         ? "Esta oferta no se aplica: tiene que ser menor al precio de venta."
+  //         : until && until < storeToday()
+  //           ? "Esta oferta ya venció: no se muestra en la tienda."
+  //           : "";
   return (
     <>
-      <div className="form-grid">
+      <div className={automatic ? "hidden" : "form-grid"}>
         <label className="field">
           <span>Precio de venta ($)</span>
           <input
             name="price"
+            disabled={automatic}
             type="number"
             inputMode="decimal"
             min={0}
@@ -104,6 +110,7 @@ export function PriceFields({
           <span>El precio es por</span>
           <input
             name="priceUnit"
+            disabled={automatic}
             defaultValue={item.priceUnit ?? ""}
             maxLength={50}
             placeholder="Ej: 100 g, bolsita"
@@ -111,42 +118,24 @@ export function PriceFields({
           <small>Opcional. Sin precio, la ficha no muestra ninguno.</small>
         </label>
       </div>
+      {/* Offer fields hidden for now:
       <div className="form-grid">
         <label className="field">
           <span>Precio de oferta ($)</span>
-          <input
-            name="promoPrice"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="any"
-            value={promo}
-            onChange={(e) => setPromo(e.target.value)}
-            placeholder="Opcional"
-            aria-describedby="promo-hint"
-          />
+          <input name="promoPrice" type="number" inputMode="decimal" min={0} step="any" value={promo} onChange={(e) => setPromo(e.target.value)} placeholder="Opcional" aria-describedby="promo-hint" />
           <small id="promo-hint" className={promoWarning ? "field-warning" : undefined}>
-            {promoWarning ||
-              "Opcional. Se muestra el precio normal tachado. Solo aplica a compras sueltas, no dentro de un combo."}
+            {promoWarning || (automatic ? "La oferta se compara con el precio calculado al guardar." : "Opcional. Se muestra el precio normal tachado. Solo aplica a compras sueltas, no dentro de un combo.")}
           </small>
         </label>
         <label className="field">
           <span>Oferta válida hasta</span>
-          <input
-            name="promoUntil"
-            type="date"
-            value={until}
-            onChange={(e) => setUntil(e.target.value)}
-          />
-          <small>Último día de la oferta. Vacío: sin fecha de fin.</small>
+          <input name="promoUntil" type="date" value={until} onChange={(e) => setUntil(e.target.value)} />
+          <small>Vacío: sin fecha de fin.</small>
         </label>
       </div>
+      */}
       <label className="check store-visible">
-        <input
-          type="checkbox"
-          name="visible"
-          defaultChecked={!item.hidden}
-        />
+        <input type="checkbox" name="visible" defaultChecked={!item.hidden} />
         Visible en la tienda
       </label>
     </>

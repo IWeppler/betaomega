@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, CaretDown, Check, Funnel, Leaf, MagnifyingGlass, WarningCircle, X } from "@phosphor-icons/react";
 import { CatalogImage } from "./catalog-image";
-import { avoidOptions, formatPrice, getAvoidOptions, categoryOptions, getCategories, itemCategories, type Catalog, type Plant, type Preparation } from "@/lib/catalog";
+import { avoidOptions, getAvoidOptions, categoryOptions, getCategories, itemCategories, type Catalog, type Plant, type Preparation } from "@/lib/catalog";
 
 type Props = {
+  PriceDisplay: ComponentType<{ item: Plant | Preparation }>;
   selectedId?: string; catalog: Catalog | null; query: string; onQuery: (query: string) => void;
   results: Preparation[]; herbs: Plant[]; onOpenHerb: (plant: Plant) => void;
   isDraft: (id: string) => boolean; onOpen: (prep: Preparation) => void;
@@ -19,7 +20,7 @@ function Thumbnail({ image, name, tonic = false }: { image?: string; name: strin
   return <span className={`catalog-thumb${tonic ? " tonic-thumb" : ""}`}><Leaf size={25} weight={tonic ? "duotone" : "regular"} aria-hidden="true" /><CatalogImage image={image} name={name} /></span>;
 }
 
-export function Finder({ catalog, query, onQuery, results, herbs, onOpenHerb, isDraft, onOpen, profile, onProfile, onExit, selectedId }: Props) {
+export function Finder({ catalog, query, onQuery, results, herbs, onOpenHerb, isDraft, onOpen, profile, onProfile, onExit, selectedId, PriceDisplay }: Props) {
   const [kind, setKind] = useState<"all" | "tonics" | "herbs">("all");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -56,8 +57,8 @@ export function Finder({ catalog, query, onQuery, results, herbs, onOpenHerb, is
 
       <div className="seller-results" aria-live="polite" aria-busy={!catalog}>
         {!catalog && <p className="seller-loading" role="status">Cargando el catálogo…</p>}
-        {catalog && preparations.length > 0 && <><h3 className="catalog-group-label">Tónicos <span>{preparations.length}</span></h3><ul className="seller-catalog-list">{preparations.map(prep => <li key={prep.id}><button aria-current={selectedId === prep.id ? "true" : undefined} className="seller-catalog-row" onClick={() => onOpen(prep)}><Thumbnail image={prep.image} name={prep.name} tonic /><span className="seller-row-copy"><strong>{prep.name}</strong>{isDraft(prep.id) && <span className="seller-row-warning">Borrador · vista previa</span>}{formatPrice(prep) && <span className="price-tag">{formatPrice(prep)}</span>}</span><ArrowUpRight className="seller-row-arrow" size={18} aria-hidden="true" /></button></li>)}</ul></>}
-        {catalog && plants.length > 0 && <><h3 className="catalog-group-label">Hierbas <span>{plants.length}</span></h3><ul className="seller-catalog-list">{plants.map(plant => <li key={plant.id}><button aria-current={selectedId === plant.id ? "true" : undefined} className="seller-catalog-row" onClick={() => onOpenHerb(plant)}><Thumbnail image={plant.image} name={plant.name} /><span className="seller-row-copy"><strong>{plant.name}</strong><span className="seller-row-description">{plant.scientificName || "Hierba individual"}</span><span className="seller-row-tags">{plant.uses.slice(0, 3).map(use => <span key={use}>{use}</span>)}</span>{formatPrice(plant) && <span className="price-tag">{formatPrice(plant)}</span>}</span><ArrowUpRight className="seller-row-arrow" size={18} aria-hidden="true" /></button></li>)}</ul></>}
+        {catalog && preparations.length > 0 && <><h3 className="catalog-group-label">Tónicos <span>{preparations.length}</span></h3><ul className="seller-catalog-list">{preparations.map(prep => <li key={prep.id}><button aria-current={selectedId === prep.id ? "true" : undefined} className="seller-catalog-row" onClick={() => onOpen(prep)}><Thumbnail image={prep.image} name={prep.name} tonic /><span className="seller-row-copy"><strong>{prep.name}</strong>{isDraft(prep.id) && <span className="seller-row-warning">Borrador · vista previa</span>}<PriceDisplay item={prep} /></span><ArrowUpRight className="seller-row-arrow" size={18} aria-hidden="true" /></button></li>)}</ul></>}
+        {catalog && plants.length > 0 && <><h3 className="catalog-group-label">Hierbas <span>{plants.length}</span></h3><ul className="seller-catalog-list">{plants.map(plant => <li key={plant.id}><button aria-current={selectedId === plant.id ? "true" : undefined} className="seller-catalog-row" onClick={() => onOpenHerb(plant)}><Thumbnail image={plant.image} name={plant.name} /><span className="seller-row-copy"><strong>{plant.name}</strong><span className="seller-row-description">Hierba individual</span><span className="seller-row-tags">{plant.uses.slice(0, 3).map(use => <span key={use}>{use}</span>)}</span><PriceDisplay item={plant} /></span><ArrowUpRight className="seller-row-arrow" size={18} aria-hidden="true" /></button></li>)}</ul></>}
         {catalog && !preparations.length && !plants.length && <div className="seller-empty"><h3>No encontramos fichas{query ? ` para “${query}”` : ""}.</h3><p>{hidden > 0 ? "Hay tónicos ocultos por la situación del cliente." : "Probá otra palabra o cambiá el tipo de resultado."}</p><button onClick={() => { setKind("all"); updateQuery(""); }}>Ver todo el catálogo</button></div>}
       </div>
     </section>

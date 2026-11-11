@@ -120,9 +120,6 @@ export default async function ProductPage({
             {tonic ? "Tónico" : "Hierba"} <span>{entry.categoryLabel}</span>
           </p>
           <h1>{entry.name}</h1>
-          {!tonic && plant.scientificName && (
-            <p className="detail-scientific">{plant.scientificName}</p>
-          )}
           {entry.price ? (
             <p className="detail-price">
               {entry.regularPrice && (

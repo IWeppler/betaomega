@@ -13,6 +13,7 @@ Por ahora casi todo es una **fachada**: reexporta el código legado sin moverlo,
 | `@/platform/auth/server` | Servidor | `isAdmin`, `sameOrigin`, `equal`. |
 | `@/platform/panel` | Pantallas del panel | `SaveForm`, `PageHeader`, `PanelContext`, `useSite`, `usePanel`, herramientas de lista y los tipos del registro del panel. |
 | `@/platform/money` | Cliente y servidor | Centavos, `percentOf` (el redondeo único), `formatCents` y la lectura de precios escritos por una persona (`centsFromPesos`, `pesosFromCents`). No es fachada: es código propio y puro. Desde `domain/` se importa por ruta relativa con extensión `.ts`. |
+| `@/platform/catalog` | Cliente y servidor | Tipos, validación, datos iniciales y reglas de visualización del catálogo existente. La adaptación valida documentos por esta entrada. `@/platform/catalog/store` expone los adaptadores de tienda/carrito para el servidor y las pruebas; `@/platform/catalog/server` expone `readCatalog` con `server-only`. Los componentes cliente usan solo la entrada principal. |
 
 | `platform/notifications` | Cliente y servidor | Avisos del panel ([tareas-notificaciones.md](../docs/tareas-notificaciones.md)): eventos, textos y enlaces, filtro por sitio y códigos para vincular Telegram. Código propio y puro, como `money`. `@/platform/notifications/server` (servidor): `notify()` para avisar después de responder y `sendNotice()` para mandar ya. |
 

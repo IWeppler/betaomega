@@ -13,6 +13,12 @@
       "skillPath": "skills/taste-skill/SKILL.md",
       "computedHash": "899b84384f74f540ea5284d9b2e9234e050998b42eacc805410b518d4226c0b3"
     },
+    "emil-design-eng": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "74e0ede3a72c476a4c293e1e34d75fa1713f83bdc5c6c1cd76f1002fc564ecc6"
+    },
     "frontend-design": {
       "source": "anthropics/skills",
       "sourceType": "github",
