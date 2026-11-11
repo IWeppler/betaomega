@@ -88,7 +88,8 @@ const eslintConfig = defineConfig([
   { rules: { "import/no-restricted-paths": ["error", { basePath: root, zones }] } },
   {
     files: legacyFiles,
-    ignores: ["app/panel/*/kinds.tsx", "app/panel/*/page.tsx"],
+    // These route entry points compose herbal controls and server pricing with the existing catalogue, without moving legacy code.
+    ignores: ["app/panel/*/kinds.tsx", "app/panel/*/page.tsx", "app/panel/*/hierbas/page.tsx", "app/panel/*/tonicos/page.tsx", "app/api/catalog/route.ts", "app/herboristeria/*/(tienda)/get-shop.ts", "app/herboristeria/*/equipo/page.tsx"],
     rules: { "no-restricted-imports": ["error", { patterns: [{ regex: "(^|/)modules(/|$)", message: "El código existente no importa de modules/ (docs/ARCHITECTURE.md §4.2)." }] }] },
   },
   // Tailwind silently ignores a misspelt class. Only for new code: in the legacy folders every class of their own CSS would count as unknown.

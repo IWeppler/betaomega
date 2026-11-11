@@ -1,4 +1,5 @@
 "use client";
+import { IngredientOrder, PreparationSteps, FormulaPricing } from "@/modules/herbal/ui";
 
 import { useState, type ChangeEvent } from "react";
 import { Flask, Plus, UploadSimple, X } from "@phosphor-icons/react";
@@ -29,7 +30,7 @@ export default function TonicsPage() {
   };
   const side = report ? <ImportPanel report={report} busy={busy} error={error} onCancel={() => setReport(null)} onConfirm={async () => { if (await save(report.catalog)) setReport(null); }} />
     : selection?.mode === "delete" ? <DeleteConfirm item={selection.item} onCancel={() => setSelection({ item: selection.item, mode: "edit" })} onDeleted={() => setSelection(null)} />
-    : selection ? <TonicEditor key={selection.item.id} tonic={selection.item} onSaved={item => setSelection({ item, mode: "edit" })} onClose={() => void select(null)} onDelete={catalog.preparations.some(p => p.id === selection.item.id) ? () => void select({ item: selection.item, mode: "delete" }) : undefined} />
+    : selection ? <TonicEditor FormulaPricing={FormulaPricing} IngredientOrder={IngredientOrder} PreparationSteps={PreparationSteps} key={selection.item.id} tonic={selection.item} onSaved={item => setSelection({ item, mode: "edit" })} onClose={() => void select(null)} onDelete={catalog.preparations.some(p => p.id === selection.item.id) ? () => void select({ item: selection.item, mode: "delete" }) : undefined} />
     : null;
   return <>
     <PageHeader title="Tónicos" description={`${catalog.preparations.length} tónicos. Los borradores no los ve el equipo.`} actions={<>
@@ -44,7 +45,7 @@ export default function TonicsPage() {
           <tbody>{shown.map(item => <tr key={item.id} aria-selected={selection?.item.id === item.id}>
             <th scope="row"><button className="panel-row-button" disabled={busy} onClick={() => { setReport(null); void select({ item, mode: "edit" }); }}><Flask size={16} aria-hidden="true" /><span>{item.name}</span><StatusBadges item={item} /></button></th>
             <td className="is-num">{item.ingredients.length}</td>
-            <td className="is-num">{formatPrice(item) || <span className="panel-muted">Sin precio</span>}</td>
+            <td className="is-num">{formatPrice(item) || <span className="panel-muted inline-block whitespace-normal text-xs leading-tight">{item.presentationWeightGrams === undefined ? "Sin precio" : "Pendiente de calcular"}</span>}</td>
           </tr>)}</tbody>
         </table>}</Paged>}
         {!rows.length && <EmptyState title={filter ? "No encontramos ese tónico" : "Todavía no hay tónicos"} text={filter ? "Probá con otro nombre." : "Creá un tónico o importá varios desde un archivo CSV."} />}

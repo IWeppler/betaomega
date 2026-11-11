@@ -59,7 +59,9 @@ export const parsePrice = (value: string) => {
 };
 export function PriceFields({
   item,
+  automatic = false,
 }: {
+  automatic?: boolean;
   item: {
     price?: number;
     priceUnit?: string;
@@ -74,8 +76,9 @@ export function PriceFields({
   const base = parsePrice(price);
   const sale = parsePrice(promo);
   // Saved anyway (so lowering prices in bulk never blocks a save), but it does not apply.
-  const promoWarning =
-    sale === undefined
+  const promoWarning = automatic
+    ? ""
+    : sale === undefined
       ? ""
       : base === undefined
         ? "Esta oferta no se aplica porque el producto no tiene precio."
@@ -86,11 +89,12 @@ export function PriceFields({
             : "";
   return (
     <>
-      <div className="form-grid">
+      <div className={automatic ? "hidden" : "form-grid"}>
         <label className="field">
           <span>Precio de venta ($)</span>
           <input
             name="price"
+            disabled={automatic}
             type="number"
             inputMode="decimal"
             min={0}
@@ -104,6 +108,7 @@ export function PriceFields({
           <span>El precio es por</span>
           <input
             name="priceUnit"
+            disabled={automatic}
             defaultValue={item.priceUnit ?? ""}
             maxLength={50}
             placeholder="Ej: 100 g, bolsita"
@@ -125,9 +130,14 @@ export function PriceFields({
             placeholder="Opcional"
             aria-describedby="promo-hint"
           />
-          <small id="promo-hint" className={promoWarning ? "field-warning" : undefined}>
+          <small
+            id="promo-hint"
+            className={promoWarning ? "field-warning" : undefined}
+          >
             {promoWarning ||
-              "Opcional. Se muestra el precio normal tachado. Solo aplica a compras sueltas, no dentro de un combo."}
+              (automatic
+                ? "La oferta se compara con el precio calculado al guardar."
+                : "Opcional. Se muestra el precio normal tachado. Solo aplica a compras sueltas, no dentro de un combo.")}
           </small>
         </label>
         <label className="field">
@@ -138,15 +148,11 @@ export function PriceFields({
             value={until}
             onChange={(e) => setUntil(e.target.value)}
           />
-          <small>Último día de la oferta. Vacío: sin fecha de fin.</small>
+          <small>Vacío: sin fecha de fin.</small>
         </label>
       </div>
       <label className="check store-visible">
-        <input
-          type="checkbox"
-          name="visible"
-          defaultChecked={!item.hidden}
-        />
+        <input type="checkbox" name="visible" defaultChecked={!item.hidden} />
         Visible en la tienda
       </label>
     </>

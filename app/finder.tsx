@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import { Calculator, Check, Copy, Printer, WarningCircle } from "@phosphor-icons/react";
 import { Screen } from "./screen";
-import { avoidOptions, formatPrice, type Catalog, type Plant, type Preparation } from "@/lib/catalog";
+import { avoidOptions, type Catalog, type Plant, type Preparation } from "@/lib/catalog";
 import { CatalogImage } from "./catalog-image";
 import { WhatsAppShare } from "./whatsapp-share";
 import { partsOf, grams, recipeText, herbText } from "@/lib/recipe";
 
 const avoidLabel = (id: string) => avoidOptions.find(o => o.id === id)?.label ?? id;
 
-export function TonicDetail({ prep, catalog, plantName, preview, profile, onClose, onEdit, inline = false }: { prep: Preparation; catalog: Catalog | null; plantName: (id: string) => string; preview: boolean; profile: string[]; inline?: boolean; onClose: () => void; onEdit?: () => void }) {
+export function TonicDetail({ prep, catalog, plantName, preview, profile, onClose, onEdit, inline = false, PriceDisplay }: { prep: Preparation; catalog: Catalog | null; plantName: (id: string) => string; preview: boolean; profile: string[]; inline?: boolean; onClose: () => void; onEdit?: () => void; PriceDisplay: ComponentType<{ item: Plant | Preparation; partial?: boolean }> }) {
   const [calculating, setCalculating] = useState(false);
-  const [total, setTotal] = useState(100);
+  const [total, setTotal] = useState(prep.presentationWeightGrams ?? 1000);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
   const [selected, setSelected] = useState(prep.ingredients.map(i => i.plantId));
@@ -36,7 +36,7 @@ export function TonicDetail({ prep, catalog, plantName, preview, profile, onClos
 
   return <Screen title={prep.name} onClose={onClose} inline={inline}>
     <CatalogImage image={prep.image} name={prep.name} className="detail-image" />
-    {formatPrice(prep) && <p className="price-tag detail-price">{formatPrice(prep)}</p>}
+    <PriceDisplay item={prep} partial={partial} />
     {preview && <p className="preview-note no-print">Vista previa del administrador. Revisá esta ficha antes de habilitarla.</p>}
     <section className="warning-panel" aria-labelledby="warn-title">
       <h3 id="warn-title"><WarningCircle size={30} weight="fill" aria-hidden="true" />Advertencias</h3>
@@ -58,7 +58,7 @@ export function TonicDetail({ prep, catalog, plantName, preview, profile, onClos
           <label htmlFor="calc-total">Cantidad total de la mezcla (gramos)</label>
           <div className="calc-row">
             <input id="calc-total" type="number" inputMode="decimal" min={1} max={100000} value={total || ""} onChange={e => setTotal(Math.max(0, Number(e.target.value)))} />
-            {[50, 100, 250, 500].map(v => <button key={v} className="chip small" aria-pressed={total === v} onClick={() => setTotal(v)}>{v} g</button>)}
+            {[100, 250, 500, 1000].map(v => <button key={v} className="chip small" aria-pressed={total === v} onClick={() => setTotal(v)}>{v === 1000 ? "1 kg" : `${v} g`}</button>)}
             <button className="button" onClick={() => setCalculating(false)}>Ocultar</button>
           </div>
         </>}
@@ -67,7 +67,7 @@ export function TonicDetail({ prep, catalog, plantName, preview, profile, onClos
     <section>
       <h3>Preparación</h3>
       {partial && <p className="section-note">Esta es la preparación del tónico completo. Al compartir una selección, indicá su preparación abajo.</p>}
-      <p className={partial ? "prose no-print" : "prose"}>{prep.instructions || "El dueño todavía debe completar las indicaciones."}</p>
+      {prep.steps?.length ? <ol className={`list-decimal space-y-2 pl-5 ${partial ? "no-print" : ""}`}>{prep.steps.map((step, index) => <li key={index} className="whitespace-pre-wrap">{step}</li>)}</ol> : <p className={partial ? "prose no-print" : "prose"}>{prep.instructions || "El dueño todavía debe completar las indicaciones."}</p>}
       {partial && <p className="prose print-only">{customInstructions || "Preparación de la selección pendiente de confirmar."}</p>}
       {partial && <label className="field custom-preparation"><span>Preparación para las hierbas seleccionadas</span><textarea rows={4} maxLength={10000} value={customInstructions} onChange={e => setCustomInstructions(e.target.value)} placeholder="Escribí las indicaciones confirmadas para esta selección." /></label>}
     </section>
@@ -82,7 +82,7 @@ export function TonicDetail({ prep, catalog, plantName, preview, profile, onClos
   </Screen>;
 }
 
-export function HerbDetail({ plant, onClose, onEdit, inline = false }: { plant: Plant; inline?: boolean; onClose: () => void; onEdit?: () => void }) {
-  return <Screen title={plant.name} onClose={onClose} inline={inline}><CatalogImage image={plant.image} name={plant.name} className="detail-image" />{formatPrice(plant) && <p className="price-tag detail-price">{formatPrice(plant)}</p>}{plant.scientificName && <p className="section-note"><em>{plant.scientificName}</em></p>}<section className="warning-panel"><h3><WarningCircle size={30} weight="fill" aria-hidden="true" />Advertencias</h3><p>{plant.warnings || "No hay advertencias cargadas. Confirmá con el dueño antes de orientar al cliente."}</p></section><section><h3>Propiedades</h3><p className="prose">{plant.properties || "Sin propiedades cargadas."}</p></section><section><h3>Usos tradicionales y formas de uso</h3>{plant.uses.length ? <ul className="use-list">{plant.uses.map(use => <li key={use}>{use}</li>)}</ul> : <p>Sin usos cargados.</p>}</section>{plant.notes && <section className="no-print"><h3>Notas internas</h3><p className="prose">{plant.notes}</p></section>}<WhatsAppShare message={herbText(plant)} /><div className="detail-actions no-print"><button className="button" onClick={() => window.print()}><Printer size={20} aria-hidden="true" />Imprimir</button>{onEdit && <button className="button" onClick={onEdit}>Editar hierba</button>}</div></Screen>;
+export function HerbDetail({ plant, onClose, onEdit, inline = false, PriceDisplay }: { plant: Plant; inline?: boolean; onClose: () => void; onEdit?: () => void; PriceDisplay: ComponentType<{ item: Plant | Preparation }> }) {
+  return <Screen title={plant.name} onClose={onClose} inline={inline}><CatalogImage image={plant.image} name={plant.name} className="detail-image" /><PriceDisplay item={plant} />{plant.scientificName && <p className="section-note"><em>{plant.scientificName}</em></p>}<section className="warning-panel"><h3><WarningCircle size={30} weight="fill" aria-hidden="true" />Advertencias</h3><p>{plant.warnings || "No hay advertencias cargadas. Confirmá con el dueño antes de orientar al cliente."}</p></section><section><h3>Propiedades</h3><p className="prose">{plant.properties || "Sin propiedades cargadas."}</p></section><section><h3>Usos tradicionales y formas de uso</h3>{plant.uses.length ? <ul className="use-list">{plant.uses.map(use => <li key={use}>{use}</li>)}</ul> : <p>Sin usos cargados.</p>}</section>{plant.notes && <section className="no-print"><h3>Notas internas</h3><p className="prose">{plant.notes}</p></section>}<WhatsAppShare message={herbText(plant)} /><div className="detail-actions no-print"><button className="button" onClick={() => window.print()}><Printer size={20} aria-hidden="true" />Imprimir</button>{onEdit && <button className="button" onClick={onEdit}>Editar hierba</button>}</div></Screen>;
 }
 

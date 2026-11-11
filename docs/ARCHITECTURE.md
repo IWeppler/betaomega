@@ -53,6 +53,7 @@ Una **plataforma multisitio**: un mismo cliente tiene varios negocios y cada uno
 - Un host desconocido (localhost, la IP de la tablet de la tienda, previews) recibe el sitio por defecto (`DEFAULT_SITE`, por defecto `nekurel`).
 - Un sitio con `active = false` se está preparando: el panel lo administra (`listPanelSites`, `getPanelSite`) y el público no lo alcanza, ni por su dominio ni por sus APIs públicas (`listSites`, `getSite`).
 - El matcher excluye `api/`, `_next/`, `favicon.ico`, `sw.js`, `panel-sw.js` e imágenes: son compartidos por todos los sitios y no se reescriben. **Toda ruta reescrita lleva prefijo**, así ningún árbol interno es alcanzable desde otro host.
+- La tienda de Ñekurel construye sus precios desde `modules/herbal/`, recalculando los tónicos y aplicando promociones. Al preparar un pedido por WhatsApp, `/api/sites/<site>/herbal/order` vuelve a leer sin caché y calcula el mensaje en el servidor; el navegador envía productos, cantidades y datos de entrega. Ver [integración de precios](nekurel-integracion-precios.md).
 - La URL canónica de cada sitio (`site.url`) se usa para metadata, sitemap, `robots.txt` y enlaces compartidos.
 
 ## 4. Estructura del código

@@ -32,12 +32,20 @@ import { offerUndo } from "@/shared/ui/undo";
 import { Toaster } from "@/shared/ui/toast";
 import { SaveForm } from "@/app/save-form";
 import { StoreTab } from "@/app/store-tab";
-import { api, blankTonic, Field, newHerb, parsePrice, PriceFields, proportions, splitTags } from "@/app/admin-fields";
+import {
+  api,
+  blankTonic,
+  Field,
+  newHerb,
+  parsePrice,
+  PriceFields,
+  proportions,
+  splitTags,
+} from "@/app/admin-fields";
 import {
   getAvoidOptions,
   getCategories,
   combosUsing,
-  formatPrice,
   normalize,
   searchCatalog,
   type Catalog,
@@ -46,6 +54,8 @@ import {
 } from "@/lib/catalog";
 import { importTonics, type ImportReport } from "@/lib/csv";
 import { liveRefreshMs } from "@/shared/lib/live-refresh";
+import { SalePrice } from "@/modules/herbal/ui";
+import { saleItem } from "@/modules/herbal";
 
 type Tab = "search" | "tonics" | "herbs" | "store";
 type Draft = { name: string; amount: string };
@@ -240,7 +250,13 @@ export default function Home() {
     try {
       await put(next);
       // As in the panel: the whole catalogue goes back, over the revision just saved.
-      if (before) offerUndo(message, () => put({ ...before, revision: catalogRef.current?.revision ?? before.revision }));
+      if (before)
+        offerUndo(message, () =>
+          put({
+            ...before,
+            revision: catalogRef.current?.revision ?? before.revision,
+          }),
+        );
       return true;
     } catch (e) {
       setFormError((e as Error).message);
@@ -288,6 +304,8 @@ export default function Home() {
       published: true,
       ingredients,
       instructions: text("instructions"),
+      steps:
+        editor.instructions === text("instructions") ? editor.steps : undefined,
       avoid,
       price: parsePrice(text("price")),
       priceUnit: text("priceUnit") || undefined,
@@ -304,7 +322,10 @@ export default function Home() {
       ],
     };
     if (!(await save(next))) return false;
-    setEditor(item);
+    setEditor(
+      catalogRef.current?.preparations.find((prep) => prep.id === item.id) ??
+        item,
+    );
     return true;
   };
   const submitHerb = async (element: HTMLFormElement): Promise<boolean> => {
@@ -329,7 +350,6 @@ export default function Home() {
       ...herbEditor,
       image,
       name: text("name"),
-      scientificName: text("scientificName"),
       properties: text("properties"),
       uses: splitTags(text("uses")),
       aliases: splitTags(text("aliases")),
@@ -353,7 +373,10 @@ export default function Home() {
     setHerbEditor(item);
     return true;
   };
-  const submitLogin = async (event: FormEvent<HTMLFormElement>, asSeller = login === "seller") => {
+  const submitLogin = async (
+    event: FormEvent<HTMLFormElement>,
+    asSeller = login === "seller",
+  ) => {
     event.preventDefault();
     setBusy(true);
     setLoginError("");
@@ -493,21 +516,30 @@ export default function Home() {
         />
         <ImageField value={image} onChange={setImage} onBusy={setBusy} />
         {catalog && <CategoryPicker catalog={catalog} item={editor} />}
-        <PriceFields item={editor} />
+        <PriceFields
+          item={editor}
+          automatic={editor.presentationWeightGrams !== undefined}
+        />
+        {editor.presentationWeightGrams !== undefined && (
+          <p className="text-sm text-muted">
+            Precio calculado según las hierbas. Se actualiza al guardar.{" "}
+            <SalePrice item={editor} />
+          </p>
+        )}
         <div className="form-grid">
           <Field
             label="Se utiliza para"
             name="uses"
             value={editor.uses.join(", ")}
             multiline
-            hint="Separá cada uso con una coma: gases, pesadez, descanso."
+            hint="Separá cada uso con una coma"
           />
           <Field
             label="También buscar por"
             name="aliases"
             value={editor.aliases.join(", ")}
             multiline
-            hint="Sinónimos y expresiones del cliente: hinchazón, dolor de panza."
+            hint="Sinónimos y expresiones"
           />
         </div>
         <fieldset className="ingredients-editor">
@@ -518,9 +550,7 @@ export default function Home() {
             </span>
           </legend>
           <p>
-            Escribí el nombre y elegí una hierba existente. Si no está, se
-            agrega sola. Con proporciones como &quot;2 partes&quot; el empleado
-            puede calcular gramos.
+            Escribí el nombre y elegí una hierba. Si no está, se agrega sola.
           </p>
           {drafts.map((draft, index) => (
             <div className="ingredient-row" key={index}>
@@ -623,11 +653,6 @@ export default function Home() {
         <ImageField value={image} onChange={setImage} onBusy={setBusy} />
         {catalog && <CategoryPicker catalog={catalog} item={herbEditor} />}
         <PriceFields item={herbEditor} />
-        <Field
-          label="Nombre científico"
-          name="scientificName"
-          value={herbEditor.scientificName}
-        />
         <Field
           label="Propiedades"
           name="properties"
@@ -756,7 +781,10 @@ export default function Home() {
           </div>
           <div className="entry-content">
             <h1>Entrá al catálogo</h1>
-            <form className="entry-form" onSubmit={(event) => void submitLogin(event, true)}>
+            <form
+              className="entry-form"
+              onSubmit={(event) => void submitLogin(event, true)}
+            >
               <label className="field">
                 <span>Código de vendedor</span>
                 <input
@@ -818,21 +846,23 @@ export default function Home() {
               <header className="admin-header">
                 <div className="admin-search-row">
                   {tab !== "store" && (
-                  <label className="admin-search">
-                    <MagnifyingGlass size={22} aria-hidden="true" />
-                    <input
-                      value={filter}
-                      onChange={(e) => setFilter(e.target.value)}
-                      aria-label={
-                        tab === "herbs" ? "Filtrar hierbas" : "Filtrar tónicos"
-                      }
-                      placeholder={
-                        tab === "herbs"
-                          ? "Buscar una hierba"
-                          : "Buscar un tónico"
-                      }
-                    />
-                  </label>
+                    <label className="admin-search">
+                      <MagnifyingGlass size={22} aria-hidden="true" />
+                      <input
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value)}
+                        aria-label={
+                          tab === "herbs"
+                            ? "Filtrar hierbas"
+                            : "Filtrar tónicos"
+                        }
+                        placeholder={
+                          tab === "herbs"
+                            ? "Buscar una hierba"
+                            : "Buscar un tónico"
+                        }
+                      />
+                    </label>
                   )}
                   <nav className="segmented" aria-label="Secciones">
                     {(Object.keys(labels) as (keyof typeof labels)[]).map(
@@ -857,31 +887,31 @@ export default function Home() {
                     )}
                   </nav>
                   {tab !== "store" && (
-                  <>
-                  <label className="button admin-import">
-                    <UploadSimple size={20} aria-hidden="true" />
-                    Importar CSV
-                    <input
-                      type="file"
-                      accept=".csv,text/csv"
-                      hidden
-                      disabled={busy}
-                      onChange={(e) => void chooseCsv(e)}
-                    />
-                  </label>
-                  <button
-                    className="button primary"
-                    disabled={busy}
-                    onClick={() =>
-                      tab === "herbs"
-                        ? void openHerbEditor(newHerb(""))
-                        : void openEditor(blankTonic())
-                    }
-                  >
-                    <Plus size={20} aria-hidden="true" />
-                    {tab === "herbs" ? "Nueva hierba" : "Nuevo tónico"}
-                  </button>
-                  </>
+                    <>
+                      <label className="button admin-import">
+                        <UploadSimple size={20} aria-hidden="true" />
+                        Importar CSV
+                        <input
+                          type="file"
+                          accept=".csv,text/csv"
+                          hidden
+                          disabled={busy}
+                          onChange={(e) => void chooseCsv(e)}
+                        />
+                      </label>
+                      <button
+                        className="button primary"
+                        disabled={busy}
+                        onClick={() =>
+                          tab === "herbs"
+                            ? void openHerbEditor(newHerb(""))
+                            : void openEditor(blankTonic())
+                        }
+                      >
+                        <Plus size={20} aria-hidden="true" />
+                        {tab === "herbs" ? "Nueva hierba" : "Nuevo tónico"}
+                      </button>
+                    </>
                   )}
                 </div>
               </header>
@@ -927,6 +957,7 @@ export default function Home() {
                 )}
                 <Finder
                   selectedId={detail?.id ?? herbDetail?.id}
+                  PriceDisplay={SalePrice}
                   catalog={catalog}
                   query={query}
                   onQuery={setQuery}
@@ -1003,7 +1034,9 @@ export default function Home() {
                                   )}
                                 </th>
                                 <td>{item.ingredients.length}</td>
-                                <td>{formatPrice(item) || "—"}</td>
+                                <td>
+                                  <SalePrice item={item} />
+                                </td>
                                 <td>
                                   <button
                                     className="table-delete danger-text"
@@ -1049,7 +1082,6 @@ export default function Home() {
                         <thead>
                           <tr>
                             <th scope="col">Nombre</th>
-                            <th scope="col">Nombre científico</th>
                             <th scope="col">Usos</th>
                             <th scope="col">Tónicos</th>
                             <th scope="col">Precio</th>
@@ -1089,9 +1121,6 @@ export default function Home() {
                                       <span className="hidden-tag">Oculto</span>
                                     )}
                                   </th>
-                                  <td className="table-scientific">
-                                    {plant.scientificName || "—"}
-                                  </td>
                                   <td>
                                     <span
                                       className="table-uses"
@@ -1101,7 +1130,9 @@ export default function Home() {
                                     </span>
                                   </td>
                                   <td>{count}</td>
-                                  <td>{formatPrice(plant) || "—"}</td>
+                                  <td>
+                                    <SalePrice item={plant} />
+                                  </td>
                                   <td>
                                     <button
                                       className="table-delete danger-text"
@@ -1167,7 +1198,11 @@ export default function Home() {
       {login && (
         <Screen
           key={login}
-          title={login === "seller" ? "Catálogo del equipo" : "Administración de Ñekurel"}
+          title={
+            login === "seller"
+              ? "Catálogo del equipo"
+              : "Administración de Ñekurel"
+          }
           onClose={() => {
             if (!busy) setLogin(false);
           }}
@@ -1179,7 +1214,11 @@ export default function Home() {
           </p>
           <form onSubmit={submitLogin}>
             <label className="field">
-              <span>{login === "seller" ? "Código de vendedor" : "Contraseña de administrador"}</span>
+              <span>
+                {login === "seller"
+                  ? "Código de vendedor"
+                  : "Contraseña de administrador"}
+              </span>
               <input
                 name="secret"
                 type="password"
@@ -1284,8 +1323,12 @@ export default function Home() {
       )}
       {detail && (
         <TonicDetail
+          PriceDisplay={SalePrice}
           key={detail.id}
-          prep={detail}
+          prep={saleItem(
+            catalog?.preparations.find((prep) => prep.id === detail.id) ??
+              detail,
+          )}
           catalog={catalog}
           plantName={plantName}
           preview={preview}
@@ -1303,7 +1346,11 @@ export default function Home() {
       )}
       {herbDetail && (
         <HerbDetail
-          plant={herbDetail}
+          PriceDisplay={SalePrice}
+          plant={saleItem(
+            catalog?.plants.find((plant) => plant.id === herbDetail.id) ??
+              herbDetail,
+          )}
           onClose={() => setHerbDetail(null)}
           onEdit={
             admin

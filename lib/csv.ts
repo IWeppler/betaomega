@@ -111,6 +111,7 @@ export function importTonics(catalog: Catalog, text: string): ImportReport {
       ...(existing ? { hidden: existing.hidden, promoPrice: existing.promoPrice, promoUntil: existing.promoUntil } : {}),
       id: existing?.id ?? crypto.randomUUID(), categoryIds: existing?.categoryIds, name, uses: list(get("uses"), true), aliases: list(get("aliases"), true), ingredients,
       instructions: get("instructions"), warnings: get("warnings"), notes: get("notes"), avoid: parseAvoid(get("avoid")), published: false,
+      presentationWeightGrams: existing?.presentationWeightGrams,
       ...(image !== undefined ? { image } : {}),
       ...(price !== undefined ? { price } : {}), ...(priceUnit ? { priceUnit } : {}),
     };
