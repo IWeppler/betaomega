@@ -32,21 +32,18 @@ const storeFields = (form: FormData, text: (key: string) => string) => ({
   categoryIds: form.getAll("categoryIds").map(String),
   price: parsePrice(text("price")),
   priceUnit: text("priceUnit") || undefined,
-  promoPrice: parsePrice(text("promoPrice")),
-  promoUntil: text("promoUntil") || undefined,
   hidden: form.get("visible") ? undefined : true,
 });
 
 export function TonicEditor({ tonic, onSaved, onClose, onDelete, IngredientOrder, PreparationSteps, FormulaPricing }: { tonic: Preparation; onSaved: (item: Preparation) => void; onClose: () => void; onDelete?: () => void;
   IngredientOrder: ComponentType<{ index: number; count: number; amounts: string[]; missingPrice: boolean; onMove: (to: number) => void }>;
   PreparationSteps: ComponentType<{ steps: string[]; onChange: (steps: string[]) => void }>;
-  FormulaPricing: ComponentType<{ herbs: { id: string; name: string; pricePerKgCents?: number }[]; ingredients: { plantId: string; amount: string }[]; grams?: number; onChange: (grams: number | undefined) => void }>;
+  FormulaPricing: ComponentType<{ herbs: { id: string; name: string; pricePerKgCents?: number }[]; ingredients: { plantId: string; amount: string }[] }>;
 }) {
   const { catalog, catalogRef, save, busy, setBusy, error, setError, flushRef } = useCatalog();
   const [image, setImage] = useState(tonic.image || "");
   const [avoid, setAvoid] = useState<string[]>(tonic.avoid ?? []);
   const [steps, setSteps] = useState<string[]>(tonic.steps ?? [tonic.instructions]);
-  const [grams, setGrams] = useState<number | undefined>(tonic.presentationWeightGrams ?? (tonic.name ? undefined : 1000));
   const plantName = (id: string) => catalog?.plants.find(p => p.id === id)?.name || "Hierba no disponible";
   const [drafts, setDrafts] = useState<Draft[]>(tonic.ingredients.map(i => ({ name: plantName(i.plantId), amount: i.amount })));
   const setDraft = (index: number, patch: Partial<Draft>) => setDrafts(drafts.map((d, n) => (n === index ? { ...d, ...patch } : d)));
@@ -68,17 +65,17 @@ export function TonicEditor({ tonic, onSaved, onClose, onDelete, IngredientOrder
       return { plantId: herb.id, amount: d.amount.trim() };
     });
     if (new Set(ingredients.map(i => i.plantId)).size !== ingredients.length) { setError("Hay una hierba repetida en este tónico."); return false; }
-    const item: Preparation = { ...tonic, image, name: text("name"), uses: splitTags(text("uses")), aliases: splitTags(text("aliases")), warnings: text("warnings"), published: true, ingredients, steps: filledSteps, instructions: filledSteps.join("\n\n"), avoid, ...storeFields(form, text), presentationWeightGrams: grams };
+    const item: Preparation = { ...tonic, image, name: text("name"), uses: splitTags(text("uses")), aliases: splitTags(text("aliases")), warnings: text("warnings"), published: true, ingredients, steps: filledSteps, instructions: filledSteps.join("\n\n"), avoid, ...storeFields(form, text) };
     if (!(await save({ ...current, plants, preparations: [...current.preparations.filter(p => p.id !== item.id), item] }))) return false;
     onSaved(catalogRef.current?.preparations.find(preparation => preparation.id === item.id) ?? item);
     return true;
   };
   return <EditorFrame title={tonic.name || "Nuevo tónico"} onClose={onClose} onDelete={onDelete}>
-    <SaveForm error={error} registerRef={flushRef} paused={busy} onSave={submit} changes={JSON.stringify([drafts, image, avoid, steps, grams])}>
+    <SaveForm error={error} registerRef={flushRef} paused={busy} onSave={submit} changes={JSON.stringify([drafts, image, avoid, steps])}>
       <Field label="Nombre del tónico" name="name" value={tonic.name} required />
       <ImageField value={image} onChange={setImage} onBusy={setBusy} />
       {catalog && <CategoryPicker catalog={catalog} item={tonic} />}
-      <PriceFields item={tonic} automatic={grams !== undefined} />
+      <PriceFields item={tonic} automatic />
       <div className="form-grid">
         <Field label="Se utiliza para" name="uses" value={tonic.uses.join(", ")} multiline hint="Separá cada uso con una coma: gases, pesadez, descanso." />
         <Field label="También buscar por" name="aliases" value={tonic.aliases.join(", ")} multiline hint="Sinónimos y expresiones del cliente: hinchazón, dolor de panza." />
@@ -102,7 +99,7 @@ export function TonicEditor({ tonic, onSaved, onClose, onDelete, IngredientOrder
         </div>)}
         <button className="button" type="button" disabled={drafts.length >= 100} onClick={() => setDrafts([...drafts, { name: "", amount: "" }])}><Plus size={18} weight="bold" aria-hidden="true" />Agregar hierba</button>
       </fieldset>
-      <FormulaPricing herbs={catalog?.plants ?? []} ingredients={drafts.map(draft => ({ plantId: catalog?.plants.find(plant => normalize(plant.name) === normalize(draft.name))?.id ?? "", amount: draft.amount }))} grams={grams} onChange={setGrams} />
+      <FormulaPricing herbs={catalog?.plants ?? []} ingredients={drafts.map(draft => ({ plantId: catalog?.plants.find(plant => normalize(plant.name) === normalize(draft.name))?.id ?? "", amount: draft.amount }))} />
       <PreparationSteps steps={steps} onChange={setSteps} />
       <Field label="Advertencias / contraindicaciones" name="warnings" value={tonic.warnings} multiline />
       <AvoidSelector value={avoid} options={getAvoidOptions(catalog)} onChange={setAvoid} />

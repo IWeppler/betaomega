@@ -45,7 +45,7 @@ export default function TonicsPage() {
           <tbody>{shown.map(item => <tr key={item.id} aria-selected={selection?.item.id === item.id}>
             <th scope="row"><button className="panel-row-button" disabled={busy} onClick={() => { setReport(null); void select({ item, mode: "edit" }); }}><Flask size={16} aria-hidden="true" /><span>{item.name}</span><StatusBadges item={item} /></button></th>
             <td className="is-num">{item.ingredients.length}</td>
-            <td className="is-num">{formatPrice(item) || <span className="panel-muted inline-block whitespace-normal text-xs leading-tight">{item.presentationWeightGrams === undefined ? "Sin precio" : "Pendiente de calcular"}</span>}</td>
+            <td className="is-num">{formatPrice(item) || <span className="panel-muted inline-block whitespace-normal text-xs leading-tight">Pendiente de calcular</span>}</td>
           </tr>)}</tbody>
         </table>}</Paged>}
         {!rows.length && <EmptyState title={filter ? "No encontramos ese tónico" : "Todavía no hay tónicos"} text={filter ? "Probá con otro nombre." : "Creá un tónico o importá varios desde un archivo CSV."} />}

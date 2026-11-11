@@ -6,7 +6,7 @@ export function SalePrice({ item, partial = false }: { item: {
 }; partial?: boolean }) {
   const pricing = saleItem(item);
   const text = partial ? "Precio de la selección a confirmar." : pricing.price === undefined
-    ? item.presentationWeightGrams === undefined ? "Precio a confirmar" : "Precio pendiente de calcular"
+    ? "ingredients" in item ? "Precio pendiente de calcular" : "Precio a confirmar"
     : `${formatCents(Math.round(pricing.price * 100))}${pricing.priceUnit ? ` / ${pricing.priceUnit}` : ""}`;
   return <span className="block text-sm font-medium text-ink">{text}</span>;
 }

@@ -53,21 +53,24 @@ test("el servidor reemplaza precio y unidad enviados por el navegador y recalcul
     { id: "manual", ingredients, price: 77, priceUnit: "bolsita" },
   ] };
   const result = resolveCatalogPrices(catalog);
-  assert.equal(result.preparations[0].price, 2750);
-  assert.equal(result.preparations[0].calculatedPriceCents, 275000);
-  assert.equal(result.preparations[0].priceUnit, "100 g");
-  assert.equal(result.preparations[1].price, 77);
+  for (const tonic of result.preparations) {
+    assert.equal(tonic.price, 27500);
+    assert.equal(tonic.calculatedPriceCents, 2750000);
+    assert.equal(tonic.priceUnit, "kg");
+  }
   assert.equal(catalog.preparations[0].price, 1);
   const changed = resolveCatalogPrices({ ...result, plants: herbs.map(herb => herb.id === "a" ? { ...herb, pricePerKgCents: 4000000 } : herb) });
-  assert.equal(changed.preparations[0].price, 3750);
+  assert.equal(changed.preparations[0].price, 37500);
   const missing = resolveCatalogPrices({ ...changed, plants: herbs.map(herb => ({ ...herb, pricePerKgCents: undefined })) });
   assert.equal(missing.preparations[0].price, undefined);
   assert.equal(missing.preparations[0].calculatedPriceCents, undefined);
-  assert.equal(missing.preparations[1].price, 77);
+  assert.equal(missing.preparations[1].price, undefined);
 });
-test("una presentación de mil gramos se muestra por kilogramo", () => {
-  const tonic: { ingredients: typeof ingredients; presentationWeightGrams: number; priceUnit?: string; calculatedPriceCents?: number } = { ingredients, presentationWeightGrams: 1000 };
-  const result = resolveCatalogPrices({ plants: herbs, preparations: [tonic] });
-  assert.equal(result.preparations[0].priceUnit, "kg");
-  assert.equal(result.preparations[0].calculatedPriceCents, 2750000);
+test("todo tónico tiene un único precio: el del kilogramo, sin importar la presentación guardada", () => {
+  const tonic: { ingredients: typeof ingredients; presentationWeightGrams?: number; priceUnit?: string; calculatedPriceCents?: number } = { ingredients, presentationWeightGrams: 250 };
+  const result = resolveCatalogPrices({ plants: herbs, preparations: [tonic, { ingredients }] });
+  for (const item of result.preparations) {
+    assert.equal(item.priceUnit, "kg");
+    assert.equal(item.calculatedPriceCents, 2750000);
+  }
 });

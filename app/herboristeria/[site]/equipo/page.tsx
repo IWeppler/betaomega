@@ -309,8 +309,6 @@ export default function Home() {
       avoid,
       price: parsePrice(text("price")),
       priceUnit: text("priceUnit") || undefined,
-      promoPrice: parsePrice(text("promoPrice")),
-      promoUntil: text("promoUntil") || undefined,
       hidden: form.get("visible") ? undefined : true,
     };
     const next = {
@@ -359,8 +357,6 @@ export default function Home() {
       published: true,
       price: parsePrice(text("price")),
       priceUnit: text("priceUnit") || undefined,
-      promoPrice: parsePrice(text("promoPrice")),
-      promoUntil: text("promoUntil") || undefined,
       hidden: form.get("visible") ? undefined : true,
     };
     if (
@@ -516,16 +512,11 @@ export default function Home() {
         />
         <ImageField value={image} onChange={setImage} onBusy={setBusy} />
         {catalog && <CategoryPicker catalog={catalog} item={editor} />}
-        <PriceFields
-          item={editor}
-          automatic={editor.presentationWeightGrams !== undefined}
-        />
-        {editor.presentationWeightGrams !== undefined && (
-          <p className="text-sm text-muted">
-            Precio calculado según las hierbas. Se actualiza al guardar.{" "}
-            <SalePrice item={editor} />
-          </p>
-        )}
+        <PriceFields item={editor} automatic />
+        <p className="text-sm text-muted">
+          Precio por kg calculado según las hierbas. Se actualiza al guardar.{" "}
+          <SalePrice item={editor} />
+        </p>
         <div className="form-grid">
           <Field
             label="Se utiliza para"

@@ -46,12 +46,14 @@ export function formulaPrice(herbs: FormulaHerb[], ingredients: FormulaIngredien
   return { perKgCents: Number(perKg), presentationCents: Number(presentation), contributions: contributions.map(row => ({ name: row.name, perKgCents: Number(row.cents) })) };
 }
 
-/** Recompute every automatic tonic after any catalogue edit, ignoring browser-supplied prices and units. */
+/**
+ * Recompute every tonic after any catalogue edit, ignoring browser-supplied prices and units.
+ * A tonic has a single price: the kilogram price of its formula. The seller picks the quantity in /equipo.
+ */
 export function resolveCatalogPrices<T extends { plants: FormulaHerb[]; preparations: FormulaTonic[] }>(catalog: T): T {
   return { ...catalog, preparations: catalog.preparations.map(tonic => {
-    if (tonic.presentationWeightGrams === undefined) return { ...tonic, calculatedPriceCents: undefined };
-    const result = formulaPrice(catalog.plants, tonic.ingredients, tonic.presentationWeightGrams);
-    const calculatedPriceCents = "error" in result ? undefined : result.presentationCents;
-    return { ...tonic, calculatedPriceCents, price: calculatedPriceCents === undefined ? undefined : calculatedPriceCents / 100, priceUnit: tonic.presentationWeightGrams === 1000 ? "kg" : `${tonic.presentationWeightGrams} g` };
+    const result = formulaPrice(catalog.plants, tonic.ingredients, 1000);
+    const calculatedPriceCents = "error" in result ? undefined : result.perKgCents;
+    return { ...tonic, calculatedPriceCents, price: calculatedPriceCents === undefined ? undefined : calculatedPriceCents / 100, priceUnit: "kg" };
   }) };
 }
