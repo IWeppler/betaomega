@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { Check, LoaderCircle } from "lucide-react";
 
 import { showToast, toastCount } from "@/shared/ui/toast";
 
@@ -136,8 +137,10 @@ export function SaveForm({
         {children}
       </fieldset>
       <div className="form-actions">
-        <button className="button primary" type="submit" disabled={status === "saving" || paused}>
-          {status === "saving" ? "Guardando…" : "Guardar"}
+        <button className="button primary" type="submit" aria-busy={status === "saving"} disabled={status === "saving" || paused}>
+          {status === "saving" && <LoaderCircle size={16} className="motion-safe:animate-spin" aria-hidden="true" />}
+          {status === "saved" && <Check size={16} aria-hidden="true" />}
+          {status === "saving" ? "Guardando…" : status === "saved" ? "Guardado" : "Guardar"}
         </button>
         {onDiscard && modified && <button type="button" className="min-h-control rounded-control border border-line-strong bg-surface px-4 font-medium text-ink hover:bg-sunken" disabled={status === "saving" || paused} onClick={onDiscard}>Descartar cambios</button>}
         <div className="save-feedback">

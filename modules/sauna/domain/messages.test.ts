@@ -24,6 +24,13 @@ test("un lugar y la sala completa se nombran bien", () => {
   assert.match(confirmationMessage({ ...booking, kind: "private", seats: 6 }), /: la sala completa el /);
 });
 
+test("la confirmación y el recordatorio incluyen la hierba de la reserva", () => {
+  const withHerb = { ...booking, herbName: "Menta" };
+  assert.match(confirmationMessage(withHerb), /2 lugares con Menta el /);
+  assert.match(reminderMessage(withHerb), /2 lugares con Menta el /);
+  assert.doesNotMatch(confirmationMessage({ ...booking, herbName: null }), /con Menta/);
+});
+
 test("la hora es la de Buenos Aires", () => {
   assert.match(reminderMessage({ ...booking, startsAt: "2026-11-11T01:00:00.000Z" }), /martes 10 de noviembre a las 22:00/);
 });

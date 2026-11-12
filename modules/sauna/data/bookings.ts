@@ -1,3 +1,4 @@
+import type { SaunaHerb } from "../domain/herbs";
 import { equal } from "@/platform/auth/server";
 import { rpc, siteTable } from "@/platform/db";
 import type { AgendaBooking, Turn } from "../domain/agenda";
@@ -16,7 +17,7 @@ type TurnRow = {
 
 type BookingRow = {
   id: string; token: string; status: BookingStatus; kind: BookingKind; seats: number; price_cents: number; discount_cents: number; deposit_cents: number;
-  expires_at: string | null; needs_refund: boolean; created_at: string; policy_snapshot: { rules?: PolicyRule[] };
+  expires_at: string | null; needs_refund: boolean; created_at: string; policy_snapshot: { rules?: PolicyRule[]; herb?: SaunaHerb | null };
   customers: { name: string; whatsapp: string | null };
   sauna_slots: { room_id: string; starts_at: string; ends_at: string; sauna_turn_types: { name: string } | null };
   payments: { kind: Movement["kind"]; amount_cents: number }[];
@@ -32,7 +33,7 @@ const bookings = (siteId: string) => siteTable<BookingRow>("sauna_bookings", sit
 export type { BookingRow };
 
 export const agendaBooking = (row: BookingRow): AgendaBooking => ({
-  id: row.id, token: row.token, status: row.status, kind: row.kind, seats: row.seats, priceCents: row.price_cents, discountCents: row.discount_cents, depositCents: row.deposit_cents,
+  herbName: row.policy_snapshot.herb?.name ?? null, id: row.id, token: row.token, status: row.status, kind: row.kind, seats: row.seats, priceCents: row.price_cents, discountCents: row.discount_cents, depositCents: row.deposit_cents,
   expiresAt: row.expires_at, needsRefund: row.needs_refund, createdAt: row.created_at, customerName: row.customers.name, customerWhatsapp: row.customers.whatsapp,
   roomId: row.sauna_slots.room_id, startsAt: row.sauna_slots.starts_at, endsAt: row.sauna_slots.ends_at, typeName: row.sauna_slots.sauna_turn_types?.name ?? "",
   movements: row.payments.map(payment => ({ kind: payment.kind, amountCents: payment.amount_cents })),
@@ -73,11 +74,12 @@ export async function searchBookings(siteId: string, text: string, status: Booki
   return rows.map(agendaBooking);
 }
 
-export type ReserveRequest = { roomId: string; turnTypeId: string; startsAt: string; kind: BookingKind; seats: number; name: string; whatsapp: string; code: string | null; termsAccepted: boolean };
+export type ReserveRequest = { herb?: SaunaHerb | null; roomId: string; turnTypeId: string; startsAt: string; kind: BookingKind; seats: number; name: string; whatsapp: string; code: string | null; termsAccepted: boolean };
 type ReserveResult = { ok: true; booking: { id: string; token: string; deposit_cents: number } } | { ok: false; reason: ReserveRejection };
 
 export function reserve(siteId: string, request: ReserveRequest): Promise<ReserveResult> {
-  return rpc<ReserveResult>("sauna_reserve", {
+  return rpc<ReserveResult>(request.herb ? "sauna_reserve_with_herb" : "sauna_reserve", {
+    ...(request.herb ? { p_herb: request.herb } : {}),
     p_site: siteId, p_room: request.roomId, p_starts_at: request.startsAt, p_turn_type: request.turnTypeId, p_kind: request.kind, p_seats: request.seats, p_name: request.name, p_whatsapp: request.whatsapp,
     p_code: request.code, p_pack_token: null, p_terms_accepted: request.termsAccepted,
   });
@@ -103,6 +105,7 @@ export const cancelBooking = (siteId: string, bookingId: string, note: string, a
   rpc<ChangeResult>("sauna_cancel", { p_site: siteId, p_booking: bookingId, p_refund_cents: 0, p_refund_method: null, p_return_session: false, p_note: note, p_actor: actor });
 
 export type PublicBooking = {
+  herbName?: string | null;
   status: BookingStatus;
   kind: BookingKind;
   seats: number;
@@ -125,7 +128,7 @@ export async function bookingByToken(siteId: string, token: string): Promise<Pub
   const [row] = await bookings(siteId)(`token=eq.${token}&${fullBooking}`);
   if (!row || !equal(row.token, token)) return null;
   return {
-    status: row.status, kind: row.kind, seats: row.seats, priceCents: row.price_cents, discountCents: row.discount_cents, depositCents: row.deposit_cents, expiresAt: row.expires_at,
+    herbName: row.policy_snapshot.herb?.name ?? null, status: row.status, kind: row.kind, seats: row.seats, priceCents: row.price_cents, discountCents: row.discount_cents, depositCents: row.deposit_cents, expiresAt: row.expires_at,
     customerName: row.customers.name, roomId: row.sauna_slots.room_id, typeName: row.sauna_slots.sauna_turn_types?.name ?? "", startsAt: row.sauna_slots.starts_at, endsAt: row.sauna_slots.ends_at,
     movements: row.payments.map(payment => ({ kind: payment.kind, amountCents: payment.amount_cents })),
     rules: row.policy_snapshot.rules ?? [],

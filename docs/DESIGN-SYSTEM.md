@@ -63,7 +63,9 @@ Los valores de cada tema, tomados del código, son:
 | Tipografía | Poppins (títulos) + Atkinson Hyperlegible | Geist | Instrument Sans (títulos) + Atkinson Hyperlegible | Barlow Condensed (títulos) + Atkinson Hyperlegible |
 | Tamaño base | 18 px | 14 px | 17 px | 18 px |
 
-El tema del **sauna** (Fropexio) sigue las mismas reglas y es el único oscuro: fondo `#12110c`, texto `#f2ead8`, secundario `#bdb298` y acento dorado `#d9b45f` con texto `#17140b`, tomados de `public/fropexio.jpeg`. Radios chicos (tarjeta 6 px, campos y botones 3 px). Tipografías: Cinzel Decorative en peso 400 (logo y todos los títulos) y Arial/Helvetica (lectura). Ver [SAUNA.md §12](SAUNA.md).
+El tema del **sauna** (Fropexio) sigue la referencia Abbantu proporcionada: blanco `#fcfcfc` como fondo principal, menta `#eafff0` solo en superficies secundarias, tinta y botones bordó `#4d1b1e`, coral `#ec6140` como detalle (`brand-highlight`). Texto secundario `#6d4548` y acento de lectura oscuro `#8f352a`. El coral no se usa para texto pequeño ni con blanco por su contraste. Cinzel Decorative 400 en títulos principales y Source Sans 3 en lectura y títulos prácticos. Lectura de 18 px y controles de 48 px. Ver [SAUNA.md §12](SAUNA.md).
+
+**Rediseño público de Fropexio (2026-11-12):** paleta clara de Abbantu a partir de las capturas del usuario, conservando el logo y Cinzel. La guía abre con Para disfrutar tu sesión (indicaciones, recomendaciones y cuidados unidos), sigue con Contraindicaciones y termina con Reservas y cancelaciones; un índice facilita ubicarlas. El hero combina un bloque de lectura blanco con una foto de altura completa al lado, y los apila en móvil. Solo reservas y cancelaciones conservan acordeones. Sin números ni rótulos decorativos.
 
 ## 4. Un tema por tipo de sitio (y por sitio)
 
@@ -94,7 +96,7 @@ El tema del **sauna** (Fropexio) sigue las mismas reglas y es el único oscuro: 
 - **Foco visible** siempre; no se quita el anillo.
 - **Táctil:** los controles miden `control` (36 px; 44 px en pantallas táctiles con `pointer: coarse`). El panel se usa en celular.
 - **Movimiento:** respetar `prefers-reduced-motion` (regla global en `@layer base`).
-- **Cada tema tiene un solo modo**, sin alternar según el sistema: claro en todos, salvo el sauna, oscuro por su marca (`color-scheme: dark` en su bloque).
+- **Cada tema tiene un solo modo**, sin alternar según el sistema: claro en todos, incluido el sauna (`color-scheme: light`).
 - **Mobile primero.** Utilidades base para móvil y variantes `sm:`, `md:`, `lg:` para crecer. Se usan los puntos de corte por defecto de Tailwind; el valor suelto de 900 px del panel actual desaparece al migrarlo.
 - Botones de solo ícono con `aria-label`; íconos decorativos con `aria-hidden`; `aria-current` en navegación.
 - Textos de la interfaz: español rioplatense, cortos, que digan qué hacer.

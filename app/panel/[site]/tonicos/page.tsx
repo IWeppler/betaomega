@@ -30,7 +30,7 @@ export default function TonicsPage() {
   };
   const side = report ? <ImportPanel report={report} busy={busy} error={error} onCancel={() => setReport(null)} onConfirm={async () => { if (await save(report.catalog)) setReport(null); }} />
     : selection?.mode === "delete" ? <DeleteConfirm item={selection.item} onCancel={() => setSelection({ item: selection.item, mode: "edit" })} onDeleted={() => setSelection(null)} />
-    : selection ? <TonicEditor FormulaPricing={FormulaPricing} IngredientOrder={IngredientOrder} PreparationSteps={PreparationSteps} key={selection.item.id} tonic={selection.item} onSaved={item => setSelection({ item, mode: "edit" })} onClose={() => void select(null)} onDelete={catalog.preparations.some(p => p.id === selection.item.id) ? () => void select({ item: selection.item, mode: "delete" }) : undefined} />
+    : selection ? <TonicEditor FormulaPricing={FormulaPricing} IngredientOrder={IngredientOrder} PreparationSteps={PreparationSteps} key={selection.item.id} tonic={selection.item} onSaved={() => setSelection(null)} onClose={() => void select(null)} onDelete={catalog.preparations.some(p => p.id === selection.item.id) ? () => void select({ item: selection.item, mode: "delete" }) : undefined} />
     : null;
   return <>
     <PageHeader title="Tónicos" description={`${catalog.preparations.length} tónicos. Los borradores no los ve el equipo.`} actions={<>
@@ -40,7 +40,8 @@ export default function TonicsPage() {
     <div>
       <section className="panel-card panel-list" aria-label="Lista de tónicos">
         <div className="panel-list-tools"><SearchBox value={filter} onChange={setFilter} label="Buscar un tónico" /></div>
-        {rows.length > 0 && <Paged rows={rows} resetKey={filter}>{shown => <table className="panel-table">
+        {rows.length > 0 && <Paged rows={rows} resetKey={filter}>{shown => <table className="panel-table [&_thead_th.is-num]:w-auto [&_thead_th]:whitespace-normal">
+          <colgroup><col className="w-1/2" /><col className="w-1/4" /><col className="w-1/4" /></colgroup>
           <thead><tr><th scope="col">Nombre</th><th scope="col" className="is-num">Hierbas</th><th scope="col" className="is-num">Precio</th></tr></thead>
           <tbody>{shown.map(item => <tr key={item.id} aria-selected={selection?.item.id === item.id}>
             <th scope="row"><button className="panel-row-button" disabled={busy} onClick={() => { setReport(null); void select({ item, mode: "edit" }); }}><Flask size={16} aria-hidden="true" /><span>{item.name}</span><StatusBadges item={item} /></button></th>

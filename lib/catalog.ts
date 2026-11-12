@@ -1,4 +1,6 @@
 export type Plant = {
+  saunaEnabled?: boolean;
+  saunaDescription?: string;
   id: string; name: string; scientificName: string; properties: string;
   uses: string[]; aliases: string[]; warnings: string; notes: string; published: boolean;
   image?: string;
@@ -254,6 +256,8 @@ export function validateCatalog(value: unknown): asserts value is Catalog {
   }
   for (const plant of data.plants) {
     string(plant.scientificName); string(plant.properties);
+    if (plant.saunaEnabled !== undefined && typeof plant.saunaEnabled !== "boolean") fail("Habilitación de sauna inválida.");
+    if (plant.saunaDescription !== undefined) string(plant.saunaDescription);
     if (plant.pricePerKgCents !== undefined && (!Number.isSafeInteger(plant.pricePerKgCents) || plant.pricePerKgCents < 0 || plant.pricePerKgCents > 90_000_000_000_000)) fail("El precio por kilogramo debe ser un monto válido en centavos.");
   }
   for (const prep of data.preparations) {

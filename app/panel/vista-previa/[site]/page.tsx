@@ -14,5 +14,5 @@ export default async function PreviewPage({ params }: { params: Promise<{ site: 
   const home = `/vista-previa/${site.id}`;
   const data = await publicHome(site.id, { termsHref: `${home}/terminos`, preview: true });
   if (!data) notFound();
-  return <SiteFrame siteName={site.name} home={home} termsHref={`${home}/terminos`} preview><SiteHome data={data} /></SiteFrame>;
+  return <SiteFrame siteName={site.name} home={home} termsHref={`${home}/terminos`} preview><SiteHome data={data} reserveHref={`${home}/reservar`} /></SiteFrame>;
 }

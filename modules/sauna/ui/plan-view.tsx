@@ -9,6 +9,7 @@ import type { TransferAccount } from "../domain/setup";
 import { businessDate, businessTime, dayLabel } from "../domain/time";
 import { buttonClass, Card, Tag } from "./controls";
 import { PaymentChoice } from "./payment-choice";
+import { AddToCalendar } from "./add-to-calendar";
 import { BookAnother, ProgressSteps, ResultHero, type Stage } from "./result-parts";
 
 export type PlanViewData = {
@@ -16,10 +17,12 @@ export type PlanViewData = {
     name: string; turns: number; priceCents: number; rules: PolicyRule[]; customerName: string;
     bookings: {
       status: BookingStatus; expiresAt: string | null; depositCents: number; priceCents: number; discountCents: number;
-      startsAt: string; endsAt: string; typeName: string; movements: Movement[]; roomName: string;
+      herbName?: string | null; startsAt: string; endsAt: string; typeName: string; movements: Movement[]; roomName: string;
     }[];
   };
   now: string;
+  /** Street and district, for the calendar events. */
+  address: string;
   contactWhatsapp: string | null;
   payment: { mercadopago: boolean; transfer: TransferAccount | null; returned: boolean };
 };
@@ -28,7 +31,7 @@ const turnStatus: Partial<Record<BookingStatus, string>> = { cancelled: "Cancela
 
 /** The person's own plan: every turn it holds and what is left to pay. Like a booking's page, only the secret link opens it. */
 export function PlanView({ data, siteId, token, link, siteName }: { data: PlanViewData; siteId: string; token: string; link: string; siteName: string }) {
-  const { plan, now, contactWhatsapp, payment } = data;
+  const { plan, now, address, contactWhatsapp, payment } = data;
   const statuses = plan.bookings.map(booking => effectiveStatus(booking, now));
   const all = (status: BookingStatus) => statuses.length > 0 && statuses.every(each => each === status);
   const stage: Stage = all("held") ? "pay" : all("pending_transfer") ? "transfer" : statuses.some(each => each === "confirmed" || each === "completed") ? "done" : "closed";
@@ -64,6 +67,7 @@ export function PlanView({ data, siteId, token, link, siteName }: { data: PlanVi
             <span className="text-ink first-letter:uppercase">{dayLabel(businessDate(booking.startsAt))}</span>
             <span className="flex items-center gap-2 text-muted tabular-nums">
               {businessTime(booking.startsAt)} a {businessTime(booking.endsAt)}{booking.roomName && ` · ${booking.roomName}`}
+              {booking.herbName && <Tag>Hierba: {booking.herbName}</Tag>}
               {label && <Tag>{label}</Tag>}
             </span>
           </li>;
@@ -91,7 +95,7 @@ export function PlanView({ data, siteId, token, link, siteName }: { data: PlanVi
         </dl>
         : <p className="m-0 text-ink">Escribinos por WhatsApp y te pasamos los datos para transferir {formatCents(money.depositDueCents)}.</p>}
       <p className="m-0 text-muted">Guardamos tus turnos hasta el {dayLabel(businessDate(holdUntil))} a las {businessTime(holdUntil)}. Cuando transfieras, mandanos el comprobante.</p>
-      {contactWhatsapp && <div><a className={buttonClass("primary")} href={whatsappLink(contactWhatsapp, transferProofMessage({ ...about, amountCents: money.depositDueCents }))} target="_blank" rel="noopener noreferrer"><FaWhatsapp size={16} aria-hidden="true" />Enviar el comprobante</a></div>}
+      {contactWhatsapp && <div><a className={buttonClass("primary", "lg")} href={whatsappLink(contactWhatsapp, transferProofMessage({ ...about, amountCents: money.depositDueCents }))} target="_blank" rel="noopener noreferrer"><FaWhatsapp size={16} aria-hidden="true" />Enviar el comprobante</a></div>}
       {payment.mercadopago && <div className="grid gap-2 border-t border-line pt-3">
         <p className="m-0 text-muted">¿Preferís pagar ahora con Mercado Pago? Los turnos se confirman en el momento.</p>
         <PaymentChoice siteId={siteId} token={token} mercadopago transfer={false} plan />
@@ -107,10 +111,11 @@ export function PlanView({ data, siteId, token, link, siteName }: { data: PlanVi
       </dl>
     </Card>}
     {stage === "done" && <p className="m-0 text-muted">Guardá esta página: desde este enlace ves tus turnos cuando quieras.</p>}
+    <AddToCalendar now={now} link={link} events={plan.bookings.filter((_, index) => statuses[index] === "confirmed").map(booking => ({ title: `${siteName}: ${booking.typeName || plan.name}`, startsAt: booking.startsAt, endsAt: booking.endsAt, location: address, description: [plan.name, booking.herbName && `Hierba: ${booking.herbName}`].filter(Boolean).join(" · "), url: link }))} />
 
     <div className="flex flex-wrap gap-2">
       <BookAnother primary={stage === "done" || stage === "closed"} />
-      {contactWhatsapp && <a className={buttonClass()} href={whatsappLink(contactWhatsapp, contactMessage(about))} target="_blank" rel="noopener noreferrer"><FaWhatsapp size={16} aria-hidden="true" />Consultar por WhatsApp</a>}
+      {contactWhatsapp && <a className={buttonClass("quiet", "lg")} href={whatsappLink(contactWhatsapp, contactMessage(about))} target="_blank" rel="noopener noreferrer"><FaWhatsapp size={16} aria-hidden="true" />Consultar por WhatsApp</a>}
     </div>
     {stage !== "closed" && plan.rules.length > 0 && <Card className="grid gap-2">
       <h2 className="m-0 font-display text-lg font-normal text-ink">Si necesitás cancelar</h2>

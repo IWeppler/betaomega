@@ -49,6 +49,7 @@ export const newHerb = (name: string): Plant => ({
   warnings: "",
   notes: "",
   published: true,
+  saunaEnabled: true,
 });
 
 export const parsePrice = (value: string) => {
@@ -60,8 +61,10 @@ export const parsePrice = (value: string) => {
 export function PriceFields({
   item,
   automatic = false,
+  showVisibility = true,
 }: {
   automatic?: boolean;
+  showVisibility?: boolean;
   item: {
     price?: number;
     priceUnit?: string;
@@ -134,10 +137,10 @@ export function PriceFields({
         </label>
       </div>
       */}
-      <label className="check store-visible">
+      {showVisibility && <label className="check store-visible">
         <input type="checkbox" name="visible" defaultChecked={!item.hidden} />
         Visible en la tienda
-      </label>
+      </label>}
     </>
   );
 }

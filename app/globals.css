@@ -22,6 +22,11 @@
   --color-accent-soft: #e2f0e7;
   --color-accent-wash: #cfe6d8;
   --color-focus: #1d5fd1;
+  --color-brand-highlight: #ec6140;
+  --color-night: #2a1416;
+  --color-night-ink: #f6ede1;
+  --color-night-muted: #d3bfae;
+  --color-sand: #f3ebdf;
   /* Amber and red are reserved for warnings and errors. */
   --color-warn-bg: #fff3d6;
   --color-warn-line: #d9942a;
@@ -43,6 +48,7 @@
   --elevation-lift: 0 2px 4px rgb(19 33 26 / 0.05), 0 18px 36px -12px rgb(19 33 26 / 0.18);
   --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
   --animate-arrive: arrive 1.8s ease-out;
+  --animate-rise: rise 0.9s var(--ease-standard) both;
 
   --font-display: var(--font-poppins), ui-rounded, system-ui, sans-serif;
   --font-text: var(--font-atkinson), system-ui, sans-serif;
@@ -77,43 +83,49 @@
     --font-display: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
     --font-text: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   }
-  /* Fropexio: dark and warm, from its brand image (public/fropexio.jpeg). The one dark theme so far, because the brand is. Accent on background 9.8:1, muted text on background 8.4:1. */
+  /* Fropexio: Abbantu mint, burgundy and coral for a light, readable public site. */
   [data-theme="sauna"] {
-    color-scheme: dark;
-    --color-bg: #12110c;
-    --color-surface: #1c1a12;
-    --color-sidebar: #1c1a12;
-    --color-surface-sidebar: #2a2719;
-    --color-sunken: #0d0c08;
-    --color-ink: #f2ead8;
-    --color-muted: #bdb298;
-    --color-line: #332e20;
-    --color-line-strong: #574e36;
-    --color-accent: #d9b45f;
-    --color-accent-text: #e2c078;
-    --color-accent-hover: #e6c477;
-    --color-accent-ink: #17140b;
-    --color-accent-soft: #2a2413;
-    --color-accent-wash: #3a3118;
-    --color-focus: #e2c078;
-    --color-warn-bg: #33270f;
-    --color-warn-line: #8a6a1f;
-    --color-warn-ink: #f3dca6;
-    --color-danger: #f08a75;
-    --color-success: #9ad3a6;
-    --color-success-soft: #1b2a1c;
-    --radius-card: 6px;
-    --radius-field: 3px;
-    --radius-control: 3px;
-    --elevation-card: 0 1px 2px rgb(0 0 0 / 0.3);
-    --elevation-lift: 0 18px 36px -12px rgb(0 0 0 / 0.6);
+    color-scheme: light;
+    --color-bg: #fbf8f3;
+    --color-surface: #fffdf9;
+    --color-sidebar: #f3ebdf;
+    --color-surface-sidebar: #f3ebdf;
+    --color-sand: #f3ebdf;
+    --color-night: #2a1416;
+    --color-night-ink: #f6ede1;
+    --color-night-muted: #d3bfae;
+    --color-sunken: #efe6d8;
+    --color-ink: #4d1b1e;
+    --color-muted: #6d4548;
+    --color-line: #e4d9ca;
+    --color-line-strong: #b39b8a;
+    --color-accent: #4d1b1e;
+    --color-brand-highlight: #c98a3c;
+    --color-accent-text: #8f352a;
+    --color-accent-hover: #67282b;
+    --color-accent-ink: #fffdf9;
+    --color-accent-soft: #f6e6d4;
+    --color-accent-wash: #ecd2b4;
+    --color-focus: #8f352a;
+    --color-warn-bg: #fcfcfc;
+    --color-warn-line: #a68d8c;
+    --color-warn-ink: #4d1b1e;
+    --color-danger: #a3301f;
+    --color-success: #32613f;
+    --color-success-soft: #e9f3e8;
+    --radius-card: 4px;
+    --radius-field: 8px;
+    --radius-control: 8px;
+    --spacing-control: 48px;
+    --elevation-card: 0 1px 3px rgb(41 51 41 / 0.06);
+    --elevation-lift: 0 18px 36px -12px rgb(41 51 41 / 0.2);
     --font-display: var(--font-cinzel-decorative), Georgia, serif;
     --font-logo: var(--font-cinzel-decorative), Georgia, serif;
-    --font-text: Arial, Helvetica, sans-serif;
+    --font-text: var(--font-source-sans), "Segoe UI", sans-serif;
   }
   /* What shows past the page when a phone overscrolls. */
   body:has([data-theme="sauna"]) {
-    background: #12110c;
+    background: #fbf8f3;
   }
   html:has([data-theme="sauna"]) {
     scroll-behavior: smooth;
@@ -124,8 +136,7 @@
   }
   /* Fingers need room: on touch screens every control keeps 44px. */
   @media (pointer: coarse) {
-    [data-theme="panel"],
-    [data-theme="sauna"] {
+    [data-theme="panel"] {
       --spacing-control: 44px;
     }
   }
@@ -186,6 +197,18 @@
   }
   to {
     transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* The hero's entrance: plays once on load, one line after another. Nothing else on the page moves because of the scroll. */
+@keyframes rise {
+  from {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
     opacity: 1;
   }
 }

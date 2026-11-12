@@ -1,4 +1,5 @@
 import { equal } from "@/platform/auth/server";
+import type { SaunaHerb } from "../domain/herbs";
 import { rpc, siteTable, SupabaseError } from "@/platform/db";
 import type { AgendaBooking } from "../domain/agenda";
 import type { Plan, PlanDraft } from "../domain/plans";
@@ -59,13 +60,13 @@ export async function deleteUnusedPlan(siteId: string, id: string): Promise<bool
   }
 }
 
-export type PlanTurnRequest = { roomId: string; turnTypeId: string; startsAt: string };
+export type PlanTurnRequest = { roomId: string; turnTypeId: string; startsAt: string; herb?: SaunaHerb | null };
 export type ReservePlanResult = { ok: true; token: string } | { ok: false; reason: PlanRejection | ReserveRejection };
 
 export const reservePlan = (siteId: string, request: { planId: string; turns: PlanTurnRequest[]; name: string; whatsapp: string; termsAccepted: boolean; code: string | null }) =>
-  rpc<ReservePlanResult>("sauna_reserve_plan", {
+  rpc<ReservePlanResult>(request.turns.some(turn => turn.herb) ? "sauna_reserve_plan_with_herbs" : "sauna_reserve_plan", {
     p_site: siteId, p_plan: request.planId, p_name: request.name, p_whatsapp: request.whatsapp, p_terms_accepted: request.termsAccepted, p_code: request.code,
-    p_turns: request.turns.map(turn => ({ room_id: turn.roomId, turn_type_id: turn.turnTypeId, starts_at: turn.startsAt })),
+    p_turns: request.turns.map(turn => ({ room_id: turn.roomId, turn_type_id: turn.turnTypeId, starts_at: turn.startsAt, herb: turn.herb ?? null })),
   });
 
 export type PlanPurchase = {

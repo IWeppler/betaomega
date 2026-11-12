@@ -14,11 +14,18 @@ import { addDays, businessDate, businessTime, dayLabel, shortDayLabel, type Date
 import { Button, Field, inputClass, Notice } from "./controls";
 import { fetchJson, sendJson } from "./fetch-json";
 
+import type { SaunaHerb } from "../domain/herbs";
+import { HerbChoice } from "./herb-choice";
+
 const DAYS_SHOWN = 7;
 
 export type PublicPlan = Pick<Plan, "id" | "name" | "description" | "turns" | "priceCents" | "windowDays" | "durationMinutes" | "allowsCodes">;
 
 export type BookingFlowData = {
+  herbs?: SaunaHerb[];
+  initialHerbId?: string;
+  /** A plan chosen before arriving (from the home page's plans). Ignored if it is not on offer. */
+  initialPlanId?: string;
   siteId: string;
   today: DateText;
   /** The first day that can be booked: today, or the opening day if it has not come yet. */
@@ -98,10 +105,10 @@ function Cancellation({ rules }: { rules: PolicyRule[] }) {
 /** The button with the terms, pinned to the bottom on a phone. */
 function SubmitBar({ busy, disabled, label, busyLabel, termsHref }: { busy: boolean; disabled: boolean; label: string; busyLabel: string; termsHref: string }) {
   return <div className="sticky bottom-0 -mx-5 mt-auto grid gap-1.5 border-t border-line bg-bg px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:p-0">
-    <button type="submit" disabled={disabled} className="flex min-h-control w-full items-center justify-between rounded-control bg-accent px-4 py-3.5 text-sm text-accent-ink transition-[background-color,transform] duration-150 enabled:hover:bg-accent-hover enabled:active:scale-[0.98] disabled:opacity-55">
-      {busy ? busyLabel : label}<ArrowUpRight size={18} strokeWidth={1.5} aria-hidden="true" />
-    </button>
-    <p className="m-0 text-center text-xs text-muted">Al reservar aceptás los <a className="text-accent-text underline underline-offset-2" href={termsHref} target="_blank" rel="noopener">términos</a> y declarás tener 18 años o más.</p>
+    <Button type="submit" variant="primary" size="lg" disabled={disabled} className="w-full">
+      {busy ? busyLabel : label}<ArrowUpRight size={18} strokeWidth={1.75} aria-hidden="true" />
+    </Button>
+    <p className="m-0 text-center text-xs text-muted">Al reservar aceptás los <a className="text-accent-text no-underline underline-offset-2 hover:underline" href={termsHref} target="_blank" rel="noopener">términos</a> y declarás tener 18 años o más.</p>
   </div>;
 }
 
@@ -152,7 +159,7 @@ function CodeBox({ applied, busy, onApply, onRemove }: { applied: AppliedCode | 
 }
 
 /** The booking request. The amounts here are a preview from what the server said about the turn: sauna_reserve computes them again and that is what counts. */
-function BookingForm({ turn, data, onBack }: { turn: Turn; data: BookingFlowData; onBack: () => void }) {
+function BookingForm({ turn, data, onBack, herbId, setHerbId }: { turn: Turn; data: BookingFlowData; onBack: () => void; herbId: string; setHerbId: (id: string) => void }) {
   const router = useRouter();
   const [kind, setKind] = useState<BookingKind>(offersShared(turn) ? "shared" : "private");
   const [busy, setBusy] = useState(false);
@@ -176,7 +183,7 @@ function BookingForm({ turn, data, onBack }: { turn: Turn; data: BookingFlowData
     setError("");
     try {
       const { token } = await sendJson<{ token: string }>(`/api/sites/${data.siteId}/sauna/reservations`, "POST", {
-        roomId: turn.roomId, turnTypeId: turn.turnTypeId, startsAt: turn.startsAt, kind, name: values.get("name"), whatsapp: values.get("whatsapp"), code: applied?.code ?? null,
+        herbId, roomId: turn.roomId, turnTypeId: turn.turnTypeId, startsAt: turn.startsAt, kind, name: values.get("name"), whatsapp: values.get("whatsapp"), code: applied?.code ?? null,
         // Pressing the button is the acceptance: the notice below it says so.
         termsAccepted: true,
       });
@@ -200,6 +207,7 @@ function BookingForm({ turn, data, onBack }: { turn: Turn; data: BookingFlowData
       </div>
     </fieldset>}
 
+    <HerbChoice herbs={data.herbs ?? []} value={herbId} onChange={setHerbId} disabled={busy} />
     <PersonFields />
     <CodeBox applied={applied} busy={busy} onApply={checkCode} onRemove={() => setApplied(null)} />
 
@@ -218,7 +226,7 @@ function BookingForm({ turn, data, onBack }: { turn: Turn; data: BookingFlowData
  * A plan's request: every turn chosen, who books, a code if the plan takes one, and the plan's own amounts. sauna_reserve_plan checks the turns and
  * the code again and decides the discount and the deposit.
  */
-function PlanForm({ plan, turns, data, onBack }: { plan: PublicPlan; turns: Turn[]; data: BookingFlowData; onBack: () => void }) {
+function PlanForm({ plan, turns, data, onBack, herbs, setHerbs }: { plan: PublicPlan; turns: Turn[]; data: BookingFlowData; onBack: () => void; herbs: Record<string, string>; setHerbs: React.Dispatch<React.SetStateAction<Record<string, string>>> }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -243,7 +251,7 @@ function PlanForm({ plan, turns, data, onBack }: { plan: PublicPlan; turns: Turn
     setError("");
     try {
       const { token } = await sendJson<{ token: string }>(`/api/sites/${data.siteId}/sauna/plan-reservations`, "POST", {
-        planId: plan.id, turns: turns.map(turn => ({ roomId: turn.roomId, turnTypeId: turn.turnTypeId, startsAt: turn.startsAt })),
+        planId: plan.id, turns: turns.map(turn => ({ roomId: turn.roomId, turnTypeId: turn.turnTypeId, startsAt: turn.startsAt, herbId: herbs[turn.startsAt] ?? data.initialHerbId ?? "" })),
         name: values.get("name"), whatsapp: values.get("whatsapp"), code: applied?.code ?? null, termsAccepted: true,
       });
       router.push(`/plan/${token}`);
@@ -257,7 +265,7 @@ function PlanForm({ plan, turns, data, onBack }: { plan: PublicPlan; turns: Turn
       <p className="m-0 text-[13px] text-ink"><span className="font-semibold">{plan.name}</span> <span className="text-muted">· {turns.length} turnos</span></p>
       <button type="button" disabled={busy} onClick={onBack} className="min-h-control shrink-0 px-2.5 text-[13px] text-accent-text hover:underline disabled:opacity-55">Cambiar turnos</button>
     </div>
-    <ol className="m-0 grid list-none gap-1.5 p-0">{turns.map(turn => <li key={turn.startsAt}><TurnBox turn={turn} /></li>)}</ol>
+    <ol className="m-0 grid list-none gap-3 p-0">{turns.map(turn => <li key={turn.startsAt} className="grid gap-2"><TurnBox turn={turn} /><HerbChoice herbs={data.herbs ?? []} value={herbs[turn.startsAt] ?? data.initialHerbId ?? ""} onChange={id => setHerbs(current => ({ ...current, [turn.startsAt]: id }))} disabled={busy} name={`herb-${turn.startsAt}`} /></li>)}</ol>
     <PersonFields />
     {plan.allowsCodes && <CodeBox applied={applied} busy={busy} onApply={checkCode} onRemove={() => setApplied(null)} />}
     <Amounts totalLabel="Precio del plan" totalCents={amounts.totalCents} depositCents={amounts.depositCents} balanceCents={amounts.balanceCents} />
@@ -290,6 +298,8 @@ function ModeChoice({ plans, current, onChange }: { plans: PublicPlan[]; current
 }
 
 export function BookingFlow({ data }: { data: BookingFlowData }) {
+  const [herbId, setHerbId] = useState((data.herbs ?? []).some(herb => herb.id === data.initialHerbId) ? data.initialHerbId ?? "" : "");
+  const [herbs, setHerbs] = useState<Record<string, string>>({});
   // The home page is cached for up to an hour, so it may come from before midnight: today is never earlier than the visitor's business date.
   // The server still checks every turn, this only keeps yesterday off the screen.
   const [today, setToday] = useState(data.today);
@@ -310,7 +320,7 @@ export function BookingFlow({ data }: { data: BookingFlowData }) {
   const [error, setError] = useState("");
   const [hour, setHour] = useState<string | null>(null);
   const [chosen, setChosen] = useState<Turn | null>(null);
-  const [planId, setPlanId] = useState<string | null>(null);
+  const [planId, setPlanId] = useState<string | null>(data.plans.some(item => item.id === data.initialPlanId) ? data.initialPlanId ?? null : null);
   const [picks, setPicks] = useState<Turn[]>([]);
   const [pickError, setPickError] = useState("");
   const [planReady, setPlanReady] = useState(false);
@@ -334,8 +344,8 @@ export function BookingFlow({ data }: { data: BookingFlowData }) {
     <h2 id="booking-title" ref={heading} tabIndex={-1} className="m-0 mb-3 font-display text-2xl/snug font-normal text-ink outline-none">{second ? (plan ? `Completá tu ${plan.name}` : "Completá tu reserva") : "Reservá tu momento"}</h2>
   </>;
 
-  if (chosen) return <>{title}<BookingForm turn={chosen} data={data} onBack={() => { setChosen(null); setHour(null); void load(); }} /></>;
-  if (plan && planReady) return <>{title}<PlanForm plan={plan} turns={picks} data={data} onBack={() => { setPlanReady(false); setHour(null); void load(); }} /></>;
+  if (chosen) return <>{title}<BookingForm turn={chosen} data={data} herbId={herbId} setHerbId={setHerbId} onBack={() => { setChosen(null); setHour(null); void load(); }} /></>;
+  if (plan && planReady) return <>{title}<PlanForm plan={plan} turns={picks} data={{ ...data, initialHerbId: herbId }} herbs={herbs} setHerbs={setHerbs} onBack={() => { setPlanReady(false); setHour(null); void load(); }} /></>;
 
   const forPlan = plan !== null;
   const usable = forPlan ? canChooseForPlan : canChoose;
@@ -430,9 +440,9 @@ export function BookingFlow({ data }: { data: BookingFlowData }) {
 
       {plan
         ? <div className="sticky bottom-0 -mx-5 grid gap-1.5 border-t border-line bg-bg px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-0 sm:p-0">
-          <button type="button" disabled={!complete} onClick={() => setPlanReady(true)} className="flex min-h-control w-full items-center justify-between rounded-control bg-accent px-4 py-3.5 text-sm text-accent-ink transition-[background-color,transform] duration-150 enabled:hover:bg-accent-hover enabled:active:scale-[0.98] disabled:opacity-55">
-            {complete ? "Continuar" : `Elegí ${plan.turns - picks.length} ${plan.turns - picks.length === 1 ? "turno más" : "turnos más"}`}<ArrowRight size={18} strokeWidth={1.5} aria-hidden="true" />
-          </button>
+          <Button variant="primary" size="lg" disabled={!complete} onClick={() => setPlanReady(true)} className="w-full">
+            {complete ? "Continuar" : `Elegí ${plan.turns - picks.length} ${plan.turns - picks.length === 1 ? "turno más" : "turnos más"}`}<ArrowRight size={18} strokeWidth={1.75} aria-hidden="true" />
+          </Button>
           <p className="m-0 text-center text-xs text-muted">{formatCents(plan.priceCents)} por los {plan.turns} turnos. Seña de {formatCents(planQuote(plan, data.depositPercent).depositCents)} antes de confirmar.</p>
         </div>
         : <p className="m-0 text-xs text-muted">Vas a ver el precio y la seña antes de confirmar.</p>}

@@ -1,49 +1,43 @@
 import type { ReactNode } from "react";
-import { Cinzel_Decorative } from "next/font/google";
+import { Cinzel_Decorative, Source_Sans_3 } from "next/font/google";
 import { Share2 } from "lucide-react";
 import { ShareButton } from "@/shared/ui/share-button";
-import { Brand, CtaLink } from "./site-parts";
+import { Brand, CtaLink, reservePath } from "./site-parts";
 import { SiteNav } from "./site-nav";
+import { SiteHeader } from "./site-header";
 import { SiteMotion } from "./site-motion";
-import { InstallApp } from "./install-app";
+import { SiteFooter } from "./site-footer";
 
-// One typeface for the brand and every title; reading text stays in the system sans (docs/SAUNA.md §12).
+// Cinzel carries the identity; Source Sans keeps reading and controls clear (docs/SAUNA.md §12).
 const display = Cinzel_Decorative({ subsets: ["latin"], weight: ["400"], display: "swap", variable: "--font-cinzel-decorative" });
+const reading = Source_Sans_3({ subsets: ["latin"], display: "swap", variable: "--font-source-sans" });
 
 /** The theme, header and footer of the public site. `home` is where the page lives: the public root, or the panel's preview. */
-export function SiteFrame({ siteName, home, termsHref, preview = false, children }: { siteName: string; home: string; termsHref: string; preview?: boolean; children: ReactNode }) {
+export function SiteFrame({ siteName, home, termsHref, address = "", preview = false, children }: { siteName: string; home: string; termsHref: string; address?: string; preview?: boolean; children: ReactNode }) {
   const root = home || "/";
   // The size and the reset on <main> repeat the public site's defaults: the preview lives inside the panel, whose CSS would otherwise make it look different.
-  return <div data-theme="sauna" className={`${display.variable} relative flex min-h-dvh flex-col bg-bg font-text text-[15px]/normal text-ink antialiased selection:bg-accent selection:text-accent-ink`}>
+  return <div data-theme="sauna" className={`${display.variable} ${reading.variable} relative flex min-h-dvh flex-col bg-bg font-text text-lg/relaxed text-ink antialiased selection:bg-accent selection:text-accent-ink`}>
     <SiteMotion />
     <a href="#contenido" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-40 focus:rounded-control focus:bg-surface focus:p-3">Ir al contenido</a>
-    {preview && <p role="status" className="fixed right-4 bottom-4 z-30 m-0 max-w-[calc(100%-2rem)] rounded-control border border-warn-line bg-warn-bg px-3 py-2 text-[13px] text-warn-ink shadow-lift">Vista previa: sin publicar y sin tomar reservas.</p>}
-    {/* Over the hero; pages without one leave room for it with `pt-36`. */}
-    <header className="absolute inset-x-0 top-0 z-20 flex h-24 items-center justify-between gap-4 border-b border-ink/20 px-[6%] text-ink lg:h-28 lg:px-[5%]">
+    {preview && <p role="status" className="fixed right-4 bottom-4 z-30 m-0 max-w-[calc(100%-2rem)] rounded-control border border-warn-line bg-warn-bg px-3 py-2 text-base text-warn-ink shadow-lift">Vista previa: sin publicar y sin tomar reservas.</p>}
+    {/* Pages reserve the same header space, including the panel's preview. */}
+    <SiteHeader home={root}>
+      {/* Three columns: the section links (the menu button on a phone) on the left, the brand in the middle, share and booking on the right. */}
+      <div className="flex items-center justify-start"><SiteNav home={home} /></div>
       {/* Above the phone menu's sheet (z-30), which opens under the header row. */}
-      <div className="relative z-40"><Brand name={siteName} href={root} /></div>
-      <div className="flex items-center gap-2 md:contents">
-        <SiteNav home={home} />
-        {/* Before the menu button on a phone. */}
-        <div className="flex items-center gap-2 max-md:order-first">
+      <div className="relative z-40 justify-self-center"><Brand name={siteName} href={root} src="/fropexio-logo-navbar.png" /></div>
+      <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center gap-2">
           {/* Always the home page: a reservation's or a plan's address is private to its owner. The preview is not public, so nothing to share. */}
           {!preview && <ShareButton path={root} title={siteName} label="Compartir" className="grid size-control place-items-center rounded-control text-ink transition-opacity duration-150 hover:opacity-60">
             <Share2 size={20} strokeWidth={1.5} aria-hidden="true" />
           </ShareButton>}
           {/* On a phone the hero's button is right below, and both would not fit next to the brand. */}
-          <div className="hidden sm:block"><CtaLink href={`${home}#reservar`} kind="overlay">Reservar una pausa</CtaLink></div>
+          <div className="hidden sm:block"><CtaLink href={reservePath(root)}>Reservar</CtaLink></div>
         </div>
       </div>
-    </header>
+    </SiteHeader>
     <main id="contenido" className="m-0 w-full max-w-none flex-1 p-0">{children}</main>
-    <footer className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-4 border-t border-line px-[7%] pt-10 lg:px-[5%] ${preview ? "pb-20" : "pb-10"}`}>
-      <Brand name={siteName} href={root} compact />
-      <p className="m-0 font-serif text-[15px] text-muted italic">Un espacio para volver a vos.</p>
-      <div className="flex w-full flex-wrap gap-x-5 gap-y-1 text-xs text-muted sm:w-auto">
-        <a className="text-muted underline underline-offset-4 hover:text-ink" href={termsHref}>Términos y condiciones</a>
-        <InstallApp className="inline-flex items-center gap-1.5 text-muted underline underline-offset-4 hover:text-ink" helpClassName="m-0 w-full text-xs text-muted" />
-        <span>© {new Date().getFullYear()} {siteName}</span>
-      </div>
-    </footer>
+    <SiteFooter siteName={siteName} home={root} termsHref={termsHref} address={address} preview={preview} />
   </div>;
 }

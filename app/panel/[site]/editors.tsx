@@ -36,7 +36,7 @@ const storeFields = (form: FormData, text: (key: string) => string) => ({
 });
 
 export function TonicEditor({ tonic, onSaved, onClose, onDelete, IngredientOrder, PreparationSteps, FormulaPricing }: { tonic: Preparation; onSaved: (item: Preparation) => void; onClose: () => void; onDelete?: () => void;
-  IngredientOrder: ComponentType<{ index: number; count: number; amounts: string[]; missingPrice: boolean; onMove: (to: number) => void }>;
+  IngredientOrder: ComponentType<{ index: number; count: number; amounts: string[]; missingPrice: boolean; onMove: (to: number) => void; onRemove?: () => void }>;
   PreparationSteps: ComponentType<{ steps: string[]; onChange: (steps: string[]) => void }>;
   FormulaPricing: ComponentType<{ herbs: { id: string; name: string; pricePerKgCents?: number }[]; ingredients: { plantId: string; amount: string }[] }>;
 }) {
@@ -66,7 +66,7 @@ export function TonicEditor({ tonic, onSaved, onClose, onDelete, IngredientOrder
     });
     if (new Set(ingredients.map(i => i.plantId)).size !== ingredients.length) { setError("Hay una hierba repetida en este tónico."); return false; }
     const item: Preparation = { ...tonic, image, name: text("name"), uses: splitTags(text("uses")), aliases: splitTags(text("aliases")), warnings: text("warnings"), published: true, ingredients, steps: filledSteps, instructions: filledSteps.join("\n\n"), avoid, ...storeFields(form, text) };
-    if (!(await save({ ...current, plants, preparations: [...current.preparations.filter(p => p.id !== item.id), item] }))) return false;
+    if (!(await save({ ...current, plants, preparations: [...current.preparations.filter(p => p.id !== item.id), item] }, `Tónico «${item.name}» guardado correctamente.`))) return false;
     onSaved(catalogRef.current?.preparations.find(preparation => preparation.id === item.id) ?? item);
     return true;
   };
@@ -80,24 +80,25 @@ export function TonicEditor({ tonic, onSaved, onClose, onDelete, IngredientOrder
         <Field label="Se utiliza para" name="uses" value={tonic.uses.join(", ")} multiline hint="Separá cada uso con una coma: gases, pesadez, descanso." />
         <Field label="También buscar por" name="aliases" value={tonic.aliases.join(", ")} multiline hint="Sinónimos y expresiones del cliente: hinchazón, dolor de panza." />
       </div>
-      <fieldset className="ingredients-editor">
-        <legend>Hierbas y proporciones <span className="required-tag">Obligatorio: al menos una hierba</span></legend>
-        <p>Escribí el nombre y elegí una hierba existente. Si no está, se agrega sola. Con proporciones como &quot;2 partes&quot; el equipo puede calcular gramos.</p>
-        {drafts.map((draft, index) => <div className="flex flex-col gap-2 rounded-field border border-line p-3" key={index}>
-          <HerbCombobox label={`Hierba ${index + 1}`} value={draft.name} onChange={name => setDraft(index, { name })} options={herbOptions} taken={new Set(drafts.filter((_, n) => n !== index).map(d => normalize(d.name)))} />
-          <select aria-label={`Proporción ${index + 1}`} value={draft.amount} onChange={e => setDraft(index, { amount: e.target.value })}>
+      <fieldset className="m-0 grid min-w-0 gap-3 rounded-card border border-line p-4">
+        <legend className="px-1 text-sm font-semibold">Hierbas y proporciones</legend>
+        <p className="m-0 text-xs leading-5 text-muted">Agregá al menos una hierba y elegí sus partes. Si el nombre es nuevo, se crea al guardar.</p>
+        {drafts.map((draft, index) => <div className="grid min-w-0 gap-3 rounded-field border border-line bg-surface p-3" key={index}>
+          <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
+          <div className="grid min-w-0 gap-1.5"><span className="text-xs font-medium text-muted">Hierba {index + 1}</span><HerbCombobox label={`Hierba ${index + 1}`} value={draft.name} onChange={name => setDraft(index, { name })} options={herbOptions} taken={new Set(drafts.filter((_, n) => n !== index).map(d => normalize(d.name)))} /></div>
+          <label className="grid min-w-0 gap-1.5 text-xs font-medium text-muted">Proporción<select className="min-h-control w-full rounded-field border border-line-strong bg-surface px-3 text-base text-ink" value={draft.amount} onChange={e => setDraft(index, { amount: e.target.value })}>
             <option value="">Elegir partes</option>
             {draft.amount && !proportions.includes(draft.amount) && <option value={draft.amount}>{draft.amount}</option>}
             {proportions.map(amount => <option key={amount} value={amount}>{amount}</option>)}
-          </select>
+          </select></label>
+          </div>
           <IngredientOrder index={index} count={drafts.length} amounts={drafts.map(item => item.amount)} missingPrice={catalog?.plants.find(plant => normalize(plant.name) === normalize(draft.name))?.pricePerKgCents === undefined} onMove={to => {
             const next = [...drafts];
             [next[index], next[to]] = [next[to], next[index]];
             setDrafts(next);
-          }} />
-          <button type="button" className="icon-button" aria-label={`Quitar hierba ${index + 1}`} onClick={() => setDrafts(drafts.filter((_, n) => n !== index))}><X size={18} weight="bold" aria-hidden="true" /></button>
+          }} onRemove={() => setDrafts(drafts.filter((_, n) => n !== index))} />
         </div>)}
-        <button className="button" type="button" disabled={drafts.length >= 100} onClick={() => setDrafts([...drafts, { name: "", amount: "" }])}><Plus size={18} weight="bold" aria-hidden="true" />Agregar hierba</button>
+        <button className="flex min-h-control items-center justify-center gap-2 rounded-control border border-dashed border-line-strong px-3 text-sm text-muted transition-colors hover:border-accent hover:bg-accent-soft hover:text-accent-text disabled:opacity-40" type="button" disabled={drafts.length >= 100} onClick={() => setDrafts([...drafts, { name: "", amount: "" }])}><Plus size={16} aria-hidden="true" />Agregar hierba</button>
       </fieldset>
       <FormulaPricing herbs={catalog?.plants ?? []} ingredients={drafts.map(draft => ({ plantId: catalog?.plants.find(plant => normalize(plant.name) === normalize(draft.name))?.id ?? "", amount: draft.amount }))} />
       <PreparationSteps steps={steps} onChange={setSteps} />
@@ -119,8 +120,8 @@ export function HerbEditor({ herb, onSaved, onClose, onDelete, KilogramPrice }: 
     const pricePerKgCents = text("pricePerKg") ? centsFromPesos(text("pricePerKg")) : undefined;
     if (pricePerKgCents === null) { setError("Revisá el precio por kg: usá un importe con hasta dos decimales."); return false; }
     if (current.plants.some(p => p.id !== herb.id && normalize(p.name) === normalize(text("name")))) { setError("Ya existe una hierba con ese nombre. Editá su ficha."); return false; }
-    const item: Plant = { ...herb, image, name: text("name"), properties: text("properties"), uses: splitTags(text("uses")), aliases: splitTags(text("aliases")), warnings: text("warnings"), published: true, pricePerKgCents, ...storeFields(form, text) };
-    if (!(await save({ ...current, plants: [...current.plants.filter(p => p.id !== item.id), item] }))) return false;
+    const item: Plant = { ...herb, saunaEnabled: form.get("saunaEnabled") === "on", saunaDescription: text("saunaDescription"), image, name: text("name"), properties: text("properties"), uses: splitTags(text("uses")), aliases: splitTags(text("aliases")), warnings: text("warnings"), published: true, pricePerKgCents, ...storeFields(form, text) };
+    if (!(await save({ ...current, plants: [...current.plants.filter(p => p.id !== item.id), item] }, `Hierba «${item.name}» guardada correctamente.`))) return false;
     onSaved(item);
     return true;
   };
@@ -129,9 +130,14 @@ export function HerbEditor({ herb, onSaved, onClose, onDelete, KilogramPrice }: 
       <Field label="Nombre de la hierba" name="name" value={herb.name} required />
       <ImageField value={image} onChange={setImage} onBusy={setBusy} />
       {catalog && <CategoryPicker catalog={catalog} item={herb} />}
+      <div className="grid gap-2">
+        <label className="check store-visible"><input type="checkbox" name="visible" defaultChecked={!herb.hidden} />Visible en la tienda</label>
+        <label className="check store-visible"><input type="checkbox" name="saunaEnabled" defaultChecked={herb.saunaEnabled ?? true} />Ofrecer en FropexioÑekurel para sauna</label>
+      </div>
       <KilogramPrice cents={herb.pricePerKgCents} />
-      <PriceFields item={herb} />
+      <PriceFields item={herb} showVisibility={false} />
       <Field label="Propiedades" name="properties" value={herb.properties} multiline />
+      <Field label="Descripción para sauna" name="saunaDescription" value={herb.saunaDescription ?? ""} multiline hint="Se muestra en Fropexio para las sesiones de sauna." />
       <Field label="Usos tradicionales y formas de uso" name="uses" value={herb.uses.join(", ")} multiline hint="Separá por comas. Ejemplos: mate, infusión, sobremesa." />
       <Field label="También buscar por" name="aliases" value={herb.aliases.join(", ")} multiline hint="Sinónimos o búsquedas del cliente. Ejemplo: hierbas para mate." />
       <Field label="Advertencias / contraindicaciones" name="warnings" value={herb.warnings} multiline />

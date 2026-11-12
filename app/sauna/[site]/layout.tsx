@@ -35,5 +35,6 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 export default async function SaunaLayout({ children, params }: Props & { children: React.ReactNode }) {
   const site = await saunaSite(params);
   if (!site) notFound();
-  return <SiteFrame siteName={site.name} home="/" termsHref="/terminos">{children}</SiteFrame>;
+  const { address } = await cachedPage(site.id);
+  return <SiteFrame siteName={site.name} home="/" termsHref="/terminos" address={address}>{children}</SiteFrame>;
 }

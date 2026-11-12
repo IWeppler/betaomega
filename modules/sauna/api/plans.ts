@@ -1,8 +1,12 @@
 import { sameOrigin } from "@/platform/auth/server";
+import { listSaunaHerbs } from "../data/herbs";
+import { selectedHerb } from "../domain/herbs";
+import { BodyError } from "./route-tools";
 import { getSite } from "@/platform/sites/server";
 import { bookingsFromOrigin, markOrigin } from "../data/bookings";
 import { deleteUnusedPlan, listPlans, planPurchaseByToken, reservePlan, savePlan, type PlanTurnRequest } from "../data/plans";
 import { recordFailedAttempt } from "../data/codes";
+import { readPage } from "../data/page";
 import { listRooms, listTurnTypes, readSettings } from "../data/setup";
 import { isCodeText, normalizeCode } from "../domain/codes";
 import { cleanArgentineWhatsapp, cleanName } from "../domain/customer";
@@ -65,12 +69,15 @@ export async function postPlanReservation(request: Request, context: SiteContext
     const raw = Array.isArray(body?.turns) ? body.turns : [];
     if (!planId || raw.length < PLAN_TURNS.min || raw.length > PLAN_TURNS.max) return fail(400, rejectionMessages.invalid_request);
     const turns: PlanTurnRequest[] = [];
+    const herbs = raw.some(item => item && typeof item === "object" && "herbId" in item && item.herbId) ? await listSaunaHerbs(site.id) : [];
     for (const item of raw as Record<string, unknown>[]) {
       const roomId = typeof item?.roomId === "string" && UUID.test(item.roomId) ? item.roomId : null;
       const turnTypeId = typeof item?.turnTypeId === "string" && UUID.test(item.turnTypeId) ? item.turnTypeId : null;
       const startsAt = typeof item?.startsAt === "string" && !Number.isNaN(Date.parse(item.startsAt)) ? new Date(item.startsAt).toISOString() : null;
       if (!roomId || !turnTypeId || !startsAt) return fail(400, rejectionMessages.invalid_request);
-      turns.push({ roomId, turnTypeId, startsAt });
+      let herb;
+      try { herb = selectedHerb(herbs, item?.herbId); } catch (error) { throw new BodyError(409, (error as Error).message); }
+      turns.push({ roomId, turnTypeId, startsAt, herb });
     }
     const name = cleanName(body?.name);
     const whatsapp = cleanArgentineWhatsapp(body?.whatsapp);
@@ -111,7 +118,7 @@ export async function publicPlan(siteId: string, token: string, returnedPaymentI
   if (returnedPaymentId && purchase.bookings.every(booking => ledgerOf(booking.movements).depositPaidCents === 0)) {
     if (await settleReturnedPlanPayment(siteId, purchase.id, returnedPaymentId)) purchase = await planPurchaseByToken(siteId, token) ?? purchase;
   }
-  const [settings, rooms, options] = await Promise.all([readSettings(siteId), listRooms(siteId), paymentOptionsOf(siteId)]);
+  const [settings, rooms, options, page] = await Promise.all([readSettings(siteId), listRooms(siteId), paymentOptionsOf(siteId), readPage(siteId)]);
   const showRoom = rooms.filter(room => room.active).length > 1;
   return {
     plan: {
@@ -121,11 +128,12 @@ export async function publicPlan(siteId: string, token: string, returnedPaymentI
       // Only what the person's page needs: no ids, no tokens of the single bookings.
       bookings: purchase.bookings.map(booking => ({
         status: booking.status, expiresAt: booking.expiresAt, depositCents: booking.depositCents, priceCents: booking.priceCents, discountCents: booking.discountCents,
-        startsAt: booking.startsAt, endsAt: booking.endsAt, typeName: booking.typeName, movements: booking.movements,
+        herbName: booking.herbName, startsAt: booking.startsAt, endsAt: booking.endsAt, typeName: booking.typeName, movements: booking.movements,
         roomName: showRoom ? rooms.find(room => room.id === booking.roomId)?.name ?? "" : "",
       })),
     },
     now: new Date().toISOString(),
+    address: page.address,
     contactWhatsapp: settings?.contactWhatsapp ?? null,
     payment: { ...options, transfer: settings ? transferAccount(settings) : null, returned: Boolean(returnedPaymentId) },
   };
