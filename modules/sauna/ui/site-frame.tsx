@@ -6,6 +6,7 @@ import { Brand, CtaLink, reservePath } from "./site-parts";
 import { SiteNav } from "./site-nav";
 import { SiteHeader } from "./site-header";
 import { SiteMotion } from "./site-motion";
+import { SiteSplash } from "./site-splash";
 import { SiteFooter } from "./site-footer";
 
 // Cinzel carries the identity; Source Sans keeps reading and controls clear (docs/SAUNA.md §12).
@@ -17,6 +18,7 @@ export function SiteFrame({ siteName, home, termsHref, address = "", preview = f
   const root = home || "/";
   // The size and the reset on <main> repeat the public site's defaults: the preview lives inside the panel, whose CSS would otherwise make it look different.
   return <div data-theme="sauna" className={`${display.variable} ${reading.variable} relative flex min-h-dvh flex-col bg-bg font-text text-lg/relaxed text-ink antialiased selection:bg-accent selection:text-accent-ink`}>
+    {!preview && <SiteSplash logo="/fropexio-logo-navbar.webp" name={siteName} home={root} />}
     <SiteMotion />
     <a href="#contenido" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-40 focus:rounded-control focus:bg-surface focus:p-3">Ir al contenido</a>
     {preview && <p role="status" className="fixed right-4 bottom-4 z-30 m-0 max-w-[calc(100%-2rem)] rounded-control border border-warn-line bg-warn-bg px-3 py-2 text-base text-warn-ink shadow-lift">Vista previa: sin publicar y sin tomar reservas.</p>}

@@ -36,8 +36,25 @@ export function SiteHeader({ home, children }: { home: string; children: ReactNo
     };
     const onScroll = () => { if (!frame) frame = requestAnimationFrame(update); };
     update();
+    // The browser can restore or reset the scroll position after mount (reload, back/forward cache, address bar, late layout) without a scroll event that reaches us in time; re-read it then, so the header never stays out of step with the page.
+    const resync = () => { last.current = window.scrollY; onScroll(); };
+    const late = window.setTimeout(resync, 250);
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(frame); };
+    window.addEventListener("scrollend", onScroll);
+    window.addEventListener("pageshow", resync);
+    window.addEventListener("load", resync);
+    window.addEventListener("resize", onScroll);
+    window.addEventListener("hashchange", onScroll);
+    return () => {
+      window.clearTimeout(late);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scrollend", onScroll);
+      window.removeEventListener("pageshow", resync);
+      window.removeEventListener("load", resync);
+      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("hashchange", onScroll);
+      cancelAnimationFrame(frame);
+    };
   }, []);
   const bare = hasHero && top;
   return <header data-over={bare} className={`${overHero} fixed inset-x-0 top-0 z-20 grid h-20 grid-cols-[1fr_auto_1fr] items-center gap-4 px-[6%] text-ink transition-[translate,background-color,border-color,box-shadow] duration-300 ease-standard focus-within:translate-none has-[[aria-expanded=true]]:translate-none lg:h-24 lg:px-[5%] ${hidden ? "-translate-y-full" : ""} ${bare ? "border-b border-transparent bg-transparent" : "border-b border-line bg-bg shadow-card"}`}>
