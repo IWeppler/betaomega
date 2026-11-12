@@ -25,7 +25,7 @@ export function SiteFrame({ siteName, home, termsHref, address = "", preview = f
       {/* Three columns: the section links (the menu button on a phone) on the left, the brand in the middle, share and booking on the right. */}
       <div className="flex items-center justify-start"><SiteNav home={home} /></div>
       {/* Above the phone menu's sheet (z-30), which opens under the header row. */}
-      <div className="relative z-40 justify-self-center"><Brand name={siteName} href={root} src="/fropexio-logo-navbar.png" /></div>
+      <div className="relative z-40 justify-self-center"><Brand name={siteName} href={root} src="/fropexio-logo-navbar.webp" /></div>
       <div className="flex items-center justify-end gap-2">
         <div className="flex items-center gap-2">
           {/* Always the home page: a reservation's or a plan's address is private to its owner. The preview is not public, so nothing to share. */}

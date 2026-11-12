@@ -7,10 +7,10 @@ import { buttonClass } from "./controls";
 
 /** Keep the supplied artwork whole, including its wordmark. */
 export function BrandMark({ className = "size-10" }: { className?: string }) {
-  return <Image src="/fropexio-logo.png" width={1536} height={1024} alt="" className={`shrink-0 object-contain ${className}`} />;
+  return <Image src="/fropexio-logo.webp" width={1536} height={1024} alt="" className={`shrink-0 object-contain ${className}`} />;
 }
 
-export function Brand({ name, href, compact = false, src = "/fropexio-logo.png" }: { name: string; href: string; compact?: boolean; src?: string }) {
+export function Brand({ name, href, compact = false, src = "/fropexio-logo.webp" }: { name: string; href: string; compact?: boolean; src?: string }) {
   return <a href={href} aria-label={name} className="flex shrink-0 items-center no-underline">
     <Image src={src} width={1536} height={1024} alt={name} loading="eager" className={compact ? "h-16 w-24 object-contain" : "h-14 w-21 object-contain lg:h-16 lg:w-24"} />
   </a>;
