@@ -1496,36 +1496,157 @@ html:has(.r-sheet[open]) {
     transition: none !important;
   }
 }
+/* Printed recipe: a plain sheet in ink on white (brand, photo, name, facts, ingredients, steps, tips), with no controls.
+   `.recetas` in front so these win over the screen rules that come later in this file (`.r-thumbs`, `.r-checklist input`). */
+@page {
+  margin: 14mm 14mm 16mm;
+}
 @media print {
   body:has(.recetas) {
     background: #fff;
   }
   .recetas {
     background: #fff;
-    font-size: 12pt;
+    color: #000;
+    font-size: 11pt;
   }
-  .r-top,
-  .r-foot,
-  .no-print {
+  .recetas :is(.r-splash, .r-head-actions, .r-foot, .r-thumbs, .r-checklist input, .no-print) {
     display: none;
   }
-  .r-page {
+  .recetas .r-head {
+    max-width: none;
+    padding: 0 0 8pt;
+    margin-bottom: 12pt;
+    border-bottom: 0.5pt solid #999;
+  }
+  .recetas .r-logo {
+    width: 30pt;
+    height: 36pt;
+    box-shadow: none;
+  }
+  .recetas .r-wordmark {
+    font-size: 14pt;
+  }
+  .recetas .r-page {
+    max-width: none;
     padding: 0;
   }
-  .r-hero {
-    grid-template-columns: 220px 1fr;
-    gap: 24px;
-    margin-bottom: 24px;
-  }
-  .r-method {
-    grid-template-columns: 1fr 2fr;
-    gap: 28px;
-  }
-  .r-ingredients {
-    position: static;
-  }
-  .r-steps li {
+  .recetas .r-hero {
+    grid-template-columns: 170pt 1fr;
+    gap: 18pt;
+    align-items: start;
+    margin: 0 0 18pt;
     break-inside: avoid;
+  }
+  .recetas .r-hero .r-photo {
+    border-radius: 8pt;
+  }
+  .recetas .r-hero-text {
+    gap: 8pt;
+  }
+  .recetas .r-hero h1 {
+    font-size: 24pt;
+  }
+  .recetas .r-tags a {
+    min-height: 0;
+    padding: 0;
+    background: none;
+    color: #444;
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .recetas .r-tags li + li::before {
+    content: "· ";
+    color: #444;
+  }
+  .recetas .r-lead {
+    color: #222;
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+  .recetas .r-facts {
+    gap: 4pt 16pt;
+  }
+  .recetas .r-facts div {
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  .recetas .r-facts dt {
+    color: #444;
+    font-size: 8.5pt;
+  }
+  .recetas .r-facts dd {
+    font-size: 12pt;
+  }
+  /* Same layout as a wide screen: ingredients on the left, steps and tips on the right. */
+  .recetas .r-method {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 0 22pt;
+    align-items: start;
+  }
+  .recetas .r-method .r-ingredients {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  .recetas .r-method :is(.r-steps, .r-notes) {
+    grid-column: 2;
+  }
+  .recetas .r-method .r-fold + .r-fold {
+    margin-top: 0;
+  }
+  .recetas .r-fold.r-steps {
+    background: none;
+  }
+  .recetas .r-checklist label {
+    padding: 4pt 0;
+  }
+  .recetas .r-checklist li + li {
+    border-top-color: #ccc;
+  }
+  .recetas .r-steps ol {
+    gap: 8pt;
+  }
+  .recetas .r-steps li {
+    grid-template-columns: 18pt minmax(0, 1fr);
+    gap: 6pt;
+    break-inside: avoid;
+  }
+  .recetas .r-steps li::before {
+    width: auto;
+    height: auto;
+    place-items: start;
+    background: none;
+    font-size: 12pt;
+  }
+  .recetas .r-steps li p {
+    padding-top: 0;
+    max-width: none;
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+  .recetas .r-method .r-notes {
+    margin-top: 14pt;
+    padding: 10pt 12pt;
+    border: 0.5pt solid #999;
+    background: none;
+    break-inside: avoid;
+  }
+  .recetas .r-notes h3 {
+    font-size: 12pt;
+    color: #000;
+  }
+  .recetas .r-story {
+    margin-top: 18pt;
+    padding-top: 12pt;
+  }
+  .recetas .r-story > h2 {
+    font-size: 14pt;
   }
 }
 
@@ -1912,8 +2033,9 @@ html:has(.r-sheet[open]) {
     padding: 0 0 8px;
   }
   .r-fold summary h2 {
-    font-size: 20pt;
+    font-size: 15pt;
   }
+  .r-fold-summary,
   .r-fold-caret {
     display: none;
   }
