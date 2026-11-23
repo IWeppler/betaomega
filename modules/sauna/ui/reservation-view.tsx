@@ -10,14 +10,17 @@ import type { TransferAccount } from "../domain/setup";
 import { businessDate, businessTime, dayLabel } from "../domain/time";
 import { buttonClass, Card } from "./controls";
 import { PaymentChoice } from "./payment-choice";
+import { AddToCalendar } from "./add-to-calendar";
 import { BookAnother, ProgressSteps, ResultHero, stageOf } from "./result-parts";
 
 export type ReservationViewData = {
   booking: {
     status: BookingStatus; kind: BookingKind; seats: number; priceCents: number; discountCents: number; depositCents: number; expiresAt: string | null;
-    customerName: string; typeName: string; startsAt: string; endsAt: string; movements: Movement[]; rules: PolicyRule[];
+    herbName?: string | null; customerName: string; typeName: string; startsAt: string; endsAt: string; movements: Movement[]; rules: PolicyRule[];
   };
   now: string;
+  /** Street and district, for the calendar event. */
+  address: string;
   contactWhatsapp: string | null;
   roomName: string;
   showRoom: boolean;
@@ -44,7 +47,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 
 /** The person's own booking. Their link is the only thing that opens it, and it shows nothing about anyone else. */
 export function ReservationView({ data, siteId, token, link, siteName }: { data: ReservationViewData; siteId: string; token: string; link: string; siteName: string }) {
-  const { booking, now, contactWhatsapp, roomName, showRoom, payment } = data;
+  const { booking, now, address, contactWhatsapp, roomName, showRoom, payment } = data;
   const status = effectiveStatus(booking, now);
   const money = moneyState(booking);
   const open = status === "held" || status === "pending_transfer" || status === "confirmed";
@@ -61,12 +64,14 @@ export function ReservationView({ data, siteId, token, link, siteName }: { data:
       <strong className="font-display text-2xl/snug font-normal text-ink first-letter:uppercase">{dayLabel(businessDate(booking.startsAt))}</strong>
       <span className="text-lg text-ink tabular-nums">{businessTime(booking.startsAt)} a {businessTime(booking.endsAt)}</span>
       <span className="text-muted">
+        {booking.herbName && `Hierba: ${booking.herbName} · `}
         {booking.typeName && `${booking.typeName} · `}
         {booking.kind === "private" ? "Grupal" : "Individual"}
         {showRoom && roomName && ` · ${roomName}`}
       </span>
     </Card>
     {stage === "done" && <p className="m-0 text-muted">Guardá esta página: desde este enlace ves tu reserva cuando quieras.</p>}
+    {status === "confirmed" && <AddToCalendar now={now} link={link} events={[{ title: `${siteName}: ${booking.typeName || "Sesión"}`, startsAt: booking.startsAt, endsAt: booking.endsAt, location: address, description: booking.herbName ? `Hierba: ${booking.herbName}` : "", url: link }]} />}
 
     {status === "held" && booking.expiresAt && <div className="grid gap-3">
       {payment.returned && money.paidCents === 0 && <p className="m-0 text-ink">Todavía no nos llegó la confirmación de Mercado Pago. Si ya pagaste, recargá la página en un minuto. Si el pago no se completó, podés intentarlo de nuevo.</p>}
@@ -89,7 +94,7 @@ export function ReservationView({ data, siteId, token, link, siteName }: { data:
         : <p className="m-0 text-ink">Escribinos por WhatsApp y te pasamos los datos para transferir {formatCents(money.depositDueCents)}.</p>}
       <p className="m-0 text-muted">Guardamos tu lugar hasta el {until(booking.expiresAt)}. Cuando transfieras, mandanos el comprobante: confirmamos la reserva al ver el dinero en la cuenta.</p>
       {contactWhatsapp && <div className="flex flex-wrap gap-2">
-        <a className={buttonClass("primary")} href={whatsappLink(contactWhatsapp, transferProofMessage({ ...about, amountCents: money.depositDueCents }))} target="_blank" rel="noopener noreferrer"><FaWhatsapp size={16} aria-hidden="true" />Enviar el comprobante</a>
+        <a className={buttonClass("primary", "lg")} href={whatsappLink(contactWhatsapp, transferProofMessage({ ...about, amountCents: money.depositDueCents }))} target="_blank" rel="noopener noreferrer"><FaWhatsapp size={16} aria-hidden="true" />Enviar el comprobante</a>
       </div>}
       {payment.mercadopago && <div className="grid gap-2 border-t border-line pt-3">
         <p className="m-0 text-muted">¿Preferís pagar ahora con Mercado Pago? La reserva se confirma en el momento.</p>
@@ -111,8 +116,8 @@ export function ReservationView({ data, siteId, token, link, siteName }: { data:
     </Card>}
     <div className="flex flex-wrap gap-2">
       <BookAnother primary={stage === "done" || stage === "closed"} />
-      {contactWhatsapp && <a className={buttonClass()} href={whatsappLink(contactWhatsapp, contactMessage(about))} target="_blank" rel="noopener noreferrer"><FaWhatsapp size={16} aria-hidden="true" />Consultar por WhatsApp</a>}
-      {contactWhatsapp && open && <a className={buttonClass()} href={whatsappLink(contactWhatsapp, cancellationRequestMessage(about))} target="_blank" rel="noopener noreferrer">Pedir la cancelación</a>}
+      {contactWhatsapp && <a className={buttonClass("quiet", "lg")} href={whatsappLink(contactWhatsapp, contactMessage(about))} target="_blank" rel="noopener noreferrer"><FaWhatsapp size={16} aria-hidden="true" />Consultar por WhatsApp</a>}
+      {contactWhatsapp && open && <a className={buttonClass("quiet", "lg")} href={whatsappLink(contactWhatsapp, cancellationRequestMessage(about))} target="_blank" rel="noopener noreferrer">Pedir la cancelación</a>}
     </div>
     {open && booking.rules.length > 0 && <Card className="grid gap-2">
       <h2 className="m-0 font-display text-lg font-normal text-ink">Si necesitás cancelar</h2>

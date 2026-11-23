@@ -22,7 +22,7 @@ export default function HerbsPage() {
   const rows = catalog.plants.filter(p => normalize(p.name).includes(normalize(filter))).sort((a, b) => a.name.localeCompare(b.name, "es"));
   const current = selection && catalog.plants.find(p => p.id === selection.item.id);
   const side = selection?.mode === "delete" ? <DeleteConfirm item={selection.item} onCancel={() => setSelection({ item: selection.item, mode: "edit" })} onDeleted={() => setSelection(null)} />
-    : selection ? <HerbEditor KilogramPrice={HerbKilogramPrice} key={selection.item.id} herb={selection.item} onSaved={item => setSelection({ item, mode: "edit" })} onClose={() => void select(null)} onDelete={current && !deleteBlocker(catalog, current) ? () => void select({ item: selection.item, mode: "delete" }) : undefined} />
+    : selection ? <HerbEditor KilogramPrice={HerbKilogramPrice} key={selection.item.id} herb={selection.item} onSaved={() => setSelection(null)} onClose={() => void select(null)} onDelete={current && !deleteBlocker(catalog, current) ? () => void select({ item: selection.item, mode: "delete" }) : undefined} />
     : null;
   return <>
     <PageHeader title="Hierbas" description={`${catalog.plants.length} hierbas. Las que se usan en un tónico no se pueden eliminar.`} actions={
@@ -31,7 +31,8 @@ export default function HerbsPage() {
     <div>
       <section className="panel-card panel-list" aria-label="Lista de hierbas">
         <div className="panel-list-tools"><SearchBox value={filter} onChange={setFilter} label="Buscar una hierba" /></div>
-        {rows.length > 0 && <Paged rows={rows} resetKey={filter}>{shown => <table className="panel-table">
+        {rows.length > 0 && <Paged rows={rows} resetKey={filter}>{shown => <table className="panel-table [&_thead_th.is-num]:w-auto [&_thead_th]:whitespace-normal">
+          <colgroup><col className="w-2/5" /><col className="w-[16%]" /><col className="w-[22%]" /><col className="w-[22%]" /></colgroup>
           <thead><tr><th scope="col">Nombre</th><th scope="col" className="is-num">Tónicos</th><th scope="col" className="is-num">Precio por kg</th><th scope="col" className="is-num">Precio de venta</th></tr></thead>
           <tbody>{shown.map(plant => <tr key={plant.id} aria-selected={selection?.item.id === plant.id}>
             <th scope="row"><button className="panel-row-button" disabled={busy} onClick={() => void select({ item: plant, mode: "edit" })}><Leaf size={16} aria-hidden="true" /><span>{plant.name}</span><StatusBadges item={plant} /></button></th>

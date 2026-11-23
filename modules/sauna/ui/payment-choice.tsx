@@ -31,8 +31,8 @@ export function PaymentChoice({ siteId, token, mercadopago, transfer, plan = fal
   };
   return <div className="grid gap-2">
     <div className="flex flex-wrap gap-2">
-      {mercadopago && <Button variant="primary" disabled={busy !== null} onClick={() => void pay("mercadopago")}>{busy === "mercadopago" ? "Abriendo Mercado Pago…" : "Pagar con Mercado Pago"}</Button>}
-      {transfer && <Button variant={mercadopago ? "quiet" : "primary"} disabled={busy !== null} onClick={() => void pay("transfer")}>{busy === "transfer" ? "Un momento…" : "Pagar por transferencia"}</Button>}
+      {mercadopago && <Button variant="primary" size="lg" disabled={busy !== null} onClick={() => void pay("mercadopago")}>{busy === "mercadopago" ? "Abriendo Mercado Pago…" : "Pagar con Mercado Pago"}</Button>}
+      {transfer && <Button size="lg" variant={mercadopago ? "quiet" : "primary"} disabled={busy !== null} onClick={() => void pay("transfer")}>{busy === "transfer" ? "Un momento…" : "Pagar por transferencia"}</Button>}
     </div>
     {error && <Notice kind="error">{error}</Notice>}
   </div>;

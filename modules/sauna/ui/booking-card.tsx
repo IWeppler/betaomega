@@ -18,6 +18,7 @@ type Action = "confirm" | "transfer" | "complete" | "no_show" | "cancel";
 
 /** What the WhatsApp messages say about a booking. */
 export const messageOf = (booking: AgendaBooking, site: { name: string; url: string }): MessageBooking => ({
+  herbName: booking.herbName,
   siteName: site.name, customerName: booking.customerName, startsAt: booking.startsAt, kind: booking.kind, seats: booking.seats, owedCents: moneyState(booking).owedCents,
   link: `${site.url}/reserva/${booking.token}`,
 });
@@ -50,8 +51,9 @@ export function StatusTag({ status, label = statusLabels[status] }: { status: Bo
 }
 
 /** What the booking used to get its price: a discount code or a pack session. */
-export function BookingTags({ booking }: { booking: Pick<AgendaBooking, "code" | "fromPack" | "planName"> }) {
+export function BookingTags({ booking }: { booking: Pick<AgendaBooking, "code" | "fromPack" | "planName" | "herbName"> }) {
   return <>
+    {booking.herbName && <Tag tone="outline">Hierba: {booking.herbName}</Tag>}
     {booking.planName && <Tag tone="outline"><Layers size={13} strokeWidth={2.5} aria-hidden="true" />{booking.planName}</Tag>}
     {booking.code && <Tag tone="outline"><TicketPercent size={13} strokeWidth={2.5} aria-hidden="true" />Código {booking.code}</Tag>}
     {booking.fromPack && <Tag>Pack</Tag>}

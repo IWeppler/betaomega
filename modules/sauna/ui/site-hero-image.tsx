@@ -1,23 +1,27 @@
-"use client";
+import { getImageProps } from "next/image";
+import desktopPhoto from "../../../public/jarind-hero.webp";
+import mobilePhoto from "../../../public/jarind-hero-mobile.webp";
 
-import Image from "next/image";
-import { useEffect, useRef } from "react";
-import landscape from "../../../public/fropexio-paisaje.jpg";
+const ALT = "Helechos, lavanda y romero junto a un arroyo, con vapor dorado entre los rayos del sol.";
 
+/**
+ * The hero's ground: herbs and ferns by a stream, with steam in the sunlight. Wide on desktop (from 1024px, where the text sits beside the picture) and tall on a phone,
+ * each its own file so a phone never downloads the wide one. Full bleed; it settles from a slight zoom once on load. A black gradient keeps the text and the bare header readable.
+ */
 export function HeroImage() {
-  const layer = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const media = matchMedia("(prefers-reduced-motion: reduce)");
-    let frame = 0;
-    const draw = () => {
-      frame = 0;
-      if (layer.current) layer.current.style.transform = media.matches ? "none" : `translate3d(0,${Math.min(Math.max(window.scrollY, 0) * 0.1, 80)}px,0) scale(1.04)`;
-    };
-    const refresh = () => { if (!frame) frame = requestAnimationFrame(draw); };
-    draw(); window.addEventListener("scroll", refresh, { passive: true }); media.addEventListener("change", refresh);
-    return () => { cancelAnimationFrame(frame); window.removeEventListener("scroll", refresh); media.removeEventListener("change", refresh); };
-  }, []);
-  return <div ref={layer} className="absolute inset-0 origin-top [backface-visibility:hidden]">
-    <Image src={landscape} alt="" fill preload placeholder="blur" sizes="100vw" className="object-cover object-[65%_center] md:object-center" />
+  const common = { alt: ALT, fill: true, sizes: "100vw", quality: 80 };
+  const { props: { srcSet: wide } } = getImageProps({ ...common, src: desktopPhoto });
+  const { props: { srcSet: tall, ...img } } = getImageProps({ ...common, src: mobilePhoto });
+  return <div className="absolute inset-0 overflow-hidden bg-black">
+    <div className="relative h-full animate-arrive">
+      <picture>
+        <source media="(min-width: 1024px)" srcSet={wide} />
+        {/* The first thing on screen: no lazy loading, and the browser is told it matters. */}
+        <img {...img} srcSet={tall} loading="eager" fetchPriority="high" alt={ALT} className="size-full object-cover" />
+      </picture>
+    </div>
+    {/* Neutral black, not the brand's wine: the photograph keeps its own colours and only gets darker where the text sits. */}
+    <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/35 to-black/10 lg:bg-linear-to-r lg:from-black/75 lg:via-black/40 lg:to-black/0" aria-hidden="true" />
+    <div className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-black/55 to-transparent" aria-hidden="true" />
   </div>;
 }

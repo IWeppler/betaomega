@@ -1,3 +1,6 @@
+import { listSaunaHerbs } from "../data/herbs";
+import { selectedHerb } from "../domain/herbs";
+import { BodyError } from "./route-tools";
 import { isAdmin, sameOrigin } from "@/platform/auth/server";
 import { getPanelSite, getSite } from "@/platform/sites/server";
 import type { Site } from "@/platform/sites";
@@ -77,7 +80,10 @@ export async function postReservation(request: Request, context: SiteContext) {
       }
     }
 
-    const result = await reserve(site.id, { roomId, turnTypeId, startsAt, kind, seats: 1, name, whatsapp, code, termsAccepted: body?.termsAccepted === true });
+    let herb;
+    const herbs = body?.herbId ? await listSaunaHerbs(site.id) : [];
+    try { herb = selectedHerb(herbs, body?.herbId); } catch (error) { throw new BodyError(409, (error as Error).message); }
+    const result = await reserve(site.id, { herb, roomId, turnTypeId, startsAt, kind, seats: 1, name, whatsapp, code, termsAccepted: body?.termsAccepted === true });
     if (!result.ok) {
       if (result.reason.startsWith("code_")) await recordFailedAttempt(site.id, origin);
       return Response.json({ error: rejectionMessages[result.reason], reason: result.reason }, { status: 409 });
@@ -105,7 +111,7 @@ export async function publicHome(siteId: string, { termsHref = "/terminos", prev
   return {
     booking: {
       siteId, today, firstDay: firstBookableDay(today, settings.opensOn), rules, maxAdvanceDays: settings.maxAdvanceDays, termsHref, preview,
-      plans, depositPercent: settings.depositPercent,
+      plans, herbs: await listSaunaHerbs(siteId).catch(() => []), depositPercent: settings.depositPercent,
     },
     page,
     location: await resolveMapLocation(page.mapUrl),
@@ -126,9 +132,10 @@ export async function publicReservation(siteId: string, token: string, returnedP
   if (target && ledgerOf(target.movements).depositPaidCents === 0) await settleReturnedPayment(siteId, target, returnedPaymentId);
   const booking = await bookingByToken(siteId, token);
   if (!booking) return null;
-  const [settings, rooms, options] = await Promise.all([readSettings(siteId), listRooms(siteId), paymentOptionsOf(siteId)]);
+  const [settings, rooms, options, page] = await Promise.all([readSettings(siteId), listRooms(siteId), paymentOptionsOf(siteId), readPage(siteId)]);
   return {
     booking,
+    address: page.address,
     now: new Date().toISOString(),
     contactWhatsapp: settings?.contactWhatsapp ?? null,
     roomName: rooms.find(room => room.id === booking.roomId)?.name ?? "",

@@ -1,16 +1,13 @@
-import type { ReactNode } from "react";
 import Image from "next/image";
-import { ArrowDown, ArrowUpRight } from "lucide-react";
-import roomPhoto from "../../../public/fropexio-sala.jpg";
-import { formatCents } from "@/platform/money";
+import jungleLight from "../../../public/selvatropical.webp";
 import type { TurnType } from "../domain/hours";
 import type { PageContent } from "../domain/page";
-import { describeRules, type PolicyRule } from "../domain/policy";
-import { BookingDialog } from "./booking-dialog";
+import { type PolicyRule } from "../domain/policy";
 import type { BookingFlowData } from "./booking-flow";
-import { BrandMark, CtaLink, Eyebrow, Title } from "./site-parts";
-import { Question } from "./site-question";
-import { HeroImage } from "./site-hero-image";
+import { CtaLink, Eyebrow, Title } from "./site-parts";
+import { SiteVisitGuide } from "./site-visit-guide";
+import { SiteHero } from "./site-hero";
+import { PlanCard, SessionCard } from "./site-session";
 import { SiteLocation } from "./site-location";
 import type { MapLocation } from "../domain/map-location";
 
@@ -27,115 +24,19 @@ export type SiteHomeData = {
   location: MapLocation | null;
 };
 
-const RESERVE = "#reservar";
 const sectionX = "px-[7%] lg:px-[8%]";
-const reading = "m-0 text-[15px] leading-7 text-muted";
-
-/** "Afuera, el mundo. Adentro, la calma." becomes two lines, the last one in the accent. A single sentence stays as it is. */
-function HeroTitle({ text }: { text: string }) {
-  const sentences = text.split(/(?<=[.!?])\s+/);
-  const last = sentences.length > 1 ? sentences.at(-1) : undefined;
-  return (
-    <h1 className="m-0 mt-7 mb-6 font-display text-[clamp(2.5rem,5.3vw,5rem)]/[1.25] font-normal tracking-tight text-ink">
-      {(last ? sentences.slice(0, -1) : sentences).map((sentence) => (
-        <span key={sentence} className="block">
-          {sentence}
-        </span>
-      ))}
-      {last && <span className="block text-accent-text">{last}</span>}
-    </h1>
-  );
-}
-
-function SectionLabel({
-  number,
-  children,
-  aside,
-}: {
-  number: string;
-  children: ReactNode;
-  aside?: ReactNode;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <Eyebrow>
-        {number} / {children}
-      </Eyebrow>
-      {aside && <div className="hidden sm:block">{aside}</div>}
-    </div>
-  );
-}
-
-function SessionRow({
-  type,
-  index,
-  depositPercent,
-}: {
-  type: TurnType;
-  index: number;
-  depositPercent: number;
-}) {
-  const deposit = type.depositPercent ?? depositPercent;
-  const prices = [
-    type.priceCents !== null && { label: "Individual", cents: type.priceCents, main: true },
-    type.privatePriceCents !== null && { label: "Grupal", cents: type.privatePriceCents, main: false },
-  ].filter((price): price is { label: string; cents: number; main: boolean } => Boolean(price));
-  // A grid, not a wrapping row: on a phone the number, the name and the arrow share the first line and the prices sit under the name, side by side;
-  // from 640px the prices and the arrow move to the right of the name, as before.
-  return (
-    <a
-      href={RESERVE}
-      className="group grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-4 gap-y-5 border-b border-line-strong py-7 text-inherit no-underline transition-colors duration-150 hover:bg-bg active:bg-bg sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-x-12 sm:px-1 sm:py-8"
-    >
-      <span
-        className="row-start-1 pt-0.5 font-serif text-[15px] text-muted sm:self-start sm:pt-5"
-        aria-hidden="true"
-      >
-        {String(index + 1).padStart(2, "0")}
-      </span>
-      <div className="row-start-1 grid min-w-0 gap-2">
-        <Eyebrow>{type.durationMinutes} minutos</Eyebrow>
-        <h3 className="m-0 font-display text-[clamp(1.375rem,2vw,1.625rem)]/snug font-normal text-ink">
-          {type.name}
-        </h3>
-        <p className={`${reading} max-w-[46ch] text-sm leading-6`}>
-          {deposit > 0
-            ? `Seña del ${deposit} % para reservar. El resto se paga en el lugar.`
-            : "Sin seña: se paga en el lugar."}
-        </p>
-      </div>
-      {prices.length > 0 && (
-        <dl className="col-span-2 col-start-2 row-start-2 m-0 flex gap-8 sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:grid sm:gap-3 sm:text-right">
-          {prices.map((price) => (
-            <div key={price.label} className="flex flex-col-reverse gap-0.5">
-              <dt className="text-xs text-muted">{price.label}</dt>
-              <dd className={`m-0 font-display whitespace-nowrap ${price.main ? "text-2xl text-accent-text" : "text-xl text-ink sm:text-lg"}`}>
-                {formatCents(price.cents)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      <span
-        className="col-start-3 row-start-1 grid size-10 place-items-center self-start rounded-full border border-line-strong text-ink transition-colors duration-150 group-hover:border-accent group-hover:text-accent-text sm:col-start-4 sm:size-11 sm:self-center"
-        aria-hidden="true"
-      >
-        <ArrowUpRight size={20} strokeWidth={1.25} />
-      </span>
-    </a>
-  );
-}
+const reading = "m-0 text-lg leading-8 text-muted";
 
 function PlainList({ title, items }: { title: string; items: string[] }) {
   if (!items.length) return null;
   return (
     <div className="grid content-start gap-2">
-      <Eyebrow>{title}</Eyebrow>
+      <span className="block text-base font-medium text-brand-highlight">{title}</span>
       <ul className="m-0 list-none p-0">
         {items.map((item) => (
           <li
             key={item}
-            className="border-b border-line-strong/60 py-2.5 text-sm leading-6 text-ink"
+            className="border-b border-night-muted/30 py-2.5 text-base leading-6 text-night-ink"
           >
             {item}
           </li>
@@ -145,15 +46,7 @@ function PlainList({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-const Lines = ({ items }: { items: string[] }) => (
-  <ul className="m-0 grid list-none gap-1.5 p-0">
-    {items.map((item) => (
-      <li key={item}>{item}</li>
-    ))}
-  </ul>
-);
-
-export function SiteHome({ data }: { data: SiteHomeData }) {
+export function SiteHome({ data, reserveHref = "/reservar" }: { data: SiteHomeData; reserveHref?: string }) {
   const {
     booking,
     page,
@@ -166,139 +59,62 @@ export function SiteHome({ data }: { data: SiteHomeData }) {
   } = data;
   const hasPlace =
     hours.length > 0 || Boolean(page.address) || Boolean(location);
-  const order = [
-    "esencia",
-    types.length > 0 && "sesiones",
-    "espacio",
-    "preguntas",
-    hasPlace && "horarios",
-  ].filter(Boolean);
-  const number = (id: string) => String(order.indexOf(id) + 1).padStart(2, "0");
+  const minutes = [...new Set(types.map((type) => type.durationMinutes))].sort((a, b) => a - b);
+  const individual = types.some((type) => type.priceCents !== null);
+  const group = types.some((type) => type.privatePriceCents !== null);
+  const facts = [
+    minutes.length > 0 && `Sesiones de ${minutes.join(" o ")} minutos`,
+    individual && group ? "Individual o grupal" : individual ? "Individual" : group ? "Grupal" : "",
+    types.length > 0 && "Seña online",
+  ].filter((fact): fact is string => Boolean(fact));
   return (
     <>
-      {/* Tall enough for the title on a short laptop, but never so tall the photo loses its shape on a huge monitor. */}
-      <section className="relative isolate h-svh min-h-[640px] max-h-[1100px] overflow-hidden bg-sunken md:min-h-[720px]">
-        <HeroImage />
-        {/* Warm dark wash, from the theme's background, so the photo takes the brand's colours and the text keeps its contrast. */}
-        <div className="absolute inset-0 bg-linear-to-r from-bg/90 via-bg/50 to-bg/20" />
-        <div className="absolute inset-0 bg-linear-to-t from-bg/70 via-transparent to-bg/30" />
-        <div className="relative grid h-full content-center justify-items-start px-[7%] pt-24 pb-24 lg:px-[8%]">
-          <span className="flex items-center gap-3 text-[11px] tracking-[0.2em] text-ink uppercase">
-            <i className="size-1.5 rounded-full bg-accent" />
-            Un refugio para volver a vos
-          </span>
-          <HeroTitle text={page.headline} />
-          {page.intro && (
-            <p className="m-0 max-w-[46ch] text-[15px] leading-7 text-ink">
-              {page.intro}
-            </p>
-          )}
-          <CtaLink href={RESERVE} className="mt-9 gap-12">
-            Reservar
-          </CtaLink>
-        </div>
-        <div className="absolute inset-x-[7%] bottom-7 flex items-center justify-between lg:inset-x-[5%]">
-          <a
-            href="#esencia"
-            className="flex items-center gap-4 text-[11px] tracking-[0.2em] text-ink uppercase no-underline"
-          >
-            <span className="grid size-10 place-items-center rounded-full border border-ink/40">
-              <ArrowDown size={16} strokeWidth={1.25} aria-hidden="true" />
-            </span>
-            Descubrí Fropexio
-          </a>
-          <span
-            className="text-[11px] tracking-[0.2em] text-ink"
-            aria-hidden="true"
-          >
-            01{" "}
-            <span className="ml-2 opacity-50">
-              / {String(order.length).padStart(2, "0")}
-            </span>
-          </span>
-        </div>
-        <span
-          className="absolute top-1/2 right-7 hidden text-[10px] tracking-[0.3em] text-ink/80 uppercase [writing-mode:vertical-rl] lg:block"
-          aria-hidden="true"
-        >
-          El arte de hacer una pausa
-        </span>
-      </section>
+      <SiteHero reserveHref={reserveHref} headline={page.headline} intro={page.intro} hasSessions={types.length > 0} facts={facts} />
 
-      <section
-        id="esencia"
-        className={`${sectionX} grid gap-9 py-20 md:grid-cols-[1fr_2.6fr] md:gap-[7%] md:py-28`}
-      >
-        <SectionLabel number={number("esencia")}>Nuestra esencia</SectionLabel>
-        <div>
-          <Eyebrow className="mb-7">Menos ruido. Más presencia.</Eyebrow>
-          <Title
-            lines={["Hay lugares a los que vas."]}
-            accent="Y otros a los que volvés."
-          />
-          <div className="mt-9 grid gap-5 md:grid-cols-2 md:gap-11">
-            <p className={reading}>
-              Fropexio nace de una idea simple: necesitamos un lugar para parar.
-              Un refugio donde el calor de la madera y la quietud te inviten a
-              dejar afuera lo que pesa.
-            </p>
-            <p className={reading}>
-              Llegá. Respirá profundo. Acá no hay nada que alcanzar, solo un
-              momento para sentirte presente.
-            </p>
-          </div>
-        </div>
-      </section>
 
-      {types.length > 0 && (
+      {(types.length > 0 || booking.plans.length > 0) && (
         <section
           id="sesiones"
-          className={`${sectionX} scroll-mt-4 bg-surface py-20 md:py-28`}
+          className={`${sectionX} scroll-mt-4 bg-sand py-20 md:py-28`}
         >
-          <SectionLabel
-            number={number("sesiones")}
-            aside={<Eyebrow>Un tiempo a tu medida</Eyebrow>}
-          >
-            Las sesiones
-          </SectionLabel>
-          <div className="mt-8 mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3 md:my-14">
-            <Title lines={["Tu pausa,"]} accent="tu manera." />
-            <p className={`${reading} max-w-xs text-sm`}>
-              No todos los días piden lo mismo. Elegí cómo querés vivir el tuyo.
-            </p>
+          <div className="mb-9 max-w-2xl">
+            <h2 className="m-0 font-display text-3xl/snug font-normal md:text-4xl">Las sesiones</h2>
+            <p className={`${reading} mt-4`}>{booking.plans.length > 0 ? "Venís una vez o armás un plan de varios turnos a un precio único." : "Elegí cuánto tiempo y con quién venís."} El precio y la seña los ves antes de confirmar.</p>
           </div>
-          <div className="border-t border-line-strong">
-            {types.map((type, index) => (
-              <SessionRow
-                key={type.id}
-                type={type}
-                index={index}
-                depositPercent={depositPercent}
-              />
-            ))}
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {types.map((type) => <SessionCard key={type.id} reserveHref={reserveHref} type={type} depositPercent={depositPercent} />)}
+            {booking.plans.map(plan => <PlanCard key={plan.id} plan={plan} reserveHref={reserveHref} />)}
           </div>
         </section>
       )}
+
+      {!!booking.herbs?.length && <section id="fropexionekurel" className="grid gap-6 px-[7%] py-16 lg:px-[8%]">
+        <Eyebrow>FropexioÑekurel</Eyebrow>
+        <h2 className="m-0 font-display text-3xl font-normal">Una hierba para tu sesión</h2>
+        <p className="m-0 text-muted">Conocé las opciones y elegí una al reservar. También podés venir sin hierba.</p>
+        <div>{booking.herbs.map(herb => <article key={herb.id} className="grid gap-3 border-t border-line py-5 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div><h3 className="m-0 font-display text-xl font-normal">{herb.name}</h3>{herb.description && <p className="mt-2 mb-0 whitespace-pre-line text-base leading-6 text-muted">{herb.description}</p>}</div>
+          <a href={`${reserveHref}?hierba=${encodeURIComponent(herb.id)}`} className="flex min-h-control items-center text-base text-accent-text no-underline underline-offset-4 hover:underline">Reservar con esta hierba</a>
+        </article>)}</div>
+      </section>}
 
       <section
         id="espacio"
         className="grid scroll-mt-4 md:min-h-[650px] md:grid-cols-2"
       >
-        <div className="relative h-92 md:h-auto">
+        <div className="relative h-92 overflow-hidden md:h-auto">
           <Image
-            src={roomPhoto}
-            alt="Sauna de madera con bancos, estufa de piedras y una luz cálida."
+            src={jungleLight}
+            alt="Hojas grandes de selva tropical, con vapor y rayos de sol dorados entre la vegetación."
             fill
             placeholder="blur"
             sizes="(min-width: 768px) 50vw, 100vw"
-            className="object-cover object-[65%_center] md:object-[75%_center]"
+            className="object-cover object-center"
           />
         </div>
-        <div className="flex flex-col items-start justify-center bg-surface-sidebar px-[9%] py-16 md:py-20 lg:px-[12%]">
-          <Eyebrow>{number("espacio")} / El espacio</Eyebrow>
-          <BrandMark className="mt-9 mb-5 size-12 text-accent-text" />
-          <Title lines={["La belleza de"]} accent="lo esencial." size="panel" />
-          <p className={`${reading} mt-5`}>
+        <div className="flex flex-col items-start justify-center bg-night px-[9%] py-16 md:py-20 lg:px-[12%]">
+          <Title lines={["La belleza de"]} accent="lo esencial." size="panel" dark />
+          <p className="m-0 mt-5 text-lg leading-8 text-night-muted">
             Texturas que invitan a sentir. Luz que acompaña. El aroma de la
             madera y el sonido de tu propia respiración.
           </p>
@@ -311,55 +127,14 @@ export function SiteHome({ data }: { data: SiteHomeData }) {
         </div>
       </section>
 
-      <section
-        id="preguntas"
-        className={`${sectionX} grid scroll-mt-4 gap-x-20 gap-y-8 py-20 md:grid-cols-[1fr_1.25fr] md:py-28`}
-      >
-        <Eyebrow className="md:col-span-2">
-          {number("preguntas")} / Antes de tu visita
-        </Eyebrow>
-        <Title lines={["Venís a relajarte."]} accent="Empezá por acá." />
-        <div className="border-t border-line-strong">
-          <Question title="¿Cómo reservo un turno?">
-            Elegí el día y el horario, y dejá tu nombre y tu WhatsApp. Antes de
-            confirmar vas a ver el precio y la seña. Tu lugar queda guardado por
-            un rato y la reserva se confirma por WhatsApp.
-          </Question>
-          {page.recommendations.length > 0 && (
-            <Question title="Recomendaciones">
-              <Lines items={page.recommendations} />
-            </Question>
-          )}
-          {page.indications.length > 0 && (
-            <Question title="Indicaciones">
-              <Lines items={page.indications} />
-            </Question>
-          )}
-          {/* Open from the start: it is the one answer nobody should miss by not clicking. */}
-          {page.contraindications.length > 0 && (
-            <Question title="Contraindicaciones" open>
-              <p className="m-0 mb-3 text-ink">
-                Si estás en alguna de estas situaciones, consultá con tu médico
-                antes de venir.
-              </p>
-              <Lines items={page.contraindications} />
-            </Question>
-          )}
-          {rules.length > 0 && (
-            <Question title="Si necesitás cancelar">
-              <Lines items={describeRules(rules)} />
-            </Question>
-          )}
-        </div>
-      </section>
+      <SiteVisitGuide page={page} rules={rules} />
 
       {hasPlace && (
         <section
           id="horarios"
-          className={`${sectionX} grid scroll-mt-4 gap-x-20 gap-y-8 border-t border-line py-20 md:grid-cols-[1fr_1.25fr] md:py-28`}
+          className={`${sectionX} grid scroll-mt-4 gap-x-20 gap-y-8 bg-sand py-20 md:grid-cols-[1fr_1.25fr] md:py-28`}
         >
           <div className="grid content-start gap-8">
-            <Eyebrow>{number("horarios")} / Horarios</Eyebrow>
             <Title
               lines={page.address ? ["Cuándo venir"] : ["Cuándo"]}
               accent={page.address ? "y cómo llegar." : "venir."}
@@ -367,14 +142,14 @@ export function SiteHome({ data }: { data: SiteHomeData }) {
           </div>
           <div className="grid content-start justify-items-start gap-6">
             {page.address && (
-              <p className="m-0 text-[15px] text-ink">{page.address}</p>
+              <p className="m-0 text-lg text-ink">{page.address}</p>
             )}
             {hours.length > 0 && (
               <ul className="m-0 w-full list-none border-t border-line-strong p-0">
                 {hours.map((line) => (
                   <li
                     key={line}
-                    className="border-b border-line-strong py-4 text-[15px] text-ink"
+                    className="border-b border-line-strong py-4 text-lg text-ink"
                   >
                     {line}
                   </li>
@@ -408,20 +183,18 @@ export function SiteHome({ data }: { data: SiteHomeData }) {
         </section>
       )}
 
-      <section className="grid justify-items-center bg-accent-soft px-[7%] py-20 text-center md:py-24">
-        <Eyebrow>El mundo puede esperar un poco.</Eyebrow>
+      <section className="grid items-center gap-8 bg-night px-[7%] py-16 md:grid-cols-[1fr_auto] md:py-20 lg:px-[8%]">
         <Title
           lines={["Tu momento"]}
           accent="empieza acá."
           size="closing"
-          className="mt-6"
+          dark
         />
-        <CtaLink href={RESERVE} className="mt-9 gap-12">
-          Reservar una pausa
+        <CtaLink href={reserveHref} kind="light" className="w-fit gap-12">
+          Reservar
         </CtaLink>
       </section>
 
-      <BookingDialog data={booking} />
     </>
   );
 }

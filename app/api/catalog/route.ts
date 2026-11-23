@@ -30,6 +30,7 @@ export async function PUT(request: Request) {
     validateCatalog(data);
     const saved = await saveCatalog(resolveCatalogPrices(data));
     refreshPublic(publicTags.herbShop);
+    refreshPublic(publicTags.sauna);
     return Response.json(saved);
   } catch (error) {
     if (error instanceof ConflictError) { console.warn("[catalog PUT] conflict:", error.message); return Response.json({ error: error.message }, { status: 409 }); }

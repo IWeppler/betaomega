@@ -35,8 +35,8 @@ Salud. El uso del sauna es bajo tu responsabilidad. Si tenés alguna condición 
 Datos personales. Guardamos tu nombre y tu WhatsApp solo para atender tu reserva. No guardamos datos de salud. Podés pedir que borremos tus datos en cualquier momento: conservamos las reservas y los pagos sin identificarte.`;
 
 export const pageDefaults = (): PageContent => ({
-  headline: "Afuera, el mundo. Adentro, la calma.",
-  intro: "El calor abraza. El tiempo se detiene. Una sesión de sauna para hacer una pausa.",
+  headline: "El mundo puede esperar.",
+  intro: "Calor de madera y silencio, solo o en grupo. Elegí día y horario, y reservá online.",
   description: "Sauna con reserva online, individual o grupal. Elegí día y horario, y guardá tu turno.",
   includes: ["Uso del sauna durante todo el turno", "Vestuario y ducha", "Agua fresca"],
   bring: ["Dos toallas: una para sentarte y otra para secarte", "Malla", "Ojotas", "Una botella de agua"],

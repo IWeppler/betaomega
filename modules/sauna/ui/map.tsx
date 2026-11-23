@@ -33,7 +33,7 @@ export function Map({ center, children }: { center: [number, number]; children: 
       if (!lib.getWorkerUrl()) lib.setWorkerUrl(`https://unpkg.com/maplibre-gl@${lib.getVersion()}/dist/maplibre-gl-worker.mjs`);
       instance = new lib.Map({
         container: container.current, center: [longitude, latitude], zoom: 15,
-        style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+        style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
         attributionControl: { compact: false }, renderWorldCopies: false,
         scrollZoom: false, cooperativeGestures: true, pitchWithRotate: false, dragRotate: false,
         canvasContextAttributes: { antialias: false },

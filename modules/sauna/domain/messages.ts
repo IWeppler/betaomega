@@ -8,6 +8,7 @@ import { businessDate, businessTime, dayLabel } from "./time.ts";
 export const whatsappLink = (number: string, text: string) => `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 
 export type MessageBooking = {
+  herbName?: string | null;
   siteName: string;
   customerName: string;
   startsAt: Instant;
@@ -19,7 +20,7 @@ export type MessageBooking = {
 };
 
 const when = (startsAt: Instant) => `${dayLabel(businessDate(startsAt))} a las ${businessTime(startsAt)}`;
-const what = ({ kind, seats }: MessageBooking) => (kind === "private" ? "la sala completa" : seats === 1 ? "1 lugar" : `${seats} lugares`);
+const what = ({ kind, seats, herbName }: MessageBooking) => (kind === "private" ? "la sala completa" : seats === 1 ? "1 lugar" : `${seats} lugares`) + (herbName ? ` con ${herbName}` : "");
 const greeting = ({ customerName }: MessageBooking) => (customerName ? `Hola, ${customerName}.` : "Hola.");
 const owed = ({ owedCents }: MessageBooking) => (owedCents > 0 ? ` Queda ${formatCents(owedCents)} para pagar en el lugar.` : "");
 

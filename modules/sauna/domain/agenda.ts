@@ -24,6 +24,7 @@ export type Turn = {
 
 /** A booking as the panel sees it. The name and number are empty once the person was anonymized. */
 export type AgendaBooking = {
+  herbName?: string | null;
   id: string;
   token: string;
   status: BookingStatus;

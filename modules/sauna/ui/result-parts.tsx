@@ -51,5 +51,5 @@ export function ResultHero({ stage, eyebrow, title, children }: { stage: Stage; 
 
 /** Back to the home page with the booking open. A plain link: the booking dialog opens from the address. */
 export function BookAnother({ primary }: { primary: boolean }) {
-  return <a className={buttonClass(primary ? "primary" : "quiet")} href="/#reservar"><CalendarPlus size={16} aria-hidden="true" />Reservar otro turno</a>;
+  return <a className={buttonClass(primary ? "primary" : "quiet", "lg")} href="/reservar"><CalendarPlus size={16} aria-hidden="true" />Reservar otro turno</a>;
 }
