@@ -188,6 +188,29 @@
     --font-display: var(--font-product-display), "Arial Narrow", sans-serif;
     --font-text: var(--font-product-text), system-ui, sans-serif;
   }
+  /* Product sites with the news home page (Yakuchil): white, warm neutrals and one accent from sites.options (old gold), like a printed book.
+     The productos greys lean green; these lean warm. The accent stays for small details; buttons are ink. */
+  [data-theme="voces"] {
+    --color-bg: #ffffff;
+    --color-surface: #ffffff;
+    --color-sidebar: #f5f2ec;
+    --color-surface-sidebar: #e7e2d9;
+    --color-sunken: #f5f2ec;
+    --color-ink: #1c1917;
+    --color-muted: #57534e;
+    --color-line: #e7e2d9;
+    --color-line-strong: #cfc7b8;
+    --color-accent-text: var(--color-accent);
+    --color-accent-hover: color-mix(in srgb, var(--color-accent) 88%, black);
+    --color-accent-ink: #ffffff;
+    --color-accent-soft: color-mix(in srgb, var(--color-accent) 10%, white);
+    --color-accent-wash: color-mix(in srgb, var(--color-accent) 22%, white);
+    --color-focus: var(--color-accent);
+    --radius-card: 14px;
+    --radius-field: 14px;
+    --font-display: var(--font-product-display), "Arial Narrow", sans-serif;
+    --font-text: var(--font-product-text), system-ui, sans-serif;
+  }
 }
 
 @keyframes arrive {

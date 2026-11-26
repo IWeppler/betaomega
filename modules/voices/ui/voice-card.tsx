@@ -13,9 +13,9 @@ export type Voice = Pick<Product, "id" | "slug" | "name" | "image" | "video" | "
 /** Its own image, else its video's picture, else nothing (a tinted tile with an icon). */
 const pictureOf = (voice: Voice, size: "hq" | "max") => voice.image || (voice.video ? youtubeThumbnail(voice.video, size) : null);
 
-/** On the last one published. White on a picture: it sits on photos and on the shade of the lead. */
+/** On the last one published, in the site's accent: one of the few places it shows. */
 function NewBadge() {
-  return <span className="inline-flex min-h-7 items-center rounded-full bg-white px-3 text-sm font-bold text-ink">Nuevo</span>;
+  return <span className="inline-flex min-h-7 items-center rounded-full bg-accent px-3 text-sm font-bold text-accent-ink">Nuevo</span>;
 }
 
 /** Views · likes of its video on YouTube, like the time and servings of a recipe card. Nothing when YouTube gave nothing. */
@@ -59,8 +59,11 @@ export function VoiceCard({ voice, isNew, compact = false }: { voice: Voice; isN
       <Picture voice={voice} sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 440px" />
       {isNew && <span className="absolute top-3 left-3"><NewBadge /></span>}
     </span>
-    <h3 className={`m-0 font-display font-bold decoration-2 underline-offset-4 group-hover:underline ${compact ? "text-2xl/tight" : "text-3xl/tight"}`}>{voice.name}</h3>
+    {/* The name on the left and its YouTube counts on the right, on one line; what it is for under them. */}
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <h3 className={`m-0 font-display font-bold decoration-accent decoration-2 underline-offset-4 group-hover:underline ${compact ? "text-2xl/tight" : "text-3xl/tight"}`}>{voice.name}</h3>
+      <VideoMeta stats={voice.stats} />
+    </div>
     {voice.keywords[0] && <span className="-mt-1 line-clamp-2 text-lg text-muted">{voice.keywords[0]}</span>}
-    <VideoMeta stats={voice.stats} />
   </Link>;
 }

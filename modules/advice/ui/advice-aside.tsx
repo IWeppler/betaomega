@@ -28,8 +28,8 @@ export function AdviceAside({ siteId, chapterName, today, more }: { siteId: stri
 
   return <>
     {/* Its heading is the advice's own label ("Zanshei 103 · VI"), hidden with the text until it is known which advice is today's. */}
-    {/* Editorial, not a colour block: white with a thin line; the green stays in the small label. */}
-    <section className={`grid gap-3 rounded-card border border-line bg-white p-6 transition-opacity duration-300 motion-reduce:transition-none ${ready ? "opacity-100" : "opacity-0"}`} aria-labelledby="advice-today">
+    {/* Editorial, not a colour block: the accent's softest tint behind it, the accent itself only in the small label. */}
+    <section className={`grid gap-3 rounded-card bg-accent-soft p-6 transition-opacity duration-300 motion-reduce:transition-none ${ready ? "opacity-100" : "opacity-0"}`} aria-labelledby="advice-today">
       <h2 id="advice-today" className="m-0 flex items-center gap-2 text-sm font-bold tracking-widest text-accent-text uppercase"><ScrollText size={18} aria-hidden="true" />{shown.label}</h2>
       <blockquote className="m-0 font-display text-2xl/tight font-bold text-pretty text-ink">{shown.text}</blockquote>
     </section>
