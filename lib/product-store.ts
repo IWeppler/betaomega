@@ -1,4 +1,4 @@
-import { cleanProductList, type Product, type ProductList } from "./products";
+import { cleanProductList, newestFirst, stampPublished, type Product, type ProductList } from "./products";
 import { siteDocument } from "./site-table";
 import type { Site } from "./sites";
 
@@ -11,14 +11,16 @@ export async function readProducts(site: Site): Promise<ProductList> {
   return data === null ? { revision: 0, products: [] } : cleanProductList(data, rules(site));
 }
 
-/** What the public site shows: only published products, alphabetically. */
+/** What the public site shows: only published products, the last one published first. */
 export async function listPublishedProducts(site: Site): Promise<Product[]> {
-  return (await readProducts(site)).products.filter(p => p.published).sort((a, b) => a.name.localeCompare(b.name, "es"));
+  return newestFirst((await readProducts(site)).products.filter(p => p.published));
 }
 
 /** Saves the whole list if nobody saved since its revision. */
 export async function saveProducts(site: Site, value: unknown): Promise<ProductList> {
-  const list = cleanProductList(value, rules(site));
+  const sent = cleanProductList(value, rules(site));
+  // The publication dates come from what is stored, never from the panel. A stale read only loses the race below, so it changes nothing.
+  const list = { ...sent, products: stampPublished((await readProducts(site)).products, sent.products, new Date()) };
   const next = { ...list, revision: list.revision + 1 };
   if (!await siteDocument("products", site.id).save(next, list.revision)) throw new ProductConflictError("Otra persona hizo cambios en este sitio. Recargá la página antes de guardar.");
   return next;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanSettings, blankSettings, cleanInstagram, cleanContact, effectiveSettings, socialLinks, recipeSiteDefaults, cleanDonation } from '../lib/site-settings.ts';
+import { cleanSettings, blankSettings, cleanInstagram, cleanContact, effectiveSettings, socialLinks, recipeSiteDefaults, cleanDonation, cleanYoutubeChannel } from '../lib/site-settings.ts';
 import { isScheduled, looksLikeBot, mostViewed, maxExtraImages, blankRecipe, recipeShareInfo, duplicateRecipe, parseIngredientLines, parseStepLines, canonicalCategory, categoryKey, categoryUsage, cleanRecipe, normalizeCategories, renameCategory, formatMinutes, isoDuration, matchesRecipe, recipeCategories, recipeGaps, lacksContent, recipeJsonLd, relatedRecipes, slugify, toRecipeCard, totalMinutes } from '../lib/recipes.ts';
 import { validImagePath } from '../lib/images.ts';
 import { findIn, siteForHostIn, seedSites } from '../lib/sites.ts';
@@ -270,7 +270,7 @@ test('datos del sitio: validación y normalización', () => {
 });
 
 test('datos del sitio: sin documento se ve igual que hoy', () => {
-  assert.deepEqual(effectiveSettings(null), { ...recipeSiteDefaults, instagram: '', contact: '', donation: 'https://link.mercadopago.com.ar/betayomega' });
+  assert.deepEqual(effectiveSettings(null), { ...recipeSiteDefaults, instagram: '', contact: '', donation: 'https://link.mercadopago.com.ar/betayomega', youtube: '' });
   assert.equal(effectiveSettings(cleanSettings({ revision: 1, tagline: 'Mi lema' })).description, recipeSiteDefaults.description);
   assert.equal(effectiveSettings(cleanSettings({ revision: 1, tagline: 'Mi lema' })).tagline, 'Mi lema');
 });
@@ -406,4 +406,19 @@ test('el filtro de tiempo total separa por rangos y deja afuera las recetas sin 
   assert.deepEqual(all.filter(r => matchesFilters(r, { ...noFilters, time: '60' })), [media]);
   assert.deepEqual(all.filter(r => matchesFilters(r, { ...noFilters, time: 'mas' })), [larga]);
   assert.equal(filterHref('time', '30'), '/?duracion=30');
+});
+
+test('el canal de YouTube acepta las formas de copiarlo y rechaza un video', () => {
+  for (const [value, expected] of [
+    ['@yakuchil', 'https://www.youtube.com/@yakuchil'],
+    ['https://www.youtube.com/@yakuchil/videos', 'https://www.youtube.com/@yakuchil'],
+    ['youtube.com/@yakuchil', 'https://www.youtube.com/@yakuchil'],
+    ['https://m.youtube.com/channel/UCabc123', 'https://www.youtube.com/channel/UCabc123'],
+    ['https://www.youtube.com/c/Yakuchil', 'https://www.youtube.com/c/Yakuchil'],
+    ['', ''],
+  ]) assert.equal(cleanYoutubeChannel(value), expected, value);
+  assert.throws(() => cleanYoutubeChannel('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), /no es de un canal/);
+  assert.throws(() => cleanYoutubeChannel('https://vimeo.com/yakuchil'), /link de tu canal/);
+  assert.equal(cleanSettings({ revision: 0, youtube: '@yakuchil' }).youtube, 'https://www.youtube.com/@yakuchil');
+  assert.equal('youtube' in cleanSettings({ revision: 0 }), false);
 });

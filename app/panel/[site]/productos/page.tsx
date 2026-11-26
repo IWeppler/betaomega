@@ -55,7 +55,8 @@ export default function ProductsPage() {
                 <span>{item.name}</span>
                 {!item.published && <span className="panel-badge is-draft max-sm:hidden">Borrador</span>}
               </button></th>
-              <td className="is-hide-sm">{item.keywords.join(", ") || <span className="panel-muted">Sin cargar</span>}</td>
+              {/* One line per row: a voz sagrada can have dozens of intentions. The table is fixed (panel.css), so the column keeps its 30% and the full list shows on hover. */}
+              <td className="is-hide-sm truncate" title={item.keywords.join(", ") || undefined}>{item.keywords.join(", ") || <span className="panel-muted">Sin cargar</span>}</td>
               {options.application && <td>{item.application
                 ? <>
                   <span className="max-sm:hidden">{productApplications[item.application].sign}</span>
@@ -91,6 +92,7 @@ function ProductEditor({ product, siteId, options, words, onSaved, onClose, onDe
       description: String(form.get("description") || "").trim(),
       keywords,
       ...(application ? { application: application as ProductApplication } : {}),
+      video: String(form.get("video") || "").trim(),
       published: form.get("published") === "on",
     });
     if (stored) onSaved(stored);
@@ -101,6 +103,7 @@ function ProductEditor({ product, siteId, options, words, onSaved, onClose, onDe
       <Field label="Nombre" name="name" value={product.name} required hint="En el sitio se muestra grande y en mayúsculas." />
       <ImageField label={`Imagen ${words.ofThe}`} value={image} site={siteId} onChange={setImage} onBusy={setBusy} />
       <Field label={options.descriptionLabel} name="description" value={product.description} multiline rows={5} />
+      <Field label="Video de YouTube" name="video" value={product.video ?? ""} hint="Opcional. Pegá el link del video (de la barra de direcciones o del botón Compartir). En el sitio se ve el video, no el link." />
       {options.application && <fieldset className="field">
         <legend>Cómo se usa</legend>
         {(Object.keys(productApplications) as ProductApplication[]).map(id => <label className="check" key={id}>

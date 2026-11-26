@@ -304,7 +304,7 @@ insert into public.sites (id, kind, name, url, catalog_key, panel_icon, options,
   ('purificacion', 'productos', 'Purificación', 'https://purificacion.vercel.app', null, '/purificacion-icon.png',
     '{"items":{"one":"agua","many":"aguas","feminine":true},"descriptionLabel":"Cómo se obtiene","application":true,"accent":"#0b6e99","icon":{"any":"/purificacion-icon.png","maskable":"/purificacion-icon-maskable.png"}}', 2),
   ('yakuchil', 'productos', 'Yakuchil', 'https://yakuchil.vercel.app', null, null,
-    '{"items":{"one":"voz sagrada","many":"voces sagradas","feminine":true},"descriptionLabel":"Descripción","application":false,"accent":"#1f6f50","advice":{"chapterName":"Zanshei"}}', 3)
+    '{"items":{"one":"voz sagrada","many":"voces sagradas","feminine":true},"descriptionLabel":"Descripción","application":false,"accent":"#1f6f50","advice":{"chapterName":"Zanshei"},"landing":"news"}', 3)
 on conflict (id) do nothing;
 insert into public.site_domains (domain, site_id) values
   ('nekurel.com', 'nekurel'), ('nekurel.vercel.app', 'nekurel'), ('nekurel.localhost', 'nekurel'),
@@ -2368,3 +2368,91 @@ grant execute on function public.sauna_reserve_plan_with_herbs(text, uuid, jsonb
 -- Already-created databases: turn it on for Yakuchil without touching anything else of its options.
 update public.sites set options = options || '{"advice":{"chapterName":"Zanshei"}}'::jsonb
   where id = 'yakuchil' and not (options ? 'advice');
+
+-- Yakuchil's home page in the news layout (modules/voices). Already-created databases: add it without touching the rest of its options.
+update public.sites set options = options || '{"landing":"news"}'::jsonb
+  where id = 'yakuchil' and not (options ? 'landing');
+
+-- Voces sagradas (modules/voices): reader comments and own metrics of the sites with the news home page. The voices themselves live in app_data
+-- (`products:<site>`), so voice_id is their id as text, without a foreign key; the site has one, like every table of a site.
+create table if not exists public.voice_comments (
+  id uuid primary key default gen_random_uuid(),
+  site_id text not null references public.sites (id),
+  voice_id text not null check (char_length(voice_id) between 1 and 100),
+  name text not null check (char_length(name) between 1 and 60),
+  body text not null check (char_length(body) between 2 and 1000),
+  status text not null default 'pending' check (status in ('pending', 'approved', 'hidden')),
+  ip_hash text not null default '',
+  created_at timestamptz not null default now()
+);
+create index if not exists voice_comments_voice on public.voice_comments (site_id, voice_id, status, created_at);
+create index if not exists voice_comments_site on public.voice_comments (site_id, status, created_at desc);
+create index if not exists voice_comments_ip on public.voice_comments (site_id, ip_hash, created_at desc);
+alter table public.voice_comments enable row level security;
+revoke all on public.voice_comments from anon, authenticated;
+
+-- One counter per site, kind, voice, search term and day (it grows with voices and distinct searches, not with visits).
+-- page_view: a visit to any page; voice_view: a voice's own page (voice_id); search: a search typed on the home page (term, normalized).
+create table if not exists public.voice_metrics (
+  site_id text not null references public.sites (id),
+  kind text not null check (kind in ('page_view', 'voice_view', 'search')),
+  voice_id text not null default '' check (char_length(voice_id) <= 100),
+  term text not null default '' check (char_length(term) <= 60),
+  day date not null,
+  count integer not null default 0,
+  primary key (site_id, kind, voice_id, term, day)
+);
+create index if not exists voice_metrics_day on public.voice_metrics (site_id, day desc);
+alter table public.voice_metrics enable row level security;
+revoke all on public.voice_metrics from anon, authenticated;
+
+-- Adds one to today's counter (Argentina's day), creating it the first time, in a single statement.
+create or replace function public.voice_track(p_site text, p_kind text, p_voice text, p_term text)
+returns void
+language sql
+security invoker
+set search_path = ''
+as $$
+  insert into public.voice_metrics as m (site_id, kind, voice_id, term, day, count)
+  values (p_site, p_kind, coalesce(p_voice, ''), coalesce(p_term, ''), (now() at time zone 'America/Argentina/Buenos_Aires')::date, 1)
+  on conflict (site_id, kind, voice_id, term, day) do update set count = m.count + 1;
+$$;
+
+-- Everything the panel's Métricas of a voices site shows for the last p_days days (today included), in one call.
+create or replace function public.voice_metrics_report(p_site text, p_days integer)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  with bounds as (
+    select (now() at time zone 'America/Argentina/Buenos_Aires')::date as today, greatest(1, least(coalesce(p_days, 30), 365)) as days
+  ),
+  win as (
+    select m.* from public.voice_metrics m, bounds b where m.site_id = p_site and m.day > b.today - b.days
+  )
+  select jsonb_build_object(
+    'today', (select today from bounds),
+    'days', (select days from bounds),
+    'totals', jsonb_build_object(
+      'pageViews', coalesce((select sum(count) from win where kind = 'page_view'), 0),
+      'voiceViews', coalesce((select sum(count) from win where kind = 'voice_view'), 0),
+      'searches', coalesce((select sum(count) from win where kind = 'search'), 0)),
+    'daily', coalesce((select jsonb_agg(jsonb_build_object('day', d.day, 'pageViews', d.pv, 'voiceViews', d.vv, 'searches', d.se) order by d.day)
+      from (select day,
+                   coalesce(sum(count) filter (where kind = 'page_view'), 0) as pv,
+                   coalesce(sum(count) filter (where kind = 'voice_view'), 0) as vv,
+                   coalesce(sum(count) filter (where kind = 'search'), 0) as se
+              from win group by day) d), '[]'::jsonb),
+    'voices', coalesce((select jsonb_agg(jsonb_build_object('id', v.voice_id, 'views', v.n) order by v.n desc)
+      from (select voice_id, sum(count) as n from win where kind = 'voice_view' group by voice_id order by n desc limit 300) v), '[]'::jsonb),
+    'searches', coalesce((select jsonb_agg(jsonb_build_object('term', t.term, 'count', t.n) order by t.n desc)
+      from (select term, sum(count) as n from win where kind = 'search' group by term order by n desc limit 50) t), '[]'::jsonb)
+  );
+$$;
+
+revoke execute on function public.voice_track(text, text, text, text) from public, anon, authenticated;
+revoke execute on function public.voice_metrics_report(text, integer) from public, anon, authenticated;
+grant execute on function public.voice_track(text, text, text, text) to service_role;
+grant execute on function public.voice_metrics_report(text, integer) to service_role;

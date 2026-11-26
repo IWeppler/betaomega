@@ -55,6 +55,10 @@ export const panelKinds: Record<SiteKind, PanelKind> = {
       { path: "productos", label: "Productos", icon: Package },
       // Only on sites whose options have `advice`: the shell hides it elsewhere and names it after the chapters.
       { path: "consejos", label: "Consejos del día", icon: ScrollText },
+      // Only on sites with the news home page (modules/voices): readers' comments and the own metrics. Own paths: the recipes use
+      // "comentarios" and "metricas".
+      { path: "opiniones", label: "Comentarios", icon: MessageSquareText },
+      { path: "estadisticas", label: "Métricas", icon: ChartLine },
       { path: "sitio", label: "Sitio", icon: Settings },
     ],
     // The key drops the loaded list on a site change, so one site's products can never be saved into another.

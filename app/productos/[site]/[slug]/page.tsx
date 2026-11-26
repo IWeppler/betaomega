@@ -3,6 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Check, ImageSquare } from "@phosphor-icons/react/dist/ssr";
+import { youtubeEmbed } from "@/lib/products";
+import { listApprovedComments } from "@/modules/voices/server";
+import { VoiceComments, VoiceDetail } from "@/modules/voices/ui/public";
 import { ApplicationSign } from "../application-sign";
 import { getProducts, productSite } from "../brand";
 
@@ -38,6 +41,16 @@ export default async function ProductPage({ params }: Props) {
   }
   const { site, product } = found;
   if (!site?.products || !product) notFound();
+  if (site.products.landing === "news") {
+    // Approved comments; before schema.sql creates the table (or if it fails) the page shows none instead of breaking.
+    const comments = await listApprovedComments(site.id, product.id).catch((error: unknown) => {
+      console.warn("[voices] no se pudieron leer los comentarios:", error instanceof Error ? error.message : error);
+      return [];
+    });
+    return <VoiceDetail siteId={site.id} siteName={site.name} voice={product} descriptionLabel={site.products.descriptionLabel}
+      below={<VoiceComments siteId={site.id} voiceId={product.id} comments={comments.map(({ id, name, body, createdAt }) => ({ id, name, body, createdAt }))} />} />;
+  }
+  const video = product.video ? youtubeEmbed(product.video) : null;
   return <main className="p-page">
     <nav className="p-back" aria-label="Volver"><Link href="/" className="underline"><ArrowLeft size={18} aria-hidden="true" />{site.name}</Link></nav>
     <article className="p-detail">
@@ -49,6 +62,11 @@ export default async function ProductPage({ params }: Props) {
       <div className="p-info">
         <h1 className="p-title">{product.name}</h1>
         <ApplicationSign application={product.application} large />
+        {video && <div className="mt-6 aspect-video w-full max-w-prose overflow-hidden rounded-card bg-black">
+          {/* Embedded, not linked: the privacy-enhanced player sets no cookies until it is played, and loads only when scrolled near. */}
+          <iframe className="size-full border-0" src={video} title={`Video: ${product.name}`} loading="lazy" referrerPolicy="strict-origin-when-cross-origin"
+            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+        </div>}
         <section>
           <h2>{site.products.descriptionLabel}</h2>
           {product.description.split(/\n+/).map((paragraph, n) => <p key={n}>{paragraph}</p>)}

@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 import { Atkinson_Hyperlegible, Barlow_Condensed } from "next/font/google";
 import { drawAdvice } from "@/modules/advice/server";
 import { DailyAdvice } from "@/modules/advice/ui/public";
-import { getDonation, productIcon, productSite, siteDescription } from "./brand";
-import { FooterActions, HeaderActions } from "./site-actions";
-// globals.css brings Tailwind for the new components (the advice of the day). productos.css has no layer, so its rules still win.
+import { getSiteLinks, productIcon, productSite, siteDescription } from "./brand";
+import { FooterActions, HeaderActions, NewsFooter, NewsNav } from "./site-actions";
+// globals.css brings Tailwind for the new components. productos.css sits in its legacy layer: it beats Tailwind's base, utilities beat it.
 import "@/app/globals.css";
 import "./productos.css";
 
@@ -38,10 +38,16 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 export default async function ProductSiteLayout({ children, params }: Props & { children: React.ReactNode }) {
   const site = await productSite(params);
   if (!site?.products) notFound();
-  const [donation, advice] = await Promise.all([getDonation(site.id), drawAdvice(site.id)]);
-  return <div data-theme="productos" className={`productos ${display.variable} ${text.variable}`} style={{ "--p-accent": site.products.accent, "--color-accent": site.products.accent } as CSSProperties}>
-    <HeaderActions donation={donation}>{advice && <DailyAdvice siteId={site.id} drawn={advice} />}</HeaderActions>
+  const [{ donation, youtube }, advice] = await Promise.all([getSiteLinks(site.id), drawAdvice(site.id)]);
+  // The news home page asks for a white page; the other product sites keep their pale grey.
+  const news = site.products.landing === "news";
+  return <div data-theme="productos" className={`productos ${display.variable} ${text.variable} ${news ? "bg-white" : ""}`} style={{ "--p-accent": site.products.accent, "--color-accent": site.products.accent } as CSSProperties}>
+    {news
+      ? <NewsNav siteName={site.name} donation={donation} youtube={youtube}>{advice && <DailyAdvice siteId={site.id} drawn={advice} button={false} />}</NewsNav>
+      : <HeaderActions donation={donation} youtube={youtube}>{advice && <DailyAdvice siteId={site.id} drawn={advice} />}</HeaderActions>}
     {children}
-    <footer className="p-foot"><FooterActions donation={donation} />© {new Date().getFullYear()} {site.name}.</footer>
+    {news
+      ? <NewsFooter siteName={site.name} donation={donation} />
+      : <footer className="p-foot"><FooterActions donation={donation} />© {new Date().getFullYear()} {site.name}.</footer>}
   </div>;
 }

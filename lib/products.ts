@@ -15,7 +15,11 @@ export type Product = {
   keywords: string[];
   /** Only on sites whose options ask for it. */
   application?: ProductApplication;
+  /** A YouTube video, stored as https://www.youtube.com/watch?v=<id>. The public page embeds it instead of linking it. */
+  video?: string;
   published: boolean;
+  /** When it was first published (ISO). Set by the server on save, never taken from the panel; kept if it is hidden later. */
+  publishedAt?: string;
 };
 export type ProductList = { revision: number; products: Product[] };
 
@@ -78,6 +82,28 @@ const text = (value: unknown, label: string, max: number) => {
   return clean;
 };
 
+// The ways a YouTube link is copied: from the address bar, the share button (youtu.be), a short, a live or an embed. Ids are 11 characters.
+const youtubeHosts = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be", "www.youtu.be", "youtube-nocookie.com", "www.youtube-nocookie.com"]);
+const youtubeIdPattern = /^[A-Za-z0-9_-]{11}$/;
+
+/** The id of a YouTube video from any of its usual links, or null when the text is not one. */
+export function youtubeId(link: string): string | null {
+  let url: URL;
+  try { url = new URL(link.trim().replace(/^(?!https?:\/\/)/i, "https://")); } catch { return null; }
+  if (!youtubeHosts.has(url.hostname.toLowerCase())) return null;
+  const path = url.pathname.split("/").filter(Boolean);
+  const id = url.hostname.toLowerCase().endsWith("youtu.be") ? path[0]
+    : path[0] === "watch" || !path.length ? url.searchParams.get("v")
+      : ["shorts", "embed", "live", "v"].includes(path[0]) ? path[1] : null;
+  return id && youtubeIdPattern.test(id) ? id : null;
+}
+
+/** Where the public page embeds a video: the privacy-enhanced domain, which sets no cookies until the person plays it. */
+export const youtubeEmbed = (video: string) => {
+  const id = youtubeId(video);
+  return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+};
+
 /** Trims the list and drops repeats, ignoring capitals and accents. */
 export function cleanKeywords(value: unknown): string[] {
   if (value === undefined) return [];
@@ -104,6 +130,9 @@ function cleanProduct(value: unknown, askApplication: boolean, label: string) {
   const image = text(data.image, "La imagen", 300);
   if (image && !(image.startsWith(imagePrefix) && validImagePath(image.slice(imagePrefix.length).split("/")))) fail("Imagen inválida. Subí una imagen desde el editor.");
   const application = askApplication && (data.application === "beber" || data.application === "piel") ? data.application : undefined;
+  const videoLink = text(data.video, "El link del video", 300);
+  const videoId = videoLink ? youtubeId(videoLink) : null;
+  if (videoLink && !videoId) fail("El link del video no es de YouTube. Copialo desde el botón Compartir del video o desde la barra de direcciones.");
   if (askApplication && data.application !== undefined && !application) fail("Elegí si es para beber o para aplicar en la piel.");
   const product: Product = {
     id: data.id,
@@ -113,7 +142,9 @@ function cleanProduct(value: unknown, askApplication: boolean, label: string) {
     description: text(data.description, label, maxDescription),
     keywords: cleanKeywords(data.keywords),
     ...(application ? { application } : {}),
+    ...(videoId ? { video: `https://www.youtube.com/watch?v=${videoId}` } : {}),
     published: data.published === true,
+    ...(typeof data.publishedAt === "string" && !Number.isNaN(Date.parse(data.publishedAt)) ? { publishedAt: new Date(data.publishedAt).toISOString() } : {}),
   };
   if (product.published) {
     if (!product.description) fail(`Para publicar ${name}, completá ${label.toLowerCase()}.`);
@@ -150,6 +181,41 @@ export function cleanProductList(value: unknown, options: { application: boolean
   for (const { slug } of products) if (slug && (!/^[a-z0-9-]{1,90}$/.test(slug) || reservedSlugs.has(slug))) fail("Dirección inválida.");
   return { revision: data.revision, products: assignSlugs(products) };
 }
+
+/**
+ * The first-publication date of each product, decided on the server: it keeps the date already stored for that id (whatever the panel sent)
+ * and stamps `now` on one that is published for the first time. A product never published has none.
+ */
+export function stampPublished(stored: Pick<Product, "id" | "publishedAt">[], next: Product[], now: Date): Product[] {
+  const dates = new Map(stored.map(item => [item.id, item.publishedAt]));
+  return next.map(item => {
+    // What the panel sent is replaced, never trusted.
+    const rest: Product = { ...item };
+    delete rest.publishedAt;
+    const date = dates.get(item.id) ?? (item.published ? now.toISOString() : undefined);
+    return date ? { ...rest, publishedAt: date } : rest;
+  });
+}
+
+/** Published products, newest publication first; those without a date (published before dates were kept) go last, by name. */
+export function newestFirst<T extends Pick<Product, "name" | "publishedAt">>(products: T[]): T[] {
+  return [...products].sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? "") || a.name.localeCompare(b.name, "es"));
+}
+
+/** The id of the last product published, which wears the "Nuevo" badge; none when no product has a date yet. */
+export function newestId(products: Pick<Product, "id" | "name" | "publishedAt">[]) {
+  const newest = newestFirst(products)[0];
+  return newest?.publishedAt ? newest.id : undefined;
+}
+
+/**
+ * The video's picture, used where a product has no image of its own. "hq" (480×360) always exists, with black bars that a 16:9 frame crops;
+ * "max" (1280×720) has no bars and suits big frames, but videos uploaded in low resolution lack it, so its user falls back to "hq".
+ */
+export const youtubeThumbnail = (video: string, size: "hq" | "max" = "hq") => {
+  const id = youtubeId(video);
+  return id ? `https://i.ytimg.com/vi/${id}/${size === "max" ? "maxresdefault" : "hqdefault"}.jpg` : null;
+};
 
 /** Published products that match the search, best match first; all of them, alphabetically, without a search. Looks in the name and in "para qué sirve". */
 export function searchProducts<T extends Pick<Product, "name" | "keywords">>(products: T[], query: string): T[] {

@@ -15,7 +15,9 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf
 const schema = read("../../supabase/schema.sql");
 const start = schema.indexOf("-- Sauna (docs/SAUNA.md §5");
 assert.notEqual(start, -1, "falta la sección del sauna en schema.sql");
-const sauna = schema.slice(start);
+// The section runs until the next module's own section (voces sagradas, appended later), or to the end of the file.
+const next = schema.indexOf("-- Voces sagradas (modules/voices)", start);
+const sauna = schema.slice(start, next === -1 ? undefined : next);
 
 const tables = [...sauna.matchAll(/create table if not exists public\.(\w+) \(([\s\S]*?)\n\);/g)].map(([, name, body]) => ({ name, body }));
 const definitions = [...sauna.matchAll(/create or replace function public\.(\w+)\(([\s\S]*?)\)\nreturns ([\s\S]*?)\nas \$\$([\s\S]*?)\$\$;/g)]

@@ -45,3 +45,21 @@ export async function drawAdvice(siteId: string, random = Math.random): Promise<
     return null;
   }
 }
+
+/**
+ * Several different advices at random, for the list beside the home page; fewer when the book has fewer, none without a book. Like
+ * drawAdvice, a failed read leaves the page without them.
+ */
+export async function drawAdvices(siteId: string, count: number, random = Math.random): Promise<AdviceCard[]> {
+  try {
+    const book = await readPublicBook(siteId);
+    if (!book) return [];
+    const total = adviceCount(book);
+    const picked = new Set<number>();
+    while (picked.size < Math.min(count, total)) picked.add(Math.floor(random() * total));
+    return [...picked].map(index => adviceCard(book, index)).filter(card => card !== null);
+  } catch (error) {
+    console.warn(`[advice] no se pudieron sortear consejos de ${siteId}:`, error instanceof Error ? error.message : error);
+    return [];
+  }
+}

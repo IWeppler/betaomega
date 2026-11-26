@@ -15,8 +15,10 @@ import { offerUndo } from "@/shared/ui/undo";
 
 export default function SitePage() {
   const { site } = useParams<{ site: string }>();
-  // Product sites only use the donation for now.
-  const onlyDonation = useSite().kind === "productos";
+  // Product sites only use the donation, and the YouTube channel when their home page is the news one.
+  const current = useSite();
+  const onlyDonation = current.kind === "productos";
+  const askYoutube = current.products?.landing === "news";
   const { busy, setBusy, error, setError, flushRef } = usePanel();
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -42,7 +44,7 @@ export default function SitePage() {
     };
   }, [base]);
 
-  type Texts = Pick<SiteSettings, "tagline" | "description" | "instagram" | "contact" | "donation">;
+  type Texts = Pick<SiteSettings, "tagline" | "description" | "instagram" | "contact" | "donation" | "youtube">;
   const put = async (texts: Texts) => {
     const saved = await api<SiteSettings>(base, {
       method: "PUT",
@@ -65,10 +67,11 @@ export default function SitePage() {
         instagram: text("instagram"),
         contact: text("contact"),
         donation: text("donation"),
+        ...(askYoutube ? { youtube: text("youtube") } : {}),
       });
       if (before) {
         offerUndo("Se guardó correctamente.", async () => {
-          await put({ tagline: before.tagline, description: before.description, instagram: before.instagram, contact: before.contact, donation: before.donation });
+          await put({ tagline: before.tagline, description: before.description, instagram: before.instagram, contact: before.contact, donation: before.donation, ...(askYoutube ? { youtube: before.youtube ?? "" } : {}) });
           setShown((count) => count + 1);
         });
       }
@@ -85,7 +88,7 @@ export default function SitePage() {
     <>
       <PageHeader
         title="Sitio"
-        description={onlyDonation ? "El botón de donar del sitio público." : "Textos y contacto que se ven en el sitio público. Los colores y las tipografías no se editan acá."}
+        description={onlyDonation ? (askYoutube ? "El botón de donar y el canal de YouTube del sitio público." : "El botón de donar del sitio público.") : "Textos y contacto que se ven en el sitio público. Los colores y las tipografías no se editan acá."}
       />
       {loadError && (
         <div className="alert error" role="alert">
@@ -144,6 +147,12 @@ export default function SitePage() {
               value={settings.donation ?? defaultDonation}
               hint="Un enlace de pago como por ejemplo: https://link.mercadopago.com.ar/betayomega. Vacío: se oculta el botón de donar."
             />
+            {askYoutube && <Field
+              label="Canal de YouTube"
+              name="youtube"
+              value={settings.youtube ?? ""}
+              hint="El link de tu canal, por ejemplo https://www.youtube.com/@yakuchil. Se muestra como ícono arriba, en todas las páginas. Vacío: sin ícono."
+            />}
             <p className="panel-muted">
               {onlyDonation ? "El botón aparece arriba y en el pie del sitio." : "Instagram, contacto y donaciones aparecen en el pie del sitio."} Los
               cambios se ven al recargar, sin desplegar.

@@ -2,7 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { EmptyState, PageHeader, Paged, SearchBox, useSite } from "@/platform/panel";
+import { EmptyState, PageHeader, Paged, SearchBox, SideSheet, useSite } from "@/platform/panel";
 import { offerUndo } from "@/shared/ui/undo";
 import { adviceCount, chapterTitle, cleanAdviceBook, nextChapterNumber, splitAdvice, type AdviceBook, type AdviceChapter } from "../domain/advice";
 import { ChapterForm } from "./chapter-form";
@@ -52,20 +52,19 @@ export function AdviceScreen() {
     <PageHeader
       title={name}
       description={book ? `${book.chapters.length} ${name}, ${adviceCount(book)} consejos. Cada visitante ve uno al azar por día, en un aviso al entrar.` : undefined}
-      actions={book && !editing && <Button variant="primary" onClick={() => setEditing({ chapter: { number: nextChapterNumber(book), items: [] }, isNew: true })}><Plus size={18} aria-hidden="true" />Nuevo {name}</Button>}
+      actions={book && <Button variant="primary" onClick={() => setEditing({ chapter: { number: nextChapterNumber(book), items: [] }, isNew: true })}><Plus size={18} aria-hidden="true" />Nuevo {name}</Button>}
     />
     {error && <div className="mb-3 grid justify-items-start gap-2"><Notice>{error}</Notice><Button onClick={() => void load()}>Reintentar</Button></div>}
     {!book && !error && <p className="text-muted" aria-busy="true">Cargando…</p>}
-    {book && editing && <ChapterForm key={`${editing.chapter.number}-${editing.isNew}`} book={book} chapter={editing.chapter} isNew={editing.isNew} save={save} onDone={() => setEditing(null)} />}
     {book && (book.chapters.length === 0
-      ? !editing && <EmptyState title={`Todavía no hay ${name}`} text={`Creá el primero con el botón Nuevo ${name}.`} />
+      ? <EmptyState title={`Todavía no hay ${name}`} text={`Creá el primero con el botón Nuevo ${name}.`} />
       : <section className="grid gap-3" aria-label={`Lista de ${name}`}>
         <SearchBox value={filter} onChange={setFilter} label="Buscar por número o por texto" />
         {rows.length === 0 && <EmptyState title="No encontramos ese consejo" text="Probá con otra palabra." />}
         {rows.length > 0 && <Paged rows={rows} resetKey={filter}>{shown => <ul className="m-0 grid list-none gap-2 p-0">
           {shown.map(chapter => <li key={chapter.number}>
-            <button type="button" disabled={editing !== null} onClick={() => setEditing({ chapter, isNew: false })}
-              className="grid w-full gap-1 rounded-field border border-line bg-bg p-3 text-left not-disabled:hover:border-line-strong not-disabled:hover:bg-sunken disabled:opacity-60">
+            <button type="button" aria-current={editing?.chapter.number === chapter.number ? "true" : undefined} onClick={() => setEditing({ chapter, isNew: false })}
+              className="grid w-full gap-1 rounded-field border border-line bg-bg p-3 text-left hover:border-line-strong hover:bg-sunken aria-[current=true]:border-accent aria-[current=true]:bg-accent-soft">
               <span className="flex flex-wrap items-baseline gap-x-2">
                 <strong className="text-ink">{chapterTitle(name, chapter.number)}</strong>
                 <span className="text-sm text-muted">{chapter.items.length} {chapter.items.length === 1 ? "consejo" : "consejos"}</span>
@@ -75,5 +74,9 @@ export function AdviceScreen() {
           </li>)}
         </ul>}</Paged>}
       </section>)}
+    {/* The same side sheet as the other lists; closing it drops what was not saved, like Cancelar. */}
+    <SideSheet onClose={() => setEditing(null)}>
+      {book && editing && <ChapterForm key={`${editing.chapter.number}-${editing.isNew}`} book={book} chapter={editing.chapter} isNew={editing.isNew} save={save} onDone={() => setEditing(null)} />}
+    </SideSheet>
   </>;
 }

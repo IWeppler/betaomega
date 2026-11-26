@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanKeywords, cleanProductList, productApplications, productWords, searchProducts } from '../lib/products.ts';
+import { cleanKeywords, cleanProductList, productApplications, productWords, searchProducts, youtubeEmbed, youtubeId, stampPublished, newestFirst, newestId, youtubeThumbnail } from '../lib/products.ts';
 import { findIn, siteForHostIn, seedSites as sites } from '../lib/sites.ts';
 
 const findSite = id => findIn(sites, id);
@@ -90,4 +90,47 @@ test('la búsqueda mira el nombre y para qué sirve, sin importar tildes', () =>
   assert.deepEqual(names('para la digestión lenta'), ['Yerba']);
   assert.deepEqual(names('lluvia'), ['Agua de lluvia']);
   assert.deepEqual(names('nada que ver'), []);
+});
+
+test('el video acepta los links de YouTube de siempre y guarda uno solo', () => {
+  const id = 'dQw4w9WgXcQ';
+  for (const link of [
+    `https://www.youtube.com/watch?v=${id}`, `https://youtube.com/watch?v=${id}&t=42s`, `https://m.youtube.com/watch?v=${id}`,
+    `https://youtu.be/${id}?si=abc`, `youtu.be/${id}`, `https://www.youtube.com/shorts/${id}`, `https://www.youtube.com/live/${id}`,
+    `https://www.youtube.com/embed/${id}`, `https://music.youtube.com/watch?v=${id}&list=x`,
+  ]) assert.equal(youtubeId(link), id, link);
+  for (const link of ['https://vimeo.com/123', `https://youtube.com.evil.example/watch?v=${id}`, 'https://www.youtube.com/watch?v=corto', 'no es un link', '']) assert.equal(youtubeId(link), null, link);
+  assert.equal(youtubeEmbed(`https://www.youtube.com/watch?v=${id}`), `https://www.youtube-nocookie.com/embed/${id}`);
+});
+
+test('el video se guarda normalizado, se puede dejar vacío y uno que no es de YouTube se rechaza', () => {
+  const base = { id: 'a', slug: '', name: 'Voz sagrada 074', description: 'Texto.', keywords: [], published: false };
+  const saved = (video) => cleanProductList({ revision: 0, products: [{ ...base, video }] }, plain).products[0];
+  assert.equal(saved('https://youtu.be/dQw4w9WgXcQ?si=x').video, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  assert.equal('video' in saved(''), false);
+  assert.equal('video' in saved(undefined), false);
+  assert.throws(() => saved('https://vimeo.com/123'), /no es de YouTube/);
+});
+
+test('la fecha de publicación la pone el servidor la primera vez y no la cambia el panel', () => {
+  const now = new Date('2026-11-26T15:00:00Z');
+  const item = (id, published, publishedAt) => ({ id, slug: id, name: id, description: 'x', keywords: ['y'], published, ...(publishedAt ? { publishedAt } : {}) });
+  const stored = [item('vieja', true, '2026-01-01T00:00:00.000Z'), item('borrador', false)];
+  const next = [item('vieja', true, '2030-01-01T00:00:00.000Z'), item('borrador', true), item('nueva', false, '2020-01-01T00:00:00.000Z')];
+  const [vieja, borrador, nueva] = stampPublished(stored, next, now);
+  assert.equal(vieja.publishedAt, '2026-01-01T00:00:00.000Z');
+  assert.equal(borrador.publishedAt, now.toISOString());
+  assert.equal('publishedAt' in nueva, false);
+  const oculta = stampPublished([item('vieja', true, '2026-01-01T00:00:00.000Z')], [item('vieja', false)], now)[0];
+  assert.equal(oculta.publishedAt, '2026-01-01T00:00:00.000Z');
+});
+
+test('la última publicada va primero y es la única nueva; las que no tienen fecha van al final por nombre', () => {
+  const list = [{ id: 'b', name: 'B' }, { id: 'x', name: 'X', publishedAt: '2026-02-01T00:00:00Z' }, { id: 'a', name: 'A' }, { id: 'y', name: 'Y', publishedAt: '2026-03-01T00:00:00Z' }];
+  assert.deepEqual(newestFirst(list).map(p => p.id), ['y', 'x', 'a', 'b']);
+  assert.equal(newestId(list), 'y');
+  assert.equal(newestId([{ id: 'a', name: 'A' }]), undefined);
+  assert.equal(youtubeThumbnail('https://youtu.be/dQw4w9WgXcQ'), 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+  assert.equal(youtubeThumbnail('https://youtu.be/dQw4w9WgXcQ', 'max'), 'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg');
+  assert.equal(youtubeThumbnail('https://vimeo.com/1'), null);
 });

@@ -19,14 +19,15 @@ const navRow = "flex min-h-control w-full items-center gap-2.5 rounded-lg px-2.5
 const navRowCurrent = "aria-[current=page]:bg-surface-sidebar aria-[current=page]:font-semibold aria-[current=page]:text-ink";
 const iconProps = { size: 18, strokeWidth: 1.75, "aria-hidden": true, className: "shrink-0" };
 /**
- * The menu of a site. A product site names its list section with its own word ("Voces sagradas"), and has the advice section only when its
- * options turn the advice on, named after its chapters ("Zanshei").
+ * The menu of a site. A product site names its list section with its own word ("Voces sagradas"), has the advice section only when its
+ * options turn the advice on, named after its chapters ("Zanshei"), and comments and metrics only with the news home page.
  */
 const sections = (site: SiteSummary) => {
   const items = site.products?.items;
   const advice = site.products?.advice;
   return panelKinds[site.kind].sections
     .filter(item => item.path !== "consejos" || advice)
+    .filter(item => !["opiniones", "estadisticas"].includes(item.path) || site.products?.landing === "news")
     .map(item => (items && item.path === "productos" ? { ...item, label: productWords(items).Many } : advice && item.path === "consejos" ? { ...item, label: advice.chapterName } : item));
 };
 

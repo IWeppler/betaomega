@@ -15,11 +15,17 @@ export const productSite = async (params: Promise<{ site: string }>) => {
 /** One read per request, shared by generateMetadata and the page. */
 export const getProducts = cache((site: Site) => listPublishedProducts(site));
 
-/** The donation link or alias set in the panel, or the default one. If the read fails, the site keeps working with the default. */
-export const getDonation = cache(async (siteId: string) => {
-  try { return effectiveSettings(await readSiteSettings(siteId)).donation; } catch (error) {
+/**
+ * The donation link or alias set in the panel (or the default one) and the YouTube channel. If the read fails, the site keeps working with the
+ * default donation and no channel.
+ */
+export const getSiteLinks = cache(async (siteId: string): Promise<{ donation: string; youtube: string }> => {
+  try {
+    const { donation, youtube } = effectiveSettings(await readSiteSettings(siteId));
+    return { donation, youtube };
+  } catch (error) {
     console.warn("[productos] no se pudieron leer los datos del sitio:", error);
-    return defaultDonation;
+    return { donation: defaultDonation, youtube: "" };
   }
 });
 

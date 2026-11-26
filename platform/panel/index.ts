@@ -9,4 +9,7 @@ export type { PanelState } from "@/app/panel/[site]/panel-context";
 export type { SiteSummary } from "@/app/panel/[site]/site-switcher";
 export type { PanelKind, PanelSection } from "@/app/panel/[site]/kinds";
 export { EmptyState, PAGE_SIZE, Paged, QuickActions, SearchBox, useNewFromLink, useSelection } from "@/app/panel/[site]/list-tools";
+// The editor that slides in from the right over a list, and the frame of its title, close and delete buttons.
+export { SideSheet } from "@/app/panel/[site]/sheet";
+export { EditorFrame } from "@/app/panel/[site]/editors";
 export type { QuickAction, Selection } from "@/app/panel/[site]/list-tools";
