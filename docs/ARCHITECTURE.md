@@ -12,7 +12,7 @@ Una **plataforma multisitio**: un mismo cliente tiene varios negocios y cada uno
 |---|---|---|
 | Ñekurel | `herboristeria` | Catálogo de hierbas y tónicos, tienda con carrito por WhatsApp, vista interna para vendedores (`/equipo`). |
 | Comidas del cielo | `recetas` | Recetas, comentarios, métricas, compartir, app instalable. |
-| Purificación, Yakuchil | `productos` | Listas de productos con buscador (aguas, voces sagradas). |
+| Purificación, Yakuchil | `productos` | Listas de productos con buscador (aguas, voces sagradas). Yakuchil suma el consejo del día (`modules/advice`). |
 | Fropexio (en camino) | `sauna` | Reservas con cupos y turnos, pago de seña online y packs de sesiones. Ver [SAUNA.md](SAUNA.md). |
 | BetaOmega | — | El panel de administración. Es una app instalable (PWA); los sitios públicos no necesitan serlo. |
 
@@ -103,7 +103,7 @@ app  →  modules  →  platform  →  shared
 - Rutas públicas: `app/<tipo>/[site]/…/page.tsx` importa la pantalla de `@/modules/<m>/ui` y le pasa el sitio.
 - Rutas del panel: `app/panel/[site]/<sección>/page.tsx` es una línea que monta una pantalla de `@/modules/<m>/ui`. El módulo declara sus secciones en `panel.tsx` y `app/panel/[site]/kinds.tsx` las registra en `panelKinds`.
 - APIs: `app/api/sites/[site]/<m>/…/route.ts` es una línea que delega en `@/modules/<m>/server`.
-- Las rutas del panel son **compartidas por todos los tipos** (`app/panel/[site]/<sección>`): el nombre de una sección tiene que ser único en todo el panel. Hoy `categorias` y `sitio` las usan dos tipos de sitio a propósito. El sauna usa nombres propios (`agenda`, `reservas`, `horarios-precios`, `packs`, `codigos`, `politicas`, `pagos`, `ajustes`).
+- Las rutas del panel son **compartidas por todos los tipos** (`app/panel/[site]/<sección>`): el nombre de una sección tiene que ser único en todo el panel. Hoy `categorias` y `sitio` las usan dos tipos de sitio a propósito. `consejos` (Zanshei, `modules/advice`) es de productos y solo aparece si las opciones del sitio tienen `advice`. El sauna usa nombres propios (`agenda`, `reservas`, `horarios-precios`, `packs`, `codigos`, `politicas`, `pagos`, `ajustes`).
 
 **Dónde va cada cosa:** la tabla completa está en [CONVENTIONS.md §3](CONVENTIONS.md).
 
@@ -166,7 +166,7 @@ La regla es separar **lógica pura** (sin red ni `next/*`, con tests) de **almac
 
 Hay **dos formas** de guardar, a propósito:
 
-1. **Documento JSON en `app_data`** (`key`, `data`, `revision`): catálogo de Ñekurel (`catalog`), uso (`usage`), ajustes de sitio (`site:<id>`), productos (`products:<id>`). Con control de versión optimista por `revision`. Sirve cuando el dato se edita entero y no se consulta por partes.
+1. **Documento JSON en `app_data`** (`key`, `data`, `revision`): catálogo de Ñekurel (`catalog`), uso (`usage`), ajustes de sitio (`site:<id>`), productos (`products:<id>`), libro del consejo del día (`advice:<id>`, hoy solo Yakuchil). Con control de versión optimista por `revision`. Sirve cuando el dato se edita entero y no se consulta por partes.
 2. **Tablas relacionales**: `recipes`, `recipe_comments`, `site_metrics`, y el registro `sites` / `site_domains`. Sirven cuando hay filas independientes, consultas y restricciones. **El sauna es relacional**: reservas, cupos y pagos no caben en un documento.
 
 Regla: todo lo que pertenece a un sitio lleva `site_id` con clave foránea a `sites(id)` y se lee por `siteTable`. Los documentos de `app_data` llevan el id del sitio en la clave, y se acceden por `siteDocument` (`lib/site-table.ts`), que la arma. **Se quedan en `app_data`:** se editan enteros y nunca se consultan por partes, así que una tabla con `site_id` no aporta nada, y moverlos exigiría migrar datos reales. El catálogo y el uso de Ñekurel siguen con clave fija (`catalog`, `usage`) porque hay una sola herboristería; ver el backlog del [ROADMAP](ROADMAP.md).

@@ -141,8 +141,8 @@
     }
   }
 
-  /* Recetas and productos do not load this file until they migrate (docs/DESIGN-SYSTEM.md §8), so these two blocks have no effect yet.
-     Values come from their own CSS; the ones it has no counterpart for (line-strong, accent-wash…) are derived and get confirmed in that migration. */
+  /* Recetas does not load this file until it migrates (docs/DESIGN-SYSTEM.md §8), so its block has no effect yet. Productos loads it next to
+     its own unlayered CSS, which still wins; its block serves the utilities of new components. Values come from their own CSS; the ones it has no counterpart for (line-strong, accent-wash…) are derived and get confirmed in that migration. */
   [data-theme="recetas"] {
     --color-bg: #fffefe;
     --color-surface: #fafafa;

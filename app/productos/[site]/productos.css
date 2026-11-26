@@ -1,4 +1,4 @@
-/* Product sites. Standalone: globals.css (Ñekurel) is not loaded here. Everything lives under .productos.
+/* Product sites. Loaded next to globals.css (for the utilities of new components); having no layer, these rules win. Everything lives under .productos.
    Shapes: controls are full pills, photos and signs use --p-radius. --p-accent comes from lib/sites.ts. */
 body:has(.productos) { margin: 0; background: #f6f8f8; }
 .productos {

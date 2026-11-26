@@ -110,7 +110,8 @@ El CSS viejo de Ñekurel y del panel vive en la capa `legacy`, ordenada **antes*
 
 Detalles que hay que respetar:
 - `legacy.css` traduce los tokens a los nombres viejos (`--ink: var(--color-ink)`) en `:root, [data-theme]`. Tiene que estar en cada elemento con tema: un `var()` se resuelve donde se declara, y en `:root` solo conservaría el valor del tema predeterminado.
-- `recetas.css` y `productos.css` siguen sin capa y sin cargar `globals.css`. Sus layouts ya llevan `data-theme`, que no tiene efecto hasta que migren.
+- `recetas.css` sigue sin capa y sin cargar `globals.css`; su layout ya lleva `data-theme`, que no tiene efecto hasta que migre.
+- **Productos ya carga `globals.css`** (desde Y1, para el modal del consejo del día), junto con `productos.css`, que sigue sin capa y por eso gana sobre todo lo de `globals.css`. Su layout fija `--color-accent` con el acento del sitio, así el tema `productos` y las utilidades usan ese color. Los estilos base de Tailwind sacaron el subrayado de los enlaces que no lo fijaban (los «volver»), y se repuso con la utilidad `underline`. Al migrar `productos.css` (E3a) hay que mirar lo mismo en cada regla que se borre.
 - Cuando una utilidad se aplica sobre un elemento que también usa reglas viejas, ahora gana la utilidad. Si una utilidad vieja no se notaba, puede empezar a notarse: pasó con `font-medium` en "Cerrar sesión".
 
 Reglas hasta entonces:
@@ -122,11 +123,11 @@ Reglas hasta entonces:
 
 | Archivo | Líneas | Qué es | Quién lo carga | Destino |
 |---|---|---|---|---|
-| `app/globals.css` | ~190 | Tokens, temas y reglas base (§2). | Herboristería y panel | Es el estado final. Recetas y productos lo cargan al migrar. |
+| `app/globals.css` | ~190 | Tokens, temas y reglas base (§2). | Herboristería, panel, sauna y productos | Es el estado final. Recetas lo carga al migrar. |
 | `app/legacy.css` | ~3.770 | Lo que era de `globals.css`: **Ñekurel** (buscador, administración, vendedor, tienda, carrito) y formularios y botones que el panel reutiliza. En la capa `legacy`. | Herboristería y **panel** | Migrar (E3b y E3d) y eliminar. |
 | `app/panel/panel.css` | ~1.580 | Componentes del panel (todo bajo `.panel`, ~308 selectores). Sus tokens ya están en el tema `panel`. En la capa `legacy`. | Panel | Migrar a utilidades (E3b). Al hacerlo, pasar el color de foco al tema: hoy lo pone `.panel :focus-visible`. |
 | `app/recetas/[site]/recetas.css` | 2.016 | Tema y componentes de recetas (`.r-*`, ~340 selectores). Independiente de `globals.css`. | Recetas | Migrar (E3). |
-| `app/productos/[site]/productos.css` | 130 | Tema y componentes de productos (`.p-*`). Independiente. | Productos | Migrar (E3, **primero**: es el más chico y sirve de prueba del método). |
+| `app/productos/[site]/productos.css` | 130 | Tema y componentes de productos (`.p-*`). Sin capa, cargado junto a `globals.css`. | Productos | Migrar (E3, **primero**: es el más chico y sirve de prueba del método). |
 | Utilidades de Tailwind en `className` | ~60 usos | Casi solo el menú lateral del panel. | — | Crece con cada migración. |
 
 Orden de migración (de menor a mayor riesgo, y por uso real): **productos → panel → recetas → herboristería (Ñekurel)**. Ñekurel va último porque hoy se usa poco y es lo más grande. Cada pantalla migrada se verifica en el navegador, en celular y en los temas que use (§9).

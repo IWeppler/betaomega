@@ -7,7 +7,7 @@ import { readDocument, saveDocument, supabase, SupabaseError } from "./supabase.
 export class MissingTableError extends SupabaseError {}
 
 /** The kinds of JSON document a site keeps in app_data. Their stored keys are real data: renaming one loses its rows. */
-export type SiteDocumentName = "products" | "site" | "saunaPage";
+export type SiteDocumentName = "products" | "site" | "saunaPage" | "advice";
 
 /** `<name>:<site>`. The id comes from the registry, so anything that could point at another document is a bug, and it throws. */
 export function siteDocumentKey(name: SiteDocumentName, siteId: string) {

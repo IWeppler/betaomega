@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { BookOpenText, ChartLine, FlaskConical, LayoutGrid, Leaf, MessageSquareText, Package, Settings, Store, Tag, type LucideIcon } from "lucide-react";
+import { BookOpenText, ChartLine, FlaskConical, LayoutGrid, Leaf, MessageSquareText, Package, ScrollText, Settings, Store, Tag, type LucideIcon } from "lucide-react";
 import type { Site, SiteKind } from "@/lib/sites";
 import { saunaPanel } from "@/modules/sauna/panel";
 import { CatalogProvider } from "./catalog-context";
@@ -53,6 +53,8 @@ export const panelKinds: Record<SiteKind, PanelKind> = {
     sections: [
       summary,
       { path: "productos", label: "Productos", icon: Package },
+      // Only on sites whose options have `advice`: the shell hides it elsewhere and names it after the chapters.
+      { path: "consejos", label: "Consejos del día", icon: ScrollText },
       { path: "sitio", label: "Sitio", icon: Settings },
     ],
     // The key drops the loaded list on a site change, so one site's products can never be saved into another.

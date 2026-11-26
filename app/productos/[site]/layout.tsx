@@ -2,8 +2,12 @@ import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { Atkinson_Hyperlegible, Barlow_Condensed } from "next/font/google";
+import { drawAdvice } from "@/modules/advice/server";
+import { DailyAdvice } from "@/modules/advice/ui/public";
 import { getDonation, productIcon, productSite, siteDescription } from "./brand";
 import { FooterActions, HeaderActions } from "./site-actions";
+// globals.css brings Tailwind for the new components (the advice of the day). productos.css has no layer, so its rules still win.
+import "@/app/globals.css";
 import "./productos.css";
 
 // Barlow Condensed lets long product names stay big in capitals; Atkinson Hyperlegible for reading.
@@ -34,9 +38,9 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 export default async function ProductSiteLayout({ children, params }: Props & { children: React.ReactNode }) {
   const site = await productSite(params);
   if (!site?.products) notFound();
-  const donation = await getDonation(site.id);
-  return <div data-theme="productos" className={`productos ${display.variable} ${text.variable}`} style={{ "--p-accent": site.products.accent } as CSSProperties}>
-    <HeaderActions donation={donation} />
+  const [donation, advice] = await Promise.all([getDonation(site.id), drawAdvice(site.id)]);
+  return <div data-theme="productos" className={`productos ${display.variable} ${text.variable}`} style={{ "--p-accent": site.products.accent, "--color-accent": site.products.accent } as CSSProperties}>
+    <HeaderActions donation={donation}>{advice && <DailyAdvice siteId={site.id} drawn={advice} />}</HeaderActions>
     {children}
     <footer className="p-foot"><FooterActions donation={donation} />© {new Date().getFullYear()} {site.name}.</footer>
   </div>;

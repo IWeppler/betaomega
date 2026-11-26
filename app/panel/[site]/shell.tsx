@@ -18,10 +18,16 @@ const iconButton = "inline-grid size-control place-items-center rounded-lg text-
 const navRow = "flex min-h-control w-full items-center gap-2.5 rounded-lg px-2.5 text-left font-medium text-muted transition-colors duration-150 hover:bg-ink/5 hover:text-ink";
 const navRowCurrent = "aria-[current=page]:bg-surface-sidebar aria-[current=page]:font-semibold aria-[current=page]:text-ink";
 const iconProps = { size: 18, strokeWidth: 1.75, "aria-hidden": true, className: "shrink-0" };
-/** The menu of a site. A product site names its list section with its own word ("Voces sagradas"). */
+/**
+ * The menu of a site. A product site names its list section with its own word ("Voces sagradas"), and has the advice section only when its
+ * options turn the advice on, named after its chapters ("Zanshei").
+ */
 const sections = (site: SiteSummary) => {
   const items = site.products?.items;
-  return panelKinds[site.kind].sections.map(item => (items && item.path === "productos" ? { ...item, label: productWords(items).Many } : item));
+  const advice = site.products?.advice;
+  return panelKinds[site.kind].sections
+    .filter(item => item.path !== "consejos" || advice)
+    .map(item => (items && item.path === "productos" ? { ...item, label: productWords(items).Many } : advice && item.path === "consejos" ? { ...item, label: advice.chapterName } : item));
 };
 
 export function PanelShell({ site, sites, children }: { site: SiteSummary; sites: SiteSummary[]; children: ReactNode }) {
@@ -31,7 +37,7 @@ export function PanelShell({ site, sites, children }: { site: SiteSummary; sites
   // Every site shares the [site] tree, so a section of another kind (/comidasdelcielo/tonicos) must not render.
   const segment = useSelectedLayoutSegment();
   // "avisos" belongs to the panel, not to a kind: every site opens the same screen (docs/tareas-notificaciones.md).
-  const known = segment === null || segment === "avisos" || panelKinds[site.kind].sections.some(item => item.path === segment);
+  const known = segment === null || segment === "avisos" || sections(site).some(item => item.path === segment);
   const [open, setOpen] = useState(false);
   const notices = useSiteNotices(site.id, sites.map(item => item.id));
   const waiting = Object.values(notices).reduce((sum, notice) => sum + notice.count, 0);
