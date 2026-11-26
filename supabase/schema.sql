@@ -304,7 +304,7 @@ insert into public.sites (id, kind, name, url, catalog_key, panel_icon, options,
   ('purificacion', 'productos', 'Purificación', 'https://purificacion.vercel.app', null, '/purificacion-icon.png',
     '{"items":{"one":"agua","many":"aguas","feminine":true},"descriptionLabel":"Cómo se obtiene","application":true,"accent":"#0b6e99","icon":{"any":"/purificacion-icon.png","maskable":"/purificacion-icon-maskable.png"}}', 2),
   ('yakuchil', 'productos', 'Yakuchil', 'https://yakuchil.vercel.app', null, null,
-    '{"items":{"one":"voz sagrada","many":"voces sagradas","feminine":true},"descriptionLabel":"Descripción","application":false,"accent":"#1f6f50","advice":{"chapterName":"Zanshei"},"landing":"news"}', 3)
+    '{"items":{"one":"voz sagrada","many":"voces sagradas","feminine":true},"descriptionLabel":"Descripción","application":false,"accent":"#8a5a12","advice":{"chapterName":"Zanshei"},"landing":"news"}', 3)
 on conflict (id) do nothing;
 insert into public.site_domains (domain, site_id) values
   ('nekurel.com', 'nekurel'), ('nekurel.vercel.app', 'nekurel'), ('nekurel.localhost', 'nekurel'),
@@ -2456,3 +2456,7 @@ revoke execute on function public.voice_track(text, text, text, text) from publi
 revoke execute on function public.voice_metrics_report(text, integer) from public, anon, authenticated;
 grant execute on function public.voice_track(text, text, text, text) to service_role;
 grant execute on function public.voice_metrics_report(text, integer) to service_role;
+
+-- Yakuchil's accent: old gold instead of green (5.9:1 on white). Only replaces the old green, so a colour chosen later is kept.
+update public.sites set options = jsonb_set(options, '{accent}', '"#8a5a12"')
+  where id = 'yakuchil' and options->>'accent' = '#1f6f50';

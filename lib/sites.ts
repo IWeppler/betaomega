@@ -49,7 +49,7 @@ export const seedSites: Site[] = [
   // No own domain yet: add it to `domains` and `url` once it is bought.
   { id: "comidasdelcielo", kind: "recetas", name: "Comidas del cielo", domains: ["comidasdelcielo.vercel.app", "comidasdelcielo.localhost"], url: "https://comidasdelcielo.vercel.app", panelIcon: "/comidasdelcielo-icon.png" },
   { id: "purificacion", kind: "productos", name: "Purificación", domains: ["purificacion.vercel.app", "purificacion.localhost"], url: "https://purificacion.vercel.app", panelIcon: "/purificacion-icon.png", products: { items: { one: "agua", many: "aguas", feminine: true }, descriptionLabel: "Cómo se obtiene", application: true, accent: "#0b6e99", icon: { any: "/purificacion-icon.png", maskable: "/purificacion-icon-maskable.png" } } },
-  { id: "yakuchil", kind: "productos", name: "Yakuchil", domains: ["yakuchil.vercel.app", "yakuchil.localhost"], url: "https://yakuchil.vercel.app", products: { items: { one: "voz sagrada", many: "voces sagradas", feminine: true }, descriptionLabel: "Descripción", application: false, accent: "#1f6f50", advice: { chapterName: "Zanshei" }, landing: "news" } },
+  { id: "yakuchil", kind: "productos", name: "Yakuchil", domains: ["yakuchil.vercel.app", "yakuchil.localhost"], url: "https://yakuchil.vercel.app", products: { items: { one: "voz sagrada", many: "voces sagradas", feminine: true }, descriptionLabel: "Descripción", application: false, accent: "#8a5a12", advice: { chapterName: "Zanshei" }, landing: "news" } },
 ];
 
 export const normalizeHost = (host: string) => host.toLowerCase().replace(/:\d+$/, "").replace(/^www\./, "");

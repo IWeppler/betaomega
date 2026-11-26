@@ -43,7 +43,7 @@ export function DailyAdvice({ siteId, drawn, button = true }: { siteId: string; 
     {/* The label ("Zanshei 003 · I") is the dialog's title: it names the dialog for screen readers without a heading of its own. */}
     <Dialog open={open} onOpenChange={setOpen} title={advice.label}>
       <blockquote className="m-0 font-display text-2xl/tight font-bold text-pretty sm:text-3xl/tight">{advice.text}</blockquote>
-      <button type="button" onClick={() => setOpen(false)} className="mt-1 inline-flex min-h-12 items-center justify-center justify-self-start rounded-full bg-accent px-6 font-bold text-accent-ink hover:bg-accent-hover active:translate-y-px">Listo</button>
+      <button type="button" onClick={() => setOpen(false)} className="mt-1 inline-flex min-h-12 items-center justify-center justify-self-start rounded-full bg-ink px-6 font-bold text-white hover:bg-ink/85 active:translate-y-px">Listo</button>
     </Dialog>
   </>;
 }

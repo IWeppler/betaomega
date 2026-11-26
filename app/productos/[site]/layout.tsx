@@ -39,9 +39,9 @@ export default async function ProductSiteLayout({ children, params }: Props & { 
   const site = await productSite(params);
   if (!site?.products) notFound();
   const [{ donation, youtube }, advice] = await Promise.all([getSiteLinks(site.id), drawAdvice(site.id)]);
-  // The news home page asks for a white page; the other product sites keep their pale grey.
+  // The news home page has its own theme (white, warm neutrals, globals.css); the other product sites keep productos' pale grey.
   const news = site.products.landing === "news";
-  return <div data-theme="productos" className={`productos ${display.variable} ${text.variable} ${news ? "bg-white" : ""}`} style={{ "--p-accent": site.products.accent, "--color-accent": site.products.accent } as CSSProperties}>
+  return <div data-theme={news ? "voces" : "productos"} className={`productos ${display.variable} ${text.variable} ${news ? "bg-bg text-ink" : ""}`} style={{ "--p-accent": site.products.accent, "--color-accent": site.products.accent } as CSSProperties}>
     {news
       ? <NewsNav siteName={site.name} donation={donation} youtube={youtube}>{advice && <DailyAdvice siteId={site.id} drawn={advice} button={false} />}</NewsNav>
       : <HeaderActions donation={donation} youtube={youtube}>{advice && <DailyAdvice siteId={site.id} drawn={advice} />}</HeaderActions>}
