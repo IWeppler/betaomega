@@ -140,3 +140,10 @@ test("un código vale una sola vez y por diez minutos", () => {
   assert.ok(!linkCodeUsable({ expiresAt, usedAt: null }, "2026-11-09T12:10:00.000Z"));
   assert.ok(!linkCodeUsable({ expiresAt, usedAt: "2026-11-09T12:01:00.000Z" }, "2026-11-09T12:02:00.000Z"));
 });
+
+test("un comentario nuevo en una voz sagrada avisa y abre la sección de comentarios de las voces", () => {
+  const notice = buildNotice({ siteId: "yakuchil", siteName: "Yakuchil", event: "voces.comment_new", voiceName: "Voz sagrada 074" });
+  assert.match(notice.body, /Voz sagrada 074/);
+  assert.equal(notice.path, "/yakuchil/opiniones");
+  assert.equal(notice.tag, "voces.comment_new:yakuchil");
+});

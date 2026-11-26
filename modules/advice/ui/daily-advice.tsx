@@ -4,15 +4,18 @@ import { ScrollText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "@/shared/ui/dialog";
 import { adviceDay, readStoredAdvice, todaysAdvice, type AdviceCard } from "../domain/advice";
-
-const storageKey = (siteId: string) => `advice:${siteId}`;
+import { storageKey } from "./storage";
 
 /**
  * The advice of the day: opens by itself on the first visit of the day and stays behind a round button at the top, to read it again.
  * `drawn` is the advice the server picked for this visit; the device keeps the first one of each day, so every page shows the same one.
  * Storage may be blocked (private browsing): then the advice simply opens on every visit.
  */
-export function DailyAdvice({ siteId, drawn }: { siteId: string; drawn: AdviceCard }) {
+/**
+ * `button`: the round button to read it again, among the solid ones of the product sites. Without it (the news home page shows today's advice in
+ * its aside) only the once-a-day dialog remains.
+ */
+export function DailyAdvice({ siteId, drawn, button = true }: { siteId: string; drawn: AdviceCard; button?: boolean }) {
   const [advice, setAdvice] = useState(drawn);
   const [open, setOpen] = useState(false);
   const decided = useRef(false);
@@ -34,13 +37,12 @@ export function DailyAdvice({ siteId, drawn }: { siteId: string; drawn: AdviceCa
   }, [siteId, drawn]);
 
   return <>
-    <button type="button" onClick={() => setOpen(true)} aria-label="Consejo del día" title="Consejo del día" className="grid size-12 place-items-center rounded-full bg-accent text-accent-ink hover:bg-accent-hover active:translate-y-px">
+    {button && <button type="button" onClick={() => setOpen(true)} aria-label="Consejo del día" title="Consejo del día" className="grid size-12 place-items-center rounded-full bg-accent text-accent-ink hover:bg-accent-hover active:translate-y-px">
       <ScrollText size={22} strokeWidth={2.25} aria-hidden="true" />
-    </button>
-    <Dialog open={open} onOpenChange={setOpen} title="Consejo del día">
-      <p className="m-0 text-base font-bold tracking-wide text-accent-text">{advice.label}</p>
+    </button>}
+    {/* The label ("Zanshei 003 · I") is the dialog's title: it names the dialog for screen readers without a heading of its own. */}
+    <Dialog open={open} onOpenChange={setOpen} title={advice.label}>
       <blockquote className="m-0 font-display text-2xl/tight font-bold text-pretty sm:text-3xl/tight">{advice.text}</blockquote>
-      <p className="m-0 text-base text-muted">Lo podés volver a leer cuando quieras con el botón de arriba.</p>
       <button type="button" onClick={() => setOpen(false)} className="mt-1 inline-flex min-h-12 items-center justify-center justify-self-start rounded-full bg-accent px-6 font-bold text-accent-ink hover:bg-accent-hover active:translate-y-px">Listo</button>
     </Dialog>
   </>;

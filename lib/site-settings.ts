@@ -10,6 +10,8 @@ export type SiteSettings = {
   contact: string;
   /** Mercado Pago alias or payment link for the donation button. Undefined: never set (the default applies); empty: no button. */
   donation?: string;
+  /** The site's YouTube channel, as https://www.youtube.com/@handle (or /channel/<id>). Empty: no icon. */
+  youtube?: string;
   /** Increases on every save; a save names the revision it started from. 0: nothing stored yet. */
   revision: number;
 };
@@ -78,6 +80,24 @@ export function cleanDonation(value: string) {
   return clean.toLowerCase();
 }
 
+/**
+ * A YouTube channel from the ways people copy it: "@yakuchil", "youtube.com/@yakuchil", ".../channel/UC…", ".../c/name" or ".../user/name".
+ * Returns https://www.youtube.com/<that path>, or "" for an empty field. A video link is refused: the field is for the channel.
+ */
+export function cleanYoutubeChannel(value: string) {
+  const clean = value.trim();
+  if (!clean) return "";
+  const handle = /^@([A-Za-z0-9._-]{3,30})$/.exec(clean);
+  if (handle) return `https://www.youtube.com/@${handle[1]}`;
+  let url: URL;
+  try { url = new URL(/^https?:\/\//i.test(clean) ? clean : `https://${clean}`); } catch { fail("YouTube: el link del canal no es válido."); }
+  if (!["youtube.com", "www.youtube.com", "m.youtube.com"].includes(url.hostname.toLowerCase())) fail("YouTube: pegá el link de tu canal, por ejemplo https://www.youtube.com/@yakuchil.");
+  const [first, second] = url.pathname.split("/").filter(Boolean);
+  if (first && /^@[A-Za-z0-9._-]{3,30}$/.test(first)) return `https://www.youtube.com/${first}`;
+  if (["channel", "c", "user"].includes(first ?? "") && second && /^[A-Za-z0-9._-]{1,60}$/.test(second)) return `https://www.youtube.com/${first}/${second}`;
+  fail("YouTube: ese link no es de un canal. Abrí tu canal y copiá la dirección, por ejemplo https://www.youtube.com/@yakuchil.");
+}
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 /** An email (lowercased) or a phone number reduced to digits: "+54 9 11 5555-1234" → "5491155551234". */
 export function cleanContact(value: string) {
@@ -119,6 +139,7 @@ export function cleanSettings(value: unknown): SiteSettings {
     ...(data.donation === undefined
       ? {}
       : { donation: cleanDonation(text(data.donation, "Donaciones", 300)) }),
+    ...(data.youtube === undefined ? {} : { youtube: cleanYoutubeChannel(text(data.youtube, "YouTube", 200)) }),
   };
 }
 
@@ -130,6 +151,7 @@ export function effectiveSettings(stored: SiteSettings | null) {
     instagram: stored?.instagram ?? "",
     contact: stored?.contact ?? "",
     donation: stored?.donation ?? defaultDonation,
+    youtube: stored?.youtube ?? "",
   };
 }
 

@@ -1,5 +1,7 @@
-/* Product sites. Loaded next to globals.css (for the utilities of new components); having no layer, these rules win. Everything lives under .productos.
+/* Product sites. Loaded next to globals.css, in its `legacy` layer (docs/DESIGN-SYSTEM.md §7): these rules still beat Tailwind's base, and the
+   utilities of new components beat them. Everything lives under .productos.
    Shapes: controls are full pills, photos and signs use --p-radius. --p-accent comes from lib/sites.ts. */
+@layer legacy {
 body:has(.productos) { margin: 0; background: #f6f8f8; }
 .productos {
   --p-bg: #f6f8f8;
@@ -127,4 +129,5 @@ body:has(.productos) { margin: 0; background: #f6f8f8; }
 @media (prefers-reduced-motion: reduce) {
   .p-card .p-photo img { transition: none; }
   .p-card:hover .p-photo img { transform: none; }
+}
 }

@@ -5,7 +5,7 @@ import { formatCents, type Cents } from "../money/index.ts";
 // both a module (the sauna) and the existing code (recipes) raise notices, and neither may import a module.
 // Imports are relative with their extension, like platform/money: the tests run it under plain Node.
 
-export const noticeEvents = ["sauna.booking_new", "sauna.transfer_chosen", "sauna.payment_confirmed", "sauna.payment_problem", "recetas.comment_new", "panel.test"] as const;
+export const noticeEvents = ["sauna.booking_new", "sauna.transfer_chosen", "sauna.payment_confirmed", "sauna.payment_problem", "recetas.comment_new", "voces.comment_new", "panel.test"] as const;
 export type NoticeEvent = (typeof noticeEvents)[number];
 
 type Site = { siteId: string; siteName: string };
@@ -17,6 +17,7 @@ export type NoticeInput = Site & (
   | { event: "sauna.payment_confirmed"; customerName: string; startsAt: string; late: boolean }
   | { event: "sauna.payment_problem"; customerName: string; outcome: "no_seat" | "amount_mismatch" | "unapplied" }
   | { event: "recetas.comment_new"; recipeTitle: string }
+  | { event: "voces.comment_new"; voiceName: string }
   /** The panel's "Probar" button: reaches every destination, whatever sites it chose. */
   | { event: "panel.test"; destinationLabel: string }
 );
@@ -90,6 +91,11 @@ export function buildNotice(input: NoticeInput): Notice {
       body = `Comentario por aprobar en "${clip(input.recipeTitle.trim() || "una receta", 80)}".`;
       path = page("comentarios");
       // One notice per site: a new comment replaces the previous one on the phone instead of stacking.
+      tag = `${input.event}:${input.siteId}`;
+      break;
+    case "voces.comment_new":
+      body = `Comentario por aprobar en "${clip(input.voiceName.trim() || "una voz sagrada", 80)}".`;
+      path = page("opiniones");
       tag = `${input.event}:${input.siteId}`;
       break;
     case "panel.test":
