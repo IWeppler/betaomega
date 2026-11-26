@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const site = await productSite(params);
   if (!site) return {};
   const description = siteDescription(site);
-  const image = { url: "/og", width: 1200, height: 630, alt: site.name };
+  const image = { url: site.products?.og ?? "/og", width: 1200, height: 630, alt: site.name };
   return {
     metadataBase: new URL(site.url),
     title: { default: site.name, template: `%s | ${site.name}` },
@@ -29,11 +29,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: { title: site.name, description, siteName: site.name, locale: "es_AR", type: "website", url: "/", images: [image] },
     twitter: { card: "summary_large_image", title: site.name, description, images: [image] },
     manifest: "/manifest.webmanifest",
-    appleWebApp: { capable: true, title: site.name, statusBarStyle: "default" },
+    appleWebApp: { capable: true, title: site.name, statusBarStyle: site.products?.appColor ? "black" : "default" },
     icons: { icon: [{ url: productIcon(site, 64), type: "image/png" }], apple: productIcon(site, 180) },
   };
 }
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f6f8f8" };
+export async function generateViewport({ params }: Props): Promise<Viewport> {
+  const site = await productSite(params);
+  return { width: "device-width", initialScale: 1, themeColor: site?.products?.appColor ?? "#f6f8f8" };
+}
 
 export default async function ProductSiteLayout({ children, params }: Props & { children: React.ReactNode }) {
   const site = await productSite(params);

@@ -303,8 +303,8 @@ insert into public.sites (id, kind, name, url, catalog_key, panel_icon, options,
   ('comidasdelcielo', 'recetas', 'Comidas del cielo', 'https://comidasdelcielo.vercel.app', null, '/comidasdelcielo-icon.png', '{}', 1),
   ('purificacion', 'productos', 'Purificación', 'https://purificacion.vercel.app', null, '/purificacion-icon.png',
     '{"items":{"one":"agua","many":"aguas","feminine":true},"descriptionLabel":"Cómo se obtiene","application":true,"accent":"#0b6e99","icon":{"any":"/purificacion-icon.png","maskable":"/purificacion-icon-maskable.png"}}', 2),
-  ('yakuchil', 'productos', 'Yakuchil', 'https://yakuchil.vercel.app', null, null,
-    '{"items":{"one":"voz sagrada","many":"voces sagradas","feminine":true},"descriptionLabel":"Descripción","application":false,"accent":"#8a5a12","advice":{"chapterName":"Zanshei"},"landing":"news"}', 3)
+  ('yakuchil', 'productos', 'Yakuchil', 'https://yakuchil.vercel.app', null, '/icons/yakuchil-icon-64.png',
+    '{"items":{"one":"voz sagrada","many":"voces sagradas","feminine":true},"descriptionLabel":"Descripción","application":false,"accent":"#8a5a12","icon":{"any":"/yakuchil-icon.png","maskable":"/yakuchil-icon-maskable.png"},"appColor":"#000000","og":"/icons/yakuchil-og.jpg","advice":{"chapterName":"Zanshei"},"landing":"news"}', 3)
 on conflict (id) do nothing;
 insert into public.site_domains (domain, site_id) values
   ('nekurel.com', 'nekurel'), ('nekurel.vercel.app', 'nekurel'), ('nekurel.localhost', 'nekurel'),
@@ -2460,3 +2460,14 @@ grant execute on function public.voice_metrics_report(text, integer) to service_
 -- Yakuchil's accent: old gold instead of green (5.9:1 on white). Only replaces the old green, so a colour chosen later is kept.
 update public.sites set options = jsonb_set(options, '{accent}', '"#8a5a12"')
   where id = 'yakuchil' and options->>'accent' = '#1f6f50';
+
+-- Yakuchil's logo as tab and app icon and as social card, and the installed app in black. Already-created databases: only adds what is
+-- missing, so an icon, card or colour chosen later is kept.
+update public.sites set options = jsonb_build_object(
+    'icon', jsonb_build_object('any', '/yakuchil-icon.png', 'maskable', '/yakuchil-icon-maskable.png'),
+    'appColor', '#000000',
+    'og', '/icons/yakuchil-og.jpg'
+  ) || options
+  where id = 'yakuchil';
+-- And its icon in the panel's site switcher, unless one was set already.
+update public.sites set panel_icon = '/icons/yakuchil-icon-64.png' where id = 'yakuchil' and panel_icon is null;

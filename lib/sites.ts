@@ -14,6 +14,10 @@ export type ProductSiteOptions = {
   accent: string;
   /** Icon files in public/: with transparent corners, and full bleed for Android and Apple. Without them, /icon draws the site's initial. */
   icon?: { any: string; maskable: string };
+  /** Colour of the installed app (status bar, splash screen) and of the browser's bar. Without it, the bar is pale and the app takes the accent. */
+  appColor?: string;
+  /** Social card in public/, 1200 × 630. Without it, /og draws the name on the accent colour. */
+  og?: string;
   /**
    * The advice of the day (modules/advice): the panel gets a section to edit it, named after its chapters ("Zanshei"), and the public site
    * shows one advice a day once the book has some. Its chapters have no "para qué sirve": they are not products.
@@ -49,7 +53,7 @@ export const seedSites: Site[] = [
   // No own domain yet: add it to `domains` and `url` once it is bought.
   { id: "comidasdelcielo", kind: "recetas", name: "Comidas del cielo", domains: ["comidasdelcielo.vercel.app", "comidasdelcielo.localhost"], url: "https://comidasdelcielo.vercel.app", panelIcon: "/comidasdelcielo-icon.png" },
   { id: "purificacion", kind: "productos", name: "Purificación", domains: ["purificacion.vercel.app", "purificacion.localhost"], url: "https://purificacion.vercel.app", panelIcon: "/purificacion-icon.png", products: { items: { one: "agua", many: "aguas", feminine: true }, descriptionLabel: "Cómo se obtiene", application: true, accent: "#0b6e99", icon: { any: "/purificacion-icon.png", maskable: "/purificacion-icon-maskable.png" } } },
-  { id: "yakuchil", kind: "productos", name: "Yakuchil", domains: ["yakuchil.vercel.app", "yakuchil.localhost"], url: "https://yakuchil.vercel.app", products: { items: { one: "voz sagrada", many: "voces sagradas", feminine: true }, descriptionLabel: "Descripción", application: false, accent: "#8a5a12", advice: { chapterName: "Zanshei" }, landing: "news" } },
+  { id: "yakuchil", kind: "productos", name: "Yakuchil", domains: ["yakuchil.vercel.app", "yakuchil.localhost"], url: "https://yakuchil.vercel.app", panelIcon: "/icons/yakuchil-icon-64.png", products: { items: { one: "voz sagrada", many: "voces sagradas", feminine: true }, descriptionLabel: "Descripción", application: false, accent: "#8a5a12", icon: { any: "/yakuchil-icon.png", maskable: "/yakuchil-icon-maskable.png" }, appColor: "#000000", og: "/icons/yakuchil-og.jpg", advice: { chapterName: "Zanshei" }, landing: "news" } },
 ];
 
 export const normalizeHost = (host: string) => host.toLowerCase().replace(/:\d+$/, "").replace(/^www\./, "");

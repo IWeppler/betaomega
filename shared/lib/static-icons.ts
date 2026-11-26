@@ -5,16 +5,21 @@
 export const iconSizes = [32, 64, 180, 192, 512] as const;
 export type IconSize = (typeof iconSizes)[number];
 
-/** Sources in public/ that get resized. The Ñekurel app icon is composed (logo on the brand green), see the script. */
+/**
+ * Sources in public/ that get resized. The Ñekurel and Yakuchil app icons have no file of their own: the script composes them from the
+ * site's logo (Ñekurel's on the brand green, Yakuchil's emblem cut out of its poster).
+ */
 export const iconSources = [
   "/fropexio-icon.png", "/fropexio-icon-maskable.png",
   "/comidasdelcielo-icon.png", "/comidasdelcielo-icon-maskable.png",
   "/purificacion-icon.png", "/purificacion-icon-maskable.png",
   "/nekurel-app-icon.png", "/nekurel-app-icon-maskable.png",
+  "/yakuchil-icon.png", "/yakuchil-icon-maskable.png",
 ] as const;
 
-/** The Ñekurel social card, 1200 × 630, also pre-rendered. */
+/** The social cards, 1200 × 630, also pre-rendered. */
 export const nekurelOgImage = "/icons/nekurel-og.jpg";
+export const yakuchilOgImage = "/icons/yakuchil-og.jpg";
 
 const baseName = (source: string) => source.replace(/^.*\//, "").replace(/\.png$/, "");
 

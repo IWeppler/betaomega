@@ -14,8 +14,8 @@ export async function GET(_request: Request, context: { params: Promise<{ site: 
     scope: "/",
     display: "standalone",
     lang: "es-AR",
-    background_color: "#f6f8f8",
-    theme_color: site.products.accent,
+    background_color: site.products.appColor ?? "#f6f8f8",
+    theme_color: site.products.appColor ?? site.products.accent,
     icons: [
       { src: productIcon(site, 192), sizes: "192x192", type: "image/png", purpose: "any" },
       { src: productIcon(site, 512), sizes: "512x512", type: "image/png", purpose: "any" },
