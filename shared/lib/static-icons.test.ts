@@ -6,7 +6,7 @@ const pair = { any: "/fropexio-icon.png", maskable: "/fropexio-icon-maskable.png
 
 test("staticIcon names the file and refuses sources or sizes that are not pre-rendered", () => {
   assert.equal(staticIcon("/fropexio-icon-maskable.png", 512), "/icons/fropexio-icon-maskable-512.png");
-  assert.equal(staticIcon("/yakuchil-icon.png", 192), undefined);
+  assert.equal(staticIcon("/unknown-icon.png", 192), undefined);
   assert.equal(staticIcon("/fropexio-icon.png", 100), undefined);
 });
 

@@ -1,10 +1,13 @@
 import { ImageResponse } from "next/og";
 import { getSite } from "@/lib/site-registry";
+import { redirectToStatic } from "@/shared/lib/static-icons";
 
 // Social preview of the site, 1200 × 630. A product with a photo shares the photo instead (see [slug]/page.tsx).
+// A site with its own card (options.og, pre-rendered by scripts/generate-icons.mjs) redirects to it; the others get it drawn here.
 export async function GET(_request: Request, context: { params: Promise<{ site: string }> }) {
   const site = await getSite((await context.params).site);
   if (!site?.products) return new Response("No encontrado", { status: 404 });
+  if (site.products.og) return redirectToStatic(site.products.og);
   return new ImageResponse(
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: 96, background: "#f6f8f8", color: "#14211f", borderBottom: `28px solid ${site.products.accent}` }}>
       <div style={{ fontSize: 132, fontWeight: 700, lineHeight: 1, textTransform: "uppercase" }}>{site.name}</div>

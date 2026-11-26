@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { site, product } = await find(params).catch(() => ({ site: undefined, product: undefined }));
   if (!site || !product) return {};
   const description = product.description.replace(/\s+/g, " ").slice(0, 200);
-  const images = [product.image ? { url: product.image, alt: product.name } : { url: "/og", width: 1200, height: 630, alt: site.name }];
+  const images = [product.image ? { url: product.image, alt: product.name } : { url: site.products?.og ?? "/og", width: 1200, height: 630, alt: site.name }];
   return {
     title: product.name,
     description,
