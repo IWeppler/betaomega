@@ -304,7 +304,7 @@ insert into public.sites (id, kind, name, url, catalog_key, panel_icon, options,
   ('purificacion', 'productos', 'Purificación', 'https://purificacion.vercel.app', null, '/purificacion-icon.png',
     '{"items":{"one":"agua","many":"aguas","feminine":true},"descriptionLabel":"Cómo se obtiene","application":true,"accent":"#0b6e99","icon":{"any":"/purificacion-icon.png","maskable":"/purificacion-icon-maskable.png"}}', 2),
   ('yakuchil', 'productos', 'Yakuchil', 'https://yakuchil.vercel.app', null, null,
-    '{"items":{"one":"voz sagrada","many":"voces sagradas","feminine":true},"descriptionLabel":"Descripción","application":false,"accent":"#1f6f50"}', 3)
+    '{"items":{"one":"voz sagrada","many":"voces sagradas","feminine":true},"descriptionLabel":"Descripción","application":false,"accent":"#1f6f50","advice":{"chapterName":"Zanshei"}}', 3)
 on conflict (id) do nothing;
 insert into public.site_domains (domain, site_id) values
   ('nekurel.com', 'nekurel'), ('nekurel.vercel.app', 'nekurel'), ('nekurel.localhost', 'nekurel'),
@@ -2363,3 +2363,8 @@ end;
 $$;
 revoke execute on function public.sauna_reserve_plan_with_herbs(text, uuid, jsonb, text, text, boolean, text) from public, anon, authenticated;
 grant execute on function public.sauna_reserve_plan_with_herbs(text, uuid, jsonb, text, text, boolean, text) to service_role;
+
+-- Advice of the day (modules/advice). The book lives in app_data as `advice:<site>`; this option gives the site its panel section ("Zanshei").
+-- Already-created databases: turn it on for Yakuchil without touching anything else of its options.
+update public.sites set options = options || '{"advice":{"chapterName":"Zanshei"}}'::jsonb
+  where id = 'yakuchil' and not (options ? 'advice');

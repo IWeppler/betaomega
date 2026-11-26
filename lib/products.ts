@@ -61,7 +61,10 @@ export const blankProduct = (): Product => ({ id: crypto.randomUUID(), slug: "",
 // Routes of the site itself, so a product cannot take them.
 const reservedSlugs = new Set(["og", "icon"]);
 const maxProducts = 500;
-const maxKeywords = 40;
+// Sized for the longest psalm of Yakuchil (45 intentions, 13,231 characters, intentions of up to 374).
+const maxKeywords = 60;
+const maxKeyword = 400;
+const maxDescription = 20000;
 const imagePrefix = "/api/images/";
 
 function fail(message: string): never {
@@ -82,7 +85,7 @@ export function cleanKeywords(value: unknown): string[] {
   const seen = new Set<string>();
   const keywords: string[] = [];
   for (const item of value) {
-    const keyword = text(item, "Cada frase de para qué sirve", 120).replace(/\s+/g, " ");
+    const keyword = text(item, "Cada frase de para qué sirve", maxKeyword).replace(/\s+/g, " ");
     const key = normalize(keyword);
     if (!key || seen.has(key)) continue;
     seen.add(key);
@@ -107,7 +110,7 @@ function cleanProduct(value: unknown, askApplication: boolean, label: string) {
     slug: typeof data.slug === "string" ? data.slug : "",
     name,
     ...(image ? { image } : {}),
-    description: text(data.description, label, 5000),
+    description: text(data.description, label, maxDescription),
     keywords: cleanKeywords(data.keywords),
     ...(application ? { application } : {}),
     published: data.published === true,

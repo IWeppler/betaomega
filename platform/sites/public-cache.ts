@@ -13,6 +13,7 @@ export const publicTags = {
   recipes: "public-recipes",
   recipeSettings: "public-recipe-settings",
   sauna: "public-sauna",
+  advice: "public-advice",
 } as const;
 
 /**

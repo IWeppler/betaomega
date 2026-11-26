@@ -41,7 +41,7 @@ export function KeywordInput({ value, onChange, suggestions }: { value: string[]
       </span>)}
       <input id={`${id}-input`} role="combobox" aria-expanded={open && options.length > 0} aria-controls={`${id}-list`} aria-autocomplete="list"
         aria-activedescendant={open && options.length > 0 ? `${id}-opt-${current}` : undefined}
-        value={draft} maxLength={120} autoComplete="off" aria-describedby={`${id}-hint`}
+        value={draft} maxLength={400} autoComplete="off" aria-describedby={`${id}-hint`}
         placeholder={value.length ? "Agregar otra" : "Escribí una palabra o frase"}
         onFocus={() => setOpen(true)}
         onClick={() => setOpen(true)}

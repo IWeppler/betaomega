@@ -1,6 +1,7 @@
 "use client";
 
 import { DownloadSimple, Heart, ShareNetwork } from "@phosphor-icons/react";
+import type { ReactNode } from "react";
 import { useDonate, useInstall } from "@/app/recetas/[site]/site-hooks";
 import { ShareButton } from "@/shared/ui/share-button";
 
@@ -9,11 +10,15 @@ function DonationNote({ alias }: { alias: string }) {
   return <p className="p-note" role="status">Alias copiado: <strong>{alias}</strong>. Pegalo en Mercado Pago y poné el monto que quieras: la donación es voluntaria. ¡Gracias!</p>;
 }
 
-/** The round buttons at the top of every page: sharing the page being viewed and, when the panel set an alias, the heart for donating. */
-export function HeaderActions({ donation }: { donation: string }) {
+/**
+ * The round buttons at the top of every page: sharing the page being viewed and, when the panel set an alias, the heart for donating.
+ * `children` goes first: the layout puts there what a site adds (the advice of the day).
+ */
+export function HeaderActions({ donation, children }: { donation: string; children?: ReactNode }) {
   const { donate, copied } = useDonate(donation);
   return <div className="p-top">
     <div className="p-actions">
+      {children}
       <ShareButton className="p-heart" label="Compartir"><ShareNetwork size={22} weight="bold" aria-hidden="true" /></ShareButton>
       {donation && <button type="button" className="p-heart" aria-label="Hacer una donación" title="Hacer una donación" onClick={() => void donate()}><Heart size={22} weight="bold" aria-hidden="true" /></button>}
     </div>

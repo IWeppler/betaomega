@@ -39,7 +39,7 @@ export default async function ProductPage({ params }: Props) {
   const { site, product } = found;
   if (!site?.products || !product) notFound();
   return <main className="p-page">
-    <nav className="p-back" aria-label="Volver"><Link href="/"><ArrowLeft size={18} aria-hidden="true" />{site.name}</Link></nav>
+    <nav className="p-back" aria-label="Volver"><Link href="/" className="underline"><ArrowLeft size={18} aria-hidden="true" />{site.name}</Link></nav>
     <article className="p-detail">
       <div className="p-photo is-large">
         {product.image
