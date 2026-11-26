@@ -74,7 +74,7 @@ test('las direcciones son únicas, estables y no pisan rutas del sitio', () => {
 
 test('para qué sirve: sin repetidos ni vacíos', () => {
   assert.deepEqual(cleanKeywords([' Dolor  de cabeza ', 'dolor de cabéza', '', 'Sed']), ['Dolor de cabeza', 'Sed']);
-  assert.throws(() => cleanKeywords(Array.from({ length: 41 }, (_, n) => `frase ${n}`)), /hasta 40/);
+  assert.throws(() => cleanKeywords(Array.from({ length: 61 }, (_, n) => `frase ${n}`)), /hasta 60/);
 });
 
 test('la búsqueda mira el nombre y para qué sirve, sin importar tildes', () => {
